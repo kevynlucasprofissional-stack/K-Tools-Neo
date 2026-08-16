@@ -68,11 +68,22 @@ export class MediaDownloader {
     } catch(error){ if(error?.code==='ENOENT')return null; throw error; }
   }
 
-
   async quarantineCorrupt(filePath) {
     const quarantine=`${filePath}.corrupt-${Date.now()}`;
     try { await fs.rename(filePath,quarantine); return quarantine; }
     catch(error){ throw new RunnerError(`Arquivo inválido não pôde ser movido para quarentena: ${path.basename(filePath)}`,{code:'CORRUPT_FILE_QUARANTINE_FAILED',cause:error,details:{filePath}}); }
+  }
+
+  async clearPartialArtifacts(moduleDir,baseName) {
+    let entries=[];
+    try{entries=await fs.readdir(moduleDir,{withFileTypes:true});}catch(error){if(error?.code==='ENOENT')return[];throw error;}
+    const removed=[];
+    for(const entry of entries){
+      if(!entry.isFile()||!entry.name.startsWith(`${baseName}.`)||!/\.(?:part|ytdl|temp)$/i.test(entry.name))continue;
+      const full=path.join(moduleDir,entry.name);
+      try{await fs.unlink(full);removed.push(full);}catch(error){if(error?.code!=='ENOENT')throw new RunnerError(`Artefato parcial não pôde ser removido: ${entry.name}`,{code:'PARTIAL_CLEANUP_FAILED',cause:error,details:{filePath:full}});}
+    }
+    return removed;
   }
 
   async validateVideo(filePath,{signal=null}={}) {
@@ -89,10 +100,12 @@ export class MediaDownloader {
     return { size:stat.size,duration,codec:video.codec_name||null };
   }
 
-  async download({ mediaUrl, refererUrl, paths, signal=null, onProgress=null }) {
+  async download({ mediaUrl, refererUrl, paths, signal=null, onProgress=null, cleanStart=false }) {
     await fs.mkdir(paths.moduleDir,{recursive:true});
-    const args=['--no-playlist','--continue','--no-overwrites','--retries','3','--fragment-retries','3','--referer',refererUrl,'--print','after_move:filepath','-o',paths.template,mediaUrl];
-    await this.logger?.log('DOWNLOAD','Starting',{media:redactUrl(mediaUrl),output:paths.template});
+    if(cleanStart)await this.clearPartialArtifacts(paths.moduleDir,paths.baseName);
+    const resumeArg=cleanStart?'--no-continue':'--continue';
+    const args=['--no-playlist',resumeArg,'--no-overwrites','--retries','3','--fragment-retries','3','--referer',refererUrl,'--print','after_move:filepath','-o',paths.template,mediaUrl];
+    await this.logger?.log('DOWNLOAD','Starting',{media:redactUrl(mediaUrl),output:paths.template,cleanStart:Boolean(cleanStart)});
     let r;
     const feed=chunk=>{if(!onProgress)return;for(const line of String(chunk).split(/\r?\n/)){const p=parseYtDlpProgress(line);if(p)onProgress(p);}};
     try{r=await this.processRunner(this.ytDlpPath,args,{timeoutMs:this.limits.downloadTimeoutMs,signal,onStdout:feed,onStderr:feed});}
