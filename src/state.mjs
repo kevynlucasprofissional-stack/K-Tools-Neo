@@ -195,10 +195,13 @@ export class StateStore {
       const absolute=path.resolve(this.courseDir,relativeOutputBase);
       if(path.isAbsolute(relativeOutputBase) || !inside(this.courseDir,absolute))relativeOutputBase=null;
     }
+    const modulePath=(Array.isArray(value.modulePath)?value.modulePath:[]).map(x=>String(x||'').trim()).filter(Boolean);
+    const moduleName=modulePath.at(-1)||(value.moduleName?String(value.moduleName):null);
     return {
       position,
       lessonTitle:String(value.lessonTitle||'Aula'),
-      moduleName:value.moduleName?String(value.moduleName):null,
+      moduleName,
+      modulePath:modulePath.length?modulePath:(moduleName?[moduleName]:[]),
       lessonUrl:safePersistUrl(value.lessonUrl),
       relativeOutputBase,
       startedAt:value.startedAt||nowIso(),
@@ -297,6 +300,7 @@ export class StateStore {
       courseName:this.courseName,
       lessonTitle:entry.lessonTitle||'Aula',
       moduleName:entry.moduleName||null,
+      modulePath:(Array.isArray(entry.modulePath)?entry.modulePath:[]).map(x=>String(x||'').trim()).filter(Boolean),
       lessonUrl:safePersistUrl(entry.lessonUrl),
       status:entry.status,
       outputFile:entry.outputFile||null,

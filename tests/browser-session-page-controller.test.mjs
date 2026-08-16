@@ -54,5 +54,5 @@ test('Redirect/Auth observer preserves a sanitized redirect chain',async()=>{
 });
 
 test('PageController close detaches network/auth listeners from persistent external Chrome pages',async()=>{
-  const page=new Page();const context=new Context([page]);const session=new BrowserSession({playwrightLoader:loader(context)});const controller=new PageController({session});await controller.pages();assert.ok(page.events.size>0);await controller.close();assert.equal(page.events.size,0);
+  const page=new Page();const context=new Context([page]);const session=new BrowserSession({playwrightLoader:loader(context)});const controller=new PageController({session});await controller.pages();assert.equal(page.events.size,0);await controller.chooseWorkingPage();assert.ok(page.events.size>0);await controller.close();assert.equal(page.events.size,0);
 });

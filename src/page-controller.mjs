@@ -24,18 +24,23 @@ export class PageController {
     this.session=session;this.logger=logger;this.limits={...DEFAULT_LIMITS,...limits};
     this.authObserver=authObserver||new RedirectAuthObserver({logger});
     this.networkObserver=networkObserver||new NetworkMediaObserver({logger});this.adaptiveLocator=adaptiveLocator||new AdaptiveLocator();this.actionabilityProbe=actionabilityProbe||new ActionabilityProbe({trialTimeoutMs:this.limits.actionabilityTrialTimeoutMs});this.debugSnapshots=debugSnapshots||null;
-    this.refs=new WeakMap();this.trackedPages=new Set();this.mediaDiagnosticsByPage=new WeakMap();this.nextId=1;
+    this.refs=new WeakMap();this.trackedPages=new Set();this.mediaDiagnosticsByPage=new WeakMap();this.nextId=1;this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;
     this.capabilities={...session.capabilities,pageController:true};
   }
 
-  ref(page){
-    if(!page)return null;let r=this.refs.get(page);
-    if(!r){r=new PageRef(page,this.nextId++);this.refs.set(page,r);this.trackedPages.add(page);this.authObserver.attach(page);this.networkObserver?.attach?.(page);}
-    return r;
+  ref(page,{observe=false}={}){
+    if(!page)return null;let r=this.refs.get(page);if(!r){r=new PageRef(page,this.nextId++);this.refs.set(page,r);}if(observe)this.observeRef(r);return r;
+  }
+  observeRef(ref){const page=ref?.handle;if(!page||this.trackedPages.has(page))return ref;this.trackedPages.add(page);this.authObserver.attach(page);this.networkObserver?.attach?.(page);return ref;}
+  detachRef(ref){const page=ref?.handle;if(!page||!this.trackedPages.has(page))return;this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);this.trackedPages.delete(page);}
+  async pinWorkingPage(ref){
+    if(!ref?.handle)throw new BrowserAutomationError('Página de trabalho ausente para pin.',{code:'WORK_PAGE_MISSING'});
+    if(this.pinnedRef?.handle&&this.pinnedRef.handle!==ref.handle)this.detachRef(this.pinnedRef);
+    this.observeRef(ref);this.pinnedRef=ref;this.pinnedUrl=ref.url||this.pinnedUrl||null;const target=await this.session.getTargetId?.(ref.handle);if(target)this.pinnedTargetId=target;return ref;
   }
   mark(ref,health){if(ref)ref.health=health;return ref;}
   async connect(opts={}){const r=await this.session.connect(opts);this.capabilities={...r,pageController:true};return this.capabilities;}
-  async close(){for(const page of this.trackedPages){this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);}this.trackedPages.clear();await this.session.disconnect();this.refs=new WeakMap();this.mediaDiagnosticsByPage=new WeakMap();}
+  async close(){for(const page of this.trackedPages){this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);}this.trackedPages.clear();this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;await this.session.disconnect();this.refs=new WeakMap();this.mediaDiagnosticsByPage=new WeakMap();}
   async cleanupCreatedPages(){}
 
   async pages(){const pages=await this.session.getPages();return pages.map(p=>this.ref(p));}
@@ -55,18 +60,23 @@ export class PageController {
       page=refs.find(r=>r.url===preferredUrl)||await this.ensurePage(preferredUrl);
     }
     if(!page)throw new BrowserAutomationError('Nenhuma aula XCursos está aberta no Chrome dedicado. Abra uma videoaula e tente novamente.',{code:'XC_PAGE_NOT_FOUND'});
-    const lesson=await this.inspectLesson(page);return{page,lesson,cloned:false};
+    page=await this.pinWorkingPage(page);const lesson=await this.inspectLesson(page);return{page,lesson,cloned:false};
   }
 
   async recoverRef(ref,{url=null}={}){
-    const stable=url||ref?.url||null;this.mark(ref,'STALE');
-    await this.logger?.log('PAGE','Recovering stale page',{url:stable});
+    const stable=url||ref?.url||this.pinnedUrl||null;const targetId=this.pinnedTargetId||await this.session.getTargetId?.(ref?.handle);this.mark(ref,'STALE');
+    await this.logger?.log('PAGE','Recovering pinned work page',{url:stable,targetPinned:Boolean(targetId)});
     try{
-      this.mark(ref,'RECOVERING');await this.session.reconnect();
-      const refs=await this.pages();let recovered=stable?refs.find(r=>r.url===stable):refs.find(r=>isLessonUrl(r.url));
-      if(!recovered&&stable)recovered=await this.ensurePage(stable);
+      this.mark(ref,'RECOVERING');await this.session.reconnect();const handles=await this.session.getPages();let recovered=null;
+      if(targetId){
+        let exact=null;if(typeof this.session.findPageByTargetId==='function')exact=await this.session.findPageByTargetId(targetId,{pages:handles});
+        else if(typeof this.session.getTargetId==='function'){for(const handle of handles){if(await this.session.getTargetId(handle)===targetId){exact=handle;break;}}}
+        if(exact)recovered=this.ref(exact);
+      }
+      if(!recovered&&stable){const matches=handles.filter(p=>{try{return p.url()===stable;}catch{return false;}});if(matches.length===1)recovered=this.ref(matches[0]);else if(matches.length>1)throw new BrowserAutomationError('Há múltiplas abas com a mesma aula e o target pinado não pôde ser recuperado.',{code:'PAGE_RECOVERY_AMBIGUOUS',details:{url:stable,matches:matches.length}});}
+      if(!recovered&&stable){const blank=handles.find(p=>{try{return p.url()==='about:blank';}catch{return false;}});recovered=this.ref(blank||await this.session.newPage());recovered=await this.navigateExact(recovered,stable);}
       if(!recovered)throw new BrowserAutomationError('Nenhuma página de aula pôde ser recuperada.',{code:'PAGE_RECOVERY_FAILED'});
-      this.mark(recovered,'HEALTHY');return recovered;
+      recovered=await this.pinWorkingPage(recovered);this.mark(recovered,'HEALTHY');return recovered;
     }catch(error){this.mark(ref,'DEAD');throw error;}
   }
 
@@ -74,7 +84,7 @@ export class PageController {
     if(!isLessonUrl(url))throw new BrowserAutomationError('Tentativa de navegar para URL que não é aula XCursos.',{code:'NAV_EXACT_INVALID_URL',details:{url}});
     if(!ref?.handle||pageClosed(ref.handle))ref=await this.recoverRef(ref,{url});
     try{
-      this.networkObserver?.attach?.(ref.handle);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'navigate-exact',lessonUrl:url});this.authObserver.attach(ref.handle);
+      ref=await this.pinWorkingPage(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'navigate-exact',lessonUrl:url});
       await ref.handle.goto(url,{waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});
       await this.authObserver.assertLesson(ref.handle,{requestedUrl:url});
       await this.waitForLessonShell(ref);ref._title=await ref.handle.title().catch(()=>ref._title);this.mark(ref,'HEALTHY');return ref;
@@ -104,7 +114,13 @@ export class PageController {
           const videos=[...document.querySelectorAll('video')];const ordered=[...videos.filter(visible),...videos.filter(v=>!visible(v))];let videoUrl=null;
           for(const v of ordered){const candidates=[v.currentSrc,v.src,...[...v.querySelectorAll('source[src]')].map(s=>s.src)].filter(Boolean);const direct=candidates.find(u=>/^https?:/i.test(u)&&/\.(?:mp4|m3u8|mpd)(?:[?#]|$)/i.test(u));const http=candidates.find(u=>/^https?:/i.test(u));if(candidates.length){videoUrl=direct||http||candidates[0];break;}}
           const iframeUrl=[...document.querySelectorAll('iframe[src]')].map(x=>x.src).find(Boolean)||null;
-          return{videoUrl,iframeUrl,pageUrl:location.href,pageTitle:document.title};
+          let modulePath=[];const asides=[...document.querySelectorAll('aside')];const sidebar=asides.find(visible)||asides[0]||null;
+          if(sidebar){
+            const durationRe=/\b\d{1,3}:\d{2}(?::\d{2})?\b/;const buttons=[...sidebar.querySelectorAll('button')];
+            const activeButton=buttons.find(b=>{const text=b.innerText||'';if(!durationRe.test(text))return false;const aria=b.getAttribute('aria-current')||b.getAttribute('aria-selected');const state=b.getAttribute('data-state');const cls=String(b.className||'');const p=b.querySelector('p');const pClasses=String(p?.className||'').split(/\s+/);return aria==='true'||aria==='page'||state==='active'||cls.includes('bg-white/[0.06]')||pClasses.includes('text-white');});
+            if(activeButton){const root=activeButton.closest('aside');const inner=[];let node=activeButton.parentElement;while(node&&node!==root){if(node.tagName==='DIV'){const first=[...node.children][0];if(first?.tagName==='BUTTON'&&/(?:\b\d+\s+aulas?\b|\b\d+\s+arquivos?\b)/i.test(first.innerText||'')){const label=(first.querySelector('p')?.innerText||'').trim();if(label&&inner.at(-1)!==label)inner.push(label);}}node=node.parentElement;}modulePath=inner.reverse();}
+          }
+          return{videoUrl,iframeUrl,modulePath,pageUrl:location.href,pageTitle:document.title};
         }),
         ref.handle.title(),
       ]);
@@ -273,7 +289,7 @@ export class PageController {
     const originalUrl=ref?.url||null;
     try{
       if(!ref?.handle||pageClosed(ref.handle))throw new Error('Target page, context or browser has been closed');
-      this.networkObserver?.attach?.(ref.handle);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'refresh',lessonUrl:originalUrl});
+      ref=await this.pinWorkingPage(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'refresh',lessonUrl:originalUrl});
       await ref.handle.reload({waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});await this.authObserver.assertLesson(ref.handle,{requestedUrl:originalUrl});await this.waitForLessonShell(ref);return ref;
     }catch(error){
       if(isTargetClosedError(error)&&originalUrl&&isLessonUrl(originalUrl)){const recovered=await this.recoverRef(ref,{url:originalUrl});return await this.navigateExact(recovered,originalUrl);}

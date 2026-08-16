@@ -38,6 +38,12 @@ export function isSafeDownloadMedia(meta={}){
   return mediaSourceConfidence(meta)!=='UNTRUSTED';
 }
 
+export function normalizeModulePath(modulePath=[],moduleName=null){
+  const raw=Array.isArray(modulePath)?modulePath:[];const out=[];
+  for(const value of raw){const text=String(value||'').trim();if(text&&out.at(-1)!==text)out.push(text);}
+  const fallback=String(moduleName||'').trim();if(!out.length&&fallback)out.push(fallback);return out;
+}
+
 export function parseCounter(text = '') {
   const candidates = [];
   for (const re of [
@@ -134,7 +140,7 @@ export function parseXcursosLessonHtml(html, pageUrl = '') {
   const hasTrustedPlayerIframe=iframeUrls.some(isTrustedPlayerIframeUrl);
   const hasUntrustedIframe=iframeUrls.some(x=>!isTrustedPlayerIframeUrl(x));
   const result={
-    site: 'xcursos',pageUrl,pageTitle,courseName: courseName || 'Curso XCursos',lessonTitle: lessonTitle || 'Aula',moduleName,
+    site: 'xcursos',pageUrl,pageTitle,courseName: courseName || 'Curso XCursos',lessonTitle: lessonTitle || 'Aula',moduleName,modulePath:normalizeModulePath([],moduleName),
     currentPosition: counter?.current ?? null,totalPositions: counter?.total ?? null,
     videoUrl: media?.url || null,videoUrlRedacted: media?.redacted || null,mediaType: media?.type || 'NONE',mediaSource: media?.source || null,
     isSignedDirectMp4: Boolean(media?.type === 'DIRECT_MP4' && /[?&]X-Amz-/i.test(media.url)),
@@ -151,9 +157,10 @@ export function normalizeLiveLessonMeta(meta = {}, page = {}) {
   const current = Number(meta.currentPosition); const total = Number(meta.totalPositions);
   const hasTrustedPlayerIframe=Boolean(meta.hasTrustedPlayerIframe||(meta.iframeUrl&&isTrustedPlayerIframeUrl(meta.iframeUrl)));
   const hasUntrustedIframe=Boolean(meta.hasUntrustedIframe||(meta.iframeUrl&&!isTrustedPlayerIframeUrl(meta.iframeUrl)));
+  const modulePath=normalizeModulePath(meta.modulePath,meta.moduleName);
   const result={
     site: 'xcursos',pageUrl: meta.pageUrl || page.url || '',pageTitle: meta.pageTitle || page.title || null,
-    courseName: String(meta.courseName || '').trim() || 'Curso XCursos',lessonTitle: String(meta.lessonTitle || '').trim() || 'Aula',moduleName: String(meta.moduleName || '').trim() || null,
+    courseName: String(meta.courseName || '').trim() || 'Curso XCursos',lessonTitle: String(meta.lessonTitle || '').trim() || 'Aula',moduleName:modulePath.at(-1)||String(meta.moduleName || '').trim()||null,modulePath,
     currentPosition: Number.isFinite(current) && current > 0 ? current : null,totalPositions: Number.isFinite(total) && total > 1 ? total : null,
     videoUrl: media?.url || null,videoUrlRedacted: media?.redacted || null,mediaType: media?.type || 'NONE',mediaSource: media?.source || null,
     isSignedDirectMp4: Boolean(media?.type === 'DIRECT_MP4' && /[?&]X-Amz-/i.test(media.url)),

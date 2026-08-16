@@ -36,25 +36,22 @@ export class MediaDownloader {
     return { ytDlp:this.ytDlpPath, ffprobe:this.ffprobePath };
   }
 
-  buildPaths({ root, courseName, moduleName, lessonTitle, position, total }) {
-    let course= sanitizeSegment(courseName,'Curso XCursos',90);
-    let module= sanitizeSegment(moduleName || 'Modulo desconhecido','Modulo desconhecido',80);
-    let title= sanitizeSegment(lessonTitle,'Aula',110);
-    const width=Math.max(3,String(total || 999).length);
-    const prefix=position != null ? String(position).padStart(width,'0') : '000';
-    const templateFor=()=>path.join(root,course,module,`${prefix} - ${title}.%(ext)s`);
-    const maxPath=235;
-    for (const [kind,min] of [['title',32],['module',24],['course',32]]) {
-      while(templateFor().length>maxPath){
-        if(kind==='title' && title.length>min) title=truncateWithHash(title,Math.max(min,title.length-10));
-        else if(kind==='module' && module.length>min) module=truncateWithHash(module,Math.max(min,module.length-10));
-        else if(kind==='course' && course.length>min) course=truncateWithHash(course,Math.max(min,course.length-10));
-        else break;
-      }
+  buildPaths({ root, courseName, moduleName, modulePath=null, lessonTitle, position, total }) {
+    let course=sanitizeSegment(courseName,'Curso XCursos',90);
+    let modules=(Array.isArray(modulePath)?modulePath:[]).map(x=>String(x||'').trim()).filter(Boolean).map(x=>sanitizeSegment(x,'Modulo desconhecido',80));
+    if(!modules.length)modules=[sanitizeSegment(moduleName || 'Modulo desconhecido','Modulo desconhecido',80)];
+    let title=sanitizeSegment(lessonTitle,'Aula',110);
+    const width=Math.max(3,String(total || 999).length);const prefix=position != null ? String(position).padStart(width,'0') : '000';
+    const templateFor=()=>path.join(root,course,...modules,`${prefix} - ${title}.%(ext)s`);const maxPath=235;let guard=0;
+    while(templateFor().length>maxPath&&guard++<100){
+      if(title.length>32){title=truncateWithHash(title,Math.max(32,title.length-10));continue;}
+      let longest=-1;for(let i=0;i<modules.length;i++)if(modules[i].length>24&&(longest<0||modules[i].length>modules[longest].length))longest=i;
+      if(longest>=0){modules[longest]=truncateWithHash(modules[longest],Math.max(24,modules[longest].length-10));continue;}
+      if(course.length>32){course=truncateWithHash(course,Math.max(32,course.length-10));continue;}break;
     }
-    if(templateFor().length>maxPath) throw new RunnerError(`Caminho de saída excede limite seguro (${templateFor().length} > ${maxPath}). Escolha um outputRoot mais curto.`,{code:'OUTPUT_PATH_TOO_LONG'});
-    const courseDir=path.join(root,course); const moduleDir=path.join(courseDir,module); const baseName=`${prefix} - ${title}`;
-    return { courseDir,moduleDir,baseName,template:path.join(moduleDir,`${baseName}.%(ext)s`) };
+    if(templateFor().length>maxPath)throw new RunnerError(`Caminho de saída excede limite seguro (${templateFor().length} > ${maxPath}). Escolha um outputRoot mais curto.`,{code:'OUTPUT_PATH_TOO_LONG'});
+    const courseDir=path.join(root,course);const moduleDir=path.join(courseDir,...modules);const baseName=`${prefix} - ${title}`;
+    return{courseDir,moduleDir,modulePath:modules,baseName,template:path.join(moduleDir,`${baseName}.%(ext)s`)};
   }
 
   async findExistingFinal(moduleDir, baseName) {

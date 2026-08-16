@@ -72,6 +72,24 @@ export class BrowserSession {
 
   async newPage(){const context=await this.getContext();return await context.newPage();}
 
+  async getTargetId(page){
+    if(!page)return null;let cdp=null;
+    try{
+      const context=await this.getContext({recover:false});
+      if(typeof context?.newCDPSession!=='function')return page?.targetId||null;
+      cdp=await context.newCDPSession(page);
+      const info=await cdp.send('Target.getTargetInfo');
+      return info?.targetInfo?.targetId||null;
+    }catch{return page?.targetId||null;}
+    finally{if(cdp?.detach)try{await cdp.detach();}catch{}}
+  }
+
+  async findPageByTargetId(targetId,{pages=null}={}){
+    if(!targetId)return null;const candidates=pages||await this.getPages();
+    for(const page of candidates)if(await this.getTargetId(page)===targetId)return page;
+    return null;
+  }
+
   async recoverSession(){await this.reconnect();return {context:this.context,pages:await this.getPages({recover:false})};}
 
   async disconnect(){

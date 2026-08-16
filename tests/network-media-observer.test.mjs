@@ -58,7 +58,7 @@ test('PageController source priority is network over blob/DOM fallback when obse
   class L{async waitFor(){}async innerText(){return '';}}
   class P extends Page{constructor(){super();this._url='https://www.xcursos.com/curso/c/aula/1';}url(){return this._url;}isClosed(){return false;}locator(){return new L();}async waitForFunction(){}async title(){return 'Assistir Aula | XCURSOS';}async content(){return '<html><body><h2>Course</h2><h1>Lesson</h1><p>1. Module</p><div>1 / 2</div><video src="blob:https://www.xcursos.com/x"></video></body></html>';}async evaluate(){return{videoUrl:'blob:https://www.xcursos.com/x',pageUrl:this._url,pageTitle:'Assistir Aula | XCURSOS'};}mainFrame(){return this;}getByRole(){return{filter(){return this;},count:async()=>0};}getByText(){return{filter(){return this;},count:async()=>0};}}
   const p=new P();const context={pages:()=>[p],setDefaultTimeout(){},setDefaultNavigationTimeout(){}};const browser={contexts:()=>[context],isConnected:()=>true,on(){},close:async()=>{}};
-  const session=new BrowserSession({playwrightLoader:async()=>({chromium:{connectOverCDP:async()=>browser}})});const controller=new PageController({session});await controller.connect();const ref=controller.ref(p);
+  const session=new BrowserSession({playwrightLoader:async()=>({chromium:{connectOverCDP:async()=>browser}})});const controller=new PageController({session});await controller.connect();const ref=controller.ref(p);await controller.pinWorkingPage(ref);
   await p.emit('response',response('https://cdn/network.mp4?X-Amz-Signature=LIVE'));
   const lesson=await controller.inspectLesson(ref);assert.equal(lesson.mediaSource,'network.response');assert.match(lesson.videoUrl,/network\.mp4/);await controller.close();
 });

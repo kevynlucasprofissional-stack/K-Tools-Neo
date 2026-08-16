@@ -85,6 +85,9 @@ export class HumanChromeLauncher {
       `--user-data-dir=${this.profileDir}`,
       '--no-first-run',
       '--no-default-browser-check',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
     ];
     if(bringUp&&url)args.push(url);
     let child;

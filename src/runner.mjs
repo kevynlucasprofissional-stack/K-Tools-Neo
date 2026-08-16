@@ -293,7 +293,7 @@ export class XCursosCourseRunner {
     await this.rememberNavigation(lesson);
     await this.logger.log(`LESSON ${position}/${this.total}`,'Inspecting',{lesson:lesson.lessonTitle,module:lesson.moduleName,mediaType:lesson.mediaType,mediaSourceConfidence:lesson.mediaSourceConfidence||null});
 
-    let paths=this.downloader.buildPaths({root:this.outputRoot,courseName:this.courseName,moduleName:lesson.moduleName,lessonTitle:lesson.lessonTitle,position,total:this.total});
+    let paths=this.downloader.buildPaths({root:this.outputRoot,courseName:this.courseName,moduleName:lesson.moduleName,modulePath:lesson.modulePath,lessonTitle:lesson.lessonTitle,position,total:this.total});
     if(repair && existing?.outputFile){const parsed=path.parse(existing.outputFile);paths={...paths,moduleDir:parsed.dir,baseName:parsed.name,template:path.join(parsed.dir,`${parsed.name}.%(ext)s`) };}
     else {
       const inFlight=this.state.getInFlight(position);
@@ -318,7 +318,7 @@ export class XCursosCourseRunner {
     else {
       await fs.mkdir(paths.moduleDir,{recursive:true});
       if(!repair && !this.state.getInFlight(position)){
-        await this.state.setInFlight({position,lessonTitle:lesson.lessonTitle,moduleName:lesson.moduleName,lessonUrl:lesson.pageUrl||this.workPage.url,relativeOutputBase:path.relative(this.state.courseDir,path.join(paths.moduleDir,paths.baseName))});
+        await this.state.setInFlight({position,lessonTitle:lesson.lessonTitle,moduleName:lesson.moduleName,modulePath:lesson.modulePath,lessonUrl:lesson.pageUrl||this.workPage.url,relativeOutputBase:path.relative(this.state.courseDir,path.join(paths.moduleDir,paths.baseName))});
       }
       let existingFile=await this.downloader.findExistingFinal(paths.moduleDir,paths.baseName);
       if(existingFile){
@@ -385,7 +385,7 @@ export class XCursosCourseRunner {
         throw new RunnerError(`Reparo da posição ${position} falhou com ${status}.`,{code:'REPAIR_FAILED'});
       }
     } else {
-      await this.state.commit({position,lessonTitle:lesson.lessonTitle,moduleName:lesson.moduleName,lessonUrl:lesson.pageUrl||this.workPage.url,status,outputFile,attempts,validation});
+      await this.state.commit({position,lessonTitle:lesson.lessonTitle,moduleName:lesson.moduleName,modulePath:lesson.modulePath,lessonUrl:lesson.pageUrl||this.workPage.url,status,outputFile,attempts,validation});
     }
     await this.logger.log('COMMIT',`Position ${position} saved`,{status});
     return {status,skipped:false,page:this.workPage,lesson,outputFile,validation};
