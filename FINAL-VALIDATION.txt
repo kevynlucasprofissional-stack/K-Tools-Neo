@@ -1,35 +1,40 @@
-XCursos Runner V4.2.5
+XCursos Runner V4.2.6
 
 BASELINE
-V4.2.4 release baseline: 251/251 PASS before V4.2.5 changes.
+V4.2.5 main baseline: 264 tests / 262 PASS / 0 FAIL / 2 SKIPPED.
 
-LIVE ROOT CAUSE EVIDENCE
-- aula 108 can expose a valid signed DIRECT_MP4 when player is ready
-- errors.jsonl proved generic GTM iframe could be selected before video readiness
-- yt-dlp then reported Unsupported URL for googletagmanager.com
-- repeated VERIFY failures produced files without a valid video stream and/or positive duration
+V4.2.6 TAB ISOLATION
+- tab enumeration is passive; observers are not attached to every Chrome page
+- only the selected XCursos work tab is pinned/observed
+- work tab identity is preserved by CDP Target ID when available
+- same-URL duplicate tabs are not chosen arbitrarily
+- unrelated user tabs are never recycled for recovery; only about:blank or a newly-created page is used
+- dedicated Chrome launches with background timer/renderer/occluded-window throttling disabled
+- pinning does not force the tab to the visual foreground
 
-V4.2.5 HARDENING
-- generic analytics/tracking iframe rejected as lesson media
-- recognized player iframe allowlist
-- mediaSourceConfidence: PROVEN / SUPPORTED_IFRAME / UNTRUSTED
-- pre-download assertion prevents untrusted media from reaching yt-dlp
-- bounded media readiness wait: 12s default, 250ms poll
-- MEDIA_NOT_READY is transient and never committed as progress
-- generic YTDLP_FAILED on proven signed direct MP4 can refresh the same lesson
-- VERIFY failure preserves concrete ffprobe code
-- signed direct MP4 verification failure can refresh + clean redownload
-- clean recovery uses --no-continue and removes only matching partial artifacts
-- refresh validates same position/course/TOTAL and refuses media object changes
-- prior BLOCKED checkpoint starts a fresh retry budget on a new execution
-- xcursos-all NO_PROGRESS uses real coverage, not failure-label oscillation
+V4.2.6 MODULE TREE
+- arbitrary-depth modulePath[] metadata
+- live sidebar ancestry extraction from active lesson
+- moduleName remains leaf-compatible
+- output layout mirrors course/module/submodule/.../lesson
+- modulePath persists in in-flight state and manifest
+- legacy records without modulePath remain compatible
+- repair preserves existing output path
+- Windows path-length guard shortens deep hierarchy deterministically
+
+LIVE HTML DEVELOPMENT EVIDENCE
+Aula 108 hierarchy observed during development:
+2. Regravação VTSD 2026
+  -> 05. Copywriting
+    -> 5. Vídeo de vendas - VSL
+      -> e_Aula
 
 AUTOMATED VALIDATION
 GitHub Actions / Node 24
 npm install: PASS
 npm run check: PASS
-tests: 264
-pass: 262
+tests: 273
+pass: 271
 fail: 0
 skipped: 2
 cancelled: 0
@@ -43,8 +48,11 @@ SECURITY / POLICY INVARIANTS
 - materials are not video
 - no DRM bypass
 - no Cloudflare/CAPTCHA automation or bypass
-- user state/manifest/valid course files are not deleted during recovery
+- user state/manifest/valid course files are not deleted during upgrade/recovery
 
-WINDOWS
-Operational PowerShell scripts remain ASCII-only and avoid PS7-only ?. / ?? operators.
-Live Windows/Chrome/CDP validation remains the next release gate for positions 108 and 113-123.
+WINDOWS LIVE GATE
+- reinstall/update to V4.2.6
+- restart only the dedicated XCursos Chrome so the new background flags take effect
+- run a range while actively browsing other tabs/windows
+- validate newly downloaded nested lesson paths against the XCursos sidebar hierarchy
+- finish with xcursos audit --json
