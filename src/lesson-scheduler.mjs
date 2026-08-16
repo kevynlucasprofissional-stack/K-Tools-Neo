@@ -18,7 +18,8 @@ export class LessonScheduler {
     for(let p=this.start;p<=this.end;p++){
       let task=this._merge(this._base(p),cpByPos.get(p));
       if(done.has(p)&&!repair.has(p))task={...task,status:LessonTaskStatus.DONE,nextAttemptAt:null,lastError:null};
-      else if(task.status===LessonTaskStatus.IN_FLIGHT||task.status===LessonTaskStatus.BLOCKED)task={...task,status:LessonTaskStatus.READY,nextAttemptAt:null};
+      else if(task.status===LessonTaskStatus.BLOCKED)task={...task,status:LessonTaskStatus.READY,attempts:0,priority:0,nextAttemptAt:null,lastError:null};
+      else if(task.status===LessonTaskStatus.IN_FLIGHT)task={...task,status:LessonTaskStatus.READY,nextAttemptAt:null};
       else if(task.status===LessonTaskStatus.DONE)task={...task,status:LessonTaskStatus.READY,nextAttemptAt:null};
       this.tasks.set(p,task);
     }
