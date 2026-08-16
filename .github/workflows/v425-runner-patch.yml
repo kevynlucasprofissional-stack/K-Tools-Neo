@@ -1,0 +1,50 @@
+name: V4.2.5 Runner Patch
+
+on:
+  push:
+    branches: [fix/v4.2.5-media-readiness]
+    paths:
+      - tools/v425-runner-patch.mjs
+      - .github/workflows/v425-runner-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v4.2.5-media-readiness
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Apply deterministic runner patch
+        run: node tools/v425-runner-patch.mjs
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Full test suite
+        run: npm test
+
+      - name: Commit verified runner change
+        shell: bash
+        run: |
+          if git diff --quiet -- src/runner.mjs; then
+            echo "runner.mjs already patched"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/runner.mjs
+          git commit -m "fix: wait for proven media and recover verification failures"
+          git push origin HEAD:fix/v4.2.5-media-readiness
