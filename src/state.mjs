@@ -6,9 +6,11 @@ import { FILE_BACKED_STATUSES, LESSON_SKIP_POLICIES, RETRYABLE_FAILURE_STATUSES,
 import { RunnerError } from './errors.mjs';
 import { atomicWriteJson, nowIso, readJsonIfExists, safePersistUrl, sanitizeForPersistence, sanitizeSegment } from './utils.mjs';
 
-async function exists(p){try{await fs.access(p);return true;}catch{return false;}}
 function isPlainObject(value){return Boolean(value && typeof value==='object' && !Array.isArray(value));}
 function sameCourseName(a,b){return String(a||'').trim().toLocaleLowerCase()===String(b||'').trim().toLocaleLowerCase();}
+function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Number(stat?.mtimeMs)||0};}
+function sameFileFingerprint(a,b){return Boolean(a&&b&&Number(a.size)===Number(b.size)&&Number(a.mtimeMs)===Number(b.mtimeMs));}
+function cachedValidationMatches(rec,fingerprint){const v=rec?.validation;return Boolean(v&&Number(v.duration)>0&&v.codec&&sameFileFingerprint(v.fileFingerprint,fingerprint));}
 function processAlive(pid){
   if(!Number.isInteger(pid)||pid<=0)return false;
   try{process.kill(pid,0);return true;}catch(error){return error?.code==='EPERM';}
@@ -345,18 +347,26 @@ export class StateStore {
     return {record,alreadyCommitted:false};
   }
 
-  async verifyFileBackedEntries(validator){
-    const invalid=[];
+  async verifyFileBackedEntries(validator,{useCache=true}={}){
+    const invalid=[];let manifestChanged=false;
     for(const [position,rec] of this.manifestIndex){
       if(!FILE_BACKED_STATUSES.has(rec.status))continue;
-      if(!rec.outputFile || !(await exists(rec.outputFile))){invalid.push(position);continue;}
-      try{await validator(rec.outputFile);}catch{invalid.push(position);}
+      if(!rec.outputFile){invalid.push(position);continue;}
+      let stat;try{stat=await fs.stat(rec.outputFile);}catch{invalid.push(position);continue;}
+      if(!stat.isFile()||stat.size<=0){invalid.push(position);continue;}
+      const fingerprint=fileFingerprintFromStat(stat);
+      if(useCache&&cachedValidationMatches(rec,fingerprint))continue;
+      try{
+        const validation=await validator(rec.outputFile);
+        if(validation?.fileFingerprint){rec.validation=sanitizeForPersistence({...rec.validation,...validation});manifestChanged=true;}
+      }catch{invalid.push(position);}
     }
+    if(manifestChanged)await rewriteJsonlAtomic(this.manifestPath,this.manifestRecords);
     return invalid.sort((a,b)=>a-b);
   }
 
   async audit({validator=null}={}){
-    const invalidFilePositions=validator?await this.verifyFileBackedEntries(validator):[];
+    const invalidFilePositions=validator?await this.verifyFileBackedEntries(validator,{useCache:false}):[];
     return summarizeAudit({total:this.totalPositions,manifestRecords:this.manifestRecords,invalidFilePositions});
   }
 
