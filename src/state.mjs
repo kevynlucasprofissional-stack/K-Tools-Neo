@@ -6,10 +6,9 @@ import { FILE_BACKED_STATUSES, LESSON_SKIP_POLICIES, RETRYABLE_FAILURE_STATUSES,
 import { RunnerError } from './errors.mjs';
 import { atomicWriteJson, nowIso, readJsonIfExists, safePersistUrl, sanitizeForPersistence, sanitizeSegment } from './utils.mjs';
 
-async function exists(p){try{await fs.access(p);return true;}catch{return false;}}
 function isPlainObject(value){return Boolean(value && typeof value==='object' && !Array.isArray(value));}
 function sameCourseName(a,b){return String(a||'').trim().toLocaleLowerCase()===String(b||'').trim().toLocaleLowerCase();}
-function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Math.trunc(Number(stat?.mtimeMs)||0)};}
+function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Number(stat?.mtimeMs)||0};}
 function sameFileFingerprint(a,b){return Boolean(a&&b&&Number(a.size)===Number(b.size)&&Number(a.mtimeMs)===Number(b.mtimeMs));}
 function cachedValidationMatches(rec,fingerprint){const v=rec?.validation;return Boolean(v&&Number(v.duration)>0&&v.codec&&sameFileFingerprint(v.fileFingerprint,fingerprint));}
 function processAlive(pid){
@@ -352,7 +351,7 @@ export class StateStore {
     const invalid=[];let manifestChanged=false;
     for(const [position,rec] of this.manifestIndex){
       if(!FILE_BACKED_STATUSES.has(rec.status))continue;
-      if(!rec.outputFile || !(await exists(rec.outputFile))){invalid.push(position);continue;}
+      if(!rec.outputFile){invalid.push(position);continue;}
       let stat;try{stat=await fs.stat(rec.outputFile);}catch{invalid.push(position);continue;}
       if(!stat.isFile()||stat.size<=0){invalid.push(position);continue;}
       const fingerprint=fileFingerprintFromStat(stat);
