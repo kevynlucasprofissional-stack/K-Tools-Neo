@@ -26,6 +26,7 @@ export const DEFAULT_LIMITS = Object.freeze({
   browserLaunchTimeoutMs: 30_000,
   navigationTimeoutMs: 30_000,
   inspectTimeoutMs: 30_000,
+  inspectionCacheTtlMs: 750,
   transitionTimeoutMs: 20_000,
   transitionPollMs: 500,
   actionabilityTrialTimeoutMs: 1_500,
