@@ -1,0 +1,45 @@
+XCursos Runner V4.2.4
+
+BASELINE V4.2.3
+npm run check: PASS
+npm test: 234/234 PASS
+
+FINAL CODE REGRESSION
+npm run check: PASS
+npm test: 251/251 PASS
+FAIL: 0
+
+LIVE HTML 108 REGRESSION
+course: VENDA TODO SANTO DIA 2026 - LEANDRO LADEIRA
+module: 5. Vídeo de vendas - VSL
+lesson: e_Aula
+position: 108 / 198
+media: DIRECT_MP4
+source: video.src
+signed direct MP4: true
+materials: true
+DRM: false
+
+V4.2.4 HARDENING
+- lesson-scoped network media generations
+- network/DOM media-object correlation
+- DOM current media protected from stale cross-lesson network candidates
+- sanitized media fingerprints in diagnostics
+- semantic yt-dlp failure codes and sanitized stderr tail
+- refresh of transient signed-media failures
+- media refresh cannot change video object silently
+- failureSummary for pending download causes
+- xcursos-all no-progress detection
+- POSITION_UNOBSERVABLE instead of false POSITION_REGRESSION for null counter
+
+SECURITY
+No real signed credentials are intentionally shipped. Security scan must pass before packaging.
+
+WINDOWS
+PowerShell scripts remain ASCII-only and avoid PS7-only ?. / ?? operators.
+Real Windows PowerShell 5.1 execution and live XCursos/Chrome/CDP remain user-environment tests.
+
+RELEASE VALIDATION
+security scan: 87 files, 0 plausible real secret findings
+PowerShell: install/download-all/uninstall ASCII-only; no ?. / ??; no 2>&1 JSON contamination
+npm pack --dry-run: PASS; version 4.2.4; 87 files; ~1.6 MB package; ~3.4 MB unpacked
