@@ -5,10 +5,10 @@ export const LESSON_URL_RE = /^https:\/\/www\.xcursos\.com\/curso\/[^/]+\/aula\/
 
 export const TERMINAL_STATUSES = new Set([
   'DOWNLOADED','ALREADY_PRESENT','NO_VIDEO','DRM_PROTECTED',
-  'DOWNLOAD_FAILED','VERIFY_FAILED','MEDIA_NOT_FOUND',
+  'DOWNLOAD_FAILED','VERIFY_FAILED','MEDIA_NOT_FOUND','MEDIA_NOT_READY',
 ]);
 export const FILE_BACKED_STATUSES = new Set(['DOWNLOADED','ALREADY_PRESENT']);
-export const RETRYABLE_FAILURE_STATUSES = new Set(['DOWNLOAD_FAILED','VERIFY_FAILED','MEDIA_NOT_FOUND']);
+export const RETRYABLE_FAILURE_STATUSES = new Set(['DOWNLOAD_FAILED','VERIFY_FAILED','MEDIA_NOT_FOUND','MEDIA_NOT_READY']);
 
 export const DEFAULT_LIMITS = Object.freeze({
   browserLaunchTimeoutMs: 30_000,
@@ -19,6 +19,8 @@ export const DEFAULT_LIMITS = Object.freeze({
   actionabilityTrialTimeoutMs: 1_500,
   nextPostActionObservationMs: 2_000,
   nextRecoveryObservationMs: 750,
+  mediaReadyTimeoutMs: 12_000,
+  mediaReadyPollMs: 250,
   navigationRetries: 1,
   mediaRefreshRetries: 2,
   downloadRetries: 2,
