@@ -4,7 +4,7 @@ Downloader determinístico para cursos XCursos aos quais o usuário já possui a
 
 ## Versão atual
 
-**V4.2.5**
+**V4.2.6**
 
 O projeto está versionado diretamente na raiz do repositório:
 
@@ -14,7 +14,7 @@ O projeto está versionado diretamente na raiz do repositório:
 
 ## Qualidade
 
-Na validação pré-release da V4.2.5, `npm run check` ficou verde e a suíte registrou **264 testes: 262 PASS, 0 FAIL, 2 SKIPPED**. Os 2 skips são integrações que exigem ffmpeg/ffprobe reais no runner Linux do GitHub Actions.
+Na validação pré-release da V4.2.6, `npm run check` ficou verde e a suíte registrou **273 testes: 271 PASS, 0 FAIL, 2 SKIPPED**. Os 2 skips são integrações que exigem ffmpeg/ffprobe reais no runner Linux do GitHub Actions.
 
 O workflow em `.github/workflows/ci.yml` executa syntax check e suíte completa em pushes e pull requests para `main`.
 
@@ -35,11 +35,12 @@ Mudanças devem seguir:
 Usuario
   -> CLI xcursos / xcursos-all
   -> XCursosCourseRunner
-  -> BrowserSession (CDP)
-  -> PageController (semantica XCursos)
+  -> BrowserSession (CDP + Target ID)
+  -> PageController (guia de trabalho pinada + semantica XCursos)
   -> NetworkMediaObserver + DOM/HTML comprovados
   -> media readiness / source confidence
   -> LessonScheduler + DurableSchedulerCheckpoint + RetryPolicy
+  -> modulePath[] -> arvore de pastas
   -> yt-dlp
   -> ffprobe
   -> manifest/state/audit
@@ -71,6 +72,8 @@ xcursos doctor
 ```
 
 A atualização preserva `%LOCALAPPDATA%\XCursosRunner\chrome-profile`, configuração, manifesto e vídeos já baixados.
+
+Na V4.2.6, reinicie a janela/processo do **Chrome dedicado do XCursos** após instalar para que as novas flags contra throttling em background entrem em vigor. Não é necessário apagar o perfil.
 
 ## Autenticação humana
 
@@ -114,7 +117,7 @@ Cada posição é um job `READY / IN_FLIGHT / RETRY_LATER / DONE / BLOCKED`. Man
 Backoff exponencial com limite, jitter e penalidade de prioridade. Download/media temporariamente problemáticos voltam ao fim da fila; auth, DRM e erros estruturais de sequência não entram em retry cego.
 
 ### BrowserSession / PageController
-CDP/reconnect ficou separado de título, posição, Próxima e mídia. Page refs possuem saúde `HEALTHY / STALE / RECOVERING / DEAD`. Listeners são removidos ao desconectar do Chrome externo.
+CDP/reconnect ficou separado de título, posição, Próxima e mídia. Page refs possuem saúde `HEALTHY / STALE / RECOVERING / DEAD`. Na V4.2.6, enumerar abas é passivo e somente a guia de trabalho pinada recebe os observers do runner.
 
 ### Graceful Ctrl+C
 Primeiro Ctrl+C pede parada segura: não inicia nova aula, termina a etapa atômica, commita e salva checkpoint. Segundo Ctrl+C salva checkpoint e aborta subprocessos; a posição em andamento volta a ser recuperável.
@@ -244,5 +247,22 @@ A V4.2.5 nasce do diagnóstico live das posições 108 e 113–123:
 - redownload de recuperação usa `--no-continue` e remove somente artefatos parciais correspondentes à posição atual;
 - checkpoint `BLOCKED` de execução anterior ganha um novo orçamento de retry sem apagar estado/manifesto;
 - `xcursos-all` mede `NO_PROGRESS` por cobertura real (`downloaded + processed + missingPositions`), não pela oscilação do rótulo da falha.
+
+## V4.2.6 — guia de trabalho pinada e árvore real de módulos
+
+A V4.2.6 endurece duas áreas de uso cotidiano:
+
+- `pages()` não instala mais observers em todas as abas do Chrome;
+- a aula de trabalho é pinada pela identidade do target CDP quando disponível;
+- recovery não depende da aba visualmente ativa e não escolhe arbitrariamente outra aba com a mesma URL;
+- o Chrome dedicado é iniciado com flags que reduzem throttling de renderer/timers quando a janela ou guia fica em background;
+- o pin é lógico: o runner não precisa forçar `bringToFront()`, então outras abas/janelas podem permanecer em primeiro plano;
+- a metadata passa a transportar `modulePath[]` com profundidade arbitrária;
+- a inspeção live extrai a ancestralidade da aula ativa na sidebar visível;
+- o downloader espelha `curso / módulo / submódulo / ... / aula` no disco;
+- `modulePath` é persistido no checkpoint/manifesto, mantendo `moduleName` como folha compatível;
+- registros e arquivos antigos não são movidos automaticamente;
+- reparo de arquivo já conhecido preserva o caminho original;
+- árvores longas recebem sanitização e redução determinística para respeitar o limite seguro de caminho do Windows.
 
 Nenhuma mudança adiciona bypass de DRM ou Cloudflare.
