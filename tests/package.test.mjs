@@ -7,7 +7,6 @@ test('Windows installer stages playwright-core without downloading Playwright Ch
 
 test('V4.2 download-all wrapper keeps JSON stdout separate from progress stderr on Windows PowerShell 5.1',()=>{assert.match(allScript,/MaxPasses/);assert.match(allScript,/xcursos download --json/);assert.match(allScript,/AUDIT_INCOMPLETE/);assert.match(allScript,/AUDIT_UNHEALTHY/);assert.match(allScript,/LESSON_REFRESH_RECOVERY_FAILED/);assert.match(allScript,/PAGE_CLOSED/);assert.doesNotMatch(allScript,/2>&1/);assert.match(allScript,/previousErrorActionPreference/);assert.match(allScript,/\$ErrorActionPreference = 'Continue'/);assert.doesNotMatch(allScript,/manifest\.jsonl.*Remove|Remove-Item.*manifest/i);assert.match(installer,/download-all\.ps1/);assert.match(installer,/xcursos-all\.cmd/);});
 
-
 test('PowerShell 5.1 compatibility: operational ps1 files are ASCII-only and avoid PS7-only null operators',async()=>{
   for(const name of ['download-all.ps1','install.ps1','uninstall.ps1']){
     const bytes=await fs.readFile(new URL(`../${name}`,import.meta.url));
@@ -19,10 +18,13 @@ test('PowerShell 5.1 compatibility: operational ps1 files are ASCII-only and avo
 
 test('V4.2 release exposes scheduler/network/recovery/runtime modules in syntax check',()=>{for(const name of ['browser-session','page-controller','network-media-observer','lesson-scheduler','retry-policy','scheduler-checkpoint','runtime-stats','auto-throttle','shutdown-controller','adaptive-locator','debug-snapshots','safe-page-content','redirect-auth-observer'])assert.match(pkg.scripts.check,new RegExp(`src/${name}\\.mjs`),name);});
 
-test('V4.2.4 packages navigation planning/version/observed navigation modules and exposes them in syntax checks',async()=>{
+test('V4.2.5 packages navigation/media-readiness modules and release metadata',async()=>{
   const state=await fs.readFile(new URL('../src/state.mjs',import.meta.url),'utf8');
-  assert.equal(pkg.version,'4.2.4');
-  assert.match(pkg.scripts.check,/src\/navigation-index\.mjs/);assert.match(pkg.scripts.check,/src\/navigation-planner\.mjs/);assert.match(pkg.scripts.check,/src\/observed-navigation\.mjs/);assert.match(pkg.scripts.check,/src\/version-info\.mjs/);
+  assert.equal(pkg.version,'4.2.5');
+  assert.match(pkg.scripts.check,/src\/navigation-index\.mjs/);assert.match(pkg.scripts.check,/src\/navigation-planner\.mjs/);assert.match(pkg.scripts.check,/src\/observed-navigation\.mjs/);assert.match(pkg.scripts.check,/src\/version-info\.mjs/);assert.match(pkg.scripts.check,/src\/parser\.mjs/);
   assert.match(state,/lesson-navigation-index\.json/);
-  assert.match(installer,/V4\.2\.4/);
+  assert.match(installer,/V4\.2\.5/);
+  assert.match(runner,/MEDIA_NOT_READY/);
+  assert.match(runner,/waitForProvenMedia/);
+  assert.match(runner,/cleanStart/);
 });
