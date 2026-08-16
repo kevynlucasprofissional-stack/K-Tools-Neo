@@ -1,75 +1,86 @@
-# XCursos Runner V4.2.5 — Test Results
+# XCursos Runner V4.2.6 — Test Results
 
 ## Baseline
 
-V4.2.4 antes das alterações da V4.2.5:
+V4.2.5 na `main` antes das alterações:
 
-- `npm run check`: PASS
-- `npm test`: 251/251 PASS no pacote local de release V4.2.4
-
-## Evidência live que originou a V4.2.5
-
-Os logs da aula 108 mostraram `DIRECT_MP4` correto quando o player estava pronto. O `errors.jsonl` revelou que, durante navegação rápida, algumas tentativas selecionavam o iframe do Google Tag Manager como mídia e entregavam `https://www.googletagmanager.com/ns.html?...` ao yt-dlp. Outras tentativas criavam arquivos que o ffprobe rejeitava por ausência de stream de vídeo/duração positiva.
+- versão: `4.2.5`;
+- CI verde;
+- 264 testes, 262 PASS, 0 FAIL, 2 SKIPPED.
 
 ## Ciclo RED → GREEN
 
-### 1. Semântica de iframe
+### 1. Isolamento da guia de trabalho
 
-RED: GTM era `EXTERNAL_IFRAME` e podia chegar ao downloader.
-
-GREEN:
-- analytics/tracking deixam de ser candidatos;
-- iframe só é aceito para player reconhecido;
-- `mediaSourceConfidence`: `PROVEN`, `SUPPORTED_IFRAME`, `UNTRUSTED`;
-- múltiplos trackers continuam sem mídia elegível.
-
-### 2. Media readiness
-
-RED: contador/título podiam estar prontos antes do `<video src>` e a aula era processada cedo demais.
+RED demonstrou que `PageController.pages()` criava refs e instalava observers de auth/rede em todas as páginas enumeradas do Chrome. Também não existia identidade persistente da guia por CDP Target ID.
 
 GREEN:
-- espera limitada padrão de 12 s, poll 250 ms;
-- posição, curso e TOTAL são revalidados durante a espera;
-- MP4 que aparece depois é escolhido;
-- ausência transitória vira `MEDIA_NOT_READY`;
-- mídia `UNTRUSTED` não chega ao yt-dlp.
+- enumeração de abas é passiva;
+- observers são instalados apenas quando a guia é explicitamente pinada como work page;
+- `BrowserSession` obtém `TargetId` via CDP;
+- recovery prefere o Target ID pinado, não a aba em foco nem a primeira URL coincidente;
+- múltiplas abas com a mesma URL sem Target ID recuperável geram `PAGE_RECOVERY_AMBIGUOUS` em vez de escolha arbitrária;
+- fallback reutiliza apenas `about:blank` ou cria uma nova página, nunca sequestra uma aba alheia.
 
-### 3. Recovery de download/verificação
+### 2. Responsividade em background
 
-RED: `YTDLP_FAILED` genérico e `VERIFY_FAILED` não recebiam recovery suficiente.
+RED verificou ausência de proteção contra throttling do renderer.
+
+GREEN: o Chrome dedicado passa a iniciar com:
+
+- `--disable-background-timer-throttling`;
+- `--disable-renderer-backgrounding`;
+- `--disable-backgrounding-occluded-windows`.
+
+Essas flags exigem reinício do Chrome dedicado para entrar em vigor; não exigem apagar o perfil.
+
+### 3. Árvore de módulos/submódulos
+
+RED demonstrou que o pipeline só transportava `moduleName`, portanto só conseguia expressar um nível de pasta.
 
 GREEN:
-- direct signed MP4 pode renovar a mesma aula em `YTDLP_FAILED` genérico;
-- ffprobe failure preserva código concreto como `VERIFY_NO_VIDEO_STREAM`;
-- arquivo inválido é colocado em quarentena;
-- refresh revalida mesma posição/curso/TOTAL e mesmo objeto de mídia;
-- retry de verificação é clean: `--no-continue` e limpeza apenas dos parciais da saída atual.
+- metadata ganha `modulePath[]` com profundidade arbitrária;
+- `moduleName` continua sendo o leaf para compatibilidade;
+- inspeção live percorre a ancestralidade da aula ativa na sidebar visível;
+- grupos identificados por headers de `aulas`/`arquivos` entram na árvore do mais externo ao mais interno;
+- downloader cria `curso / ...modulePath / aula`;
+- `modulePath` é preservado em in-flight state e manifesto.
 
-### 4. Retry epoch
+O HTML live usado no desenvolvimento da aula 108 demonstrou uma árvore de três níveis: `2. Regravação VTSD 2026 → 05. Copywriting → 5. Vídeo de vendas - VSL`.
 
-RED: checkpoint `BLOCKED` preservava `attempts` esgotados na execução seguinte.
+### 4. Compatibilidade e segurança de caminho
 
-GREEN: `BLOCKED -> READY` inicia uma nova execução com `attempts=0`, `priority=0` e sem erro antigo. `IN_FLIGHT` de crash continua com semântica própria de resume.
+GREEN adicional:
+- registros antigos sem `modulePath` continuam válidos via fallback para `moduleName`;
+- reparo de arquivo existente preserva o caminho antigo;
+- novos downloads usam a nova árvore;
+- cada segmento é sanitizado para Windows;
+- árvores/títulos longos são encurtados deterministicamente até o limite seguro do template;
+- caso ainda seja impossível, o runner falha explicitamente com `OUTPUT_PATH_TOO_LONG`.
 
-### 5. NO_PROGRESS
+## Regressão intermediária
 
-RED: a cobertura permanecia 185/198, mas a alternância `VERIFY_FAILED ↔ YTDLP_FAILED` mudava o fingerprint e impedia parada.
+Após a implementação funcional e os ajustes de compatibilidade:
 
-GREEN: fingerprint usa somente `downloaded + processed + missingPositions`. As causas continuam exibidas, mas não fingem progresso.
+- `npm run check`: PASS;
+- tests: 271;
+- PASS: 269;
+- FAIL: 0;
+- SKIPPED: 2.
 
-## Validação final pré-release no GitHub Actions
+## Validação pré-release V4.2.6
 
-No PR da V4.2.5:
+Após remoção da infraestrutura temporária, bump de versão e testes adicionais de persistência/path guard:
 
-- `npm install`: PASS
-- `npm run check`: PASS
-- tests: 264
-- PASS: 262
-- FAIL: 0
-- SKIPPED: 2
-- CANCELLED: 0
+- `npm install`: PASS;
+- `npm run check`: PASS;
+- tests: 273;
+- PASS: 271;
+- FAIL: 0;
+- SKIPPED: 2;
+- CANCELLED: 0.
 
-Os 2 skips são testes de integração que dependem de ffmpeg/ffprobe reais e foram pulados no runner Linux porque essas ferramentas não estavam disponíveis naquele ambiente.
+Os 2 skips são integrações dependentes de ffmpeg/ffprobe reais, ausentes no runner Linux usado pelo GitHub Actions.
 
 ## Invariants preservados
 
@@ -81,4 +92,4 @@ Os 2 skips são testes de integração que dependem de ffmpeg/ffprobe reais e fo
 - Materiais não são mídia.
 - DRM não é contornado.
 - Cloudflare/login continuam humanos.
-- Estado, manifesto e vídeos válidos não são apagados durante recovery.
+- Nenhum perfil, manifesto ou vídeo válido é apagado para aplicar a V4.2.6.
