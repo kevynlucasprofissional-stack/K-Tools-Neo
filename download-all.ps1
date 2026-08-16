@@ -23,14 +23,9 @@ function Write-Step([string]$Message) {
 function Get-FailureFingerprint($result) {
   $missing = @()
   if ($result.audit -and $result.audit.missingPositions) { $missing = @($result.audit.missingPositions | ForEach-Object { [int]$_ } | Sort-Object) }
-  $causes = @()
-  if ($result.failureSummary) {
-    foreach ($item in @($result.failureSummary)) {
-      $positions = @($item.positions | ForEach-Object { [int]$_ } | Sort-Object) -join ','
-      $causes += "$([string]$item.code):$positions"
-    }
-  }
-  return "downloaded=$([int]$result.audit.downloaded);missing=$($missing -join ',');causes=$(($causes | Sort-Object) -join '|')"
+  $downloaded = if ($result.audit) { [int]$result.audit.downloaded } else { 0 }
+  $processed = if ($result.audit) { [int]$result.audit.processed } else { 0 }
+  return "downloaded=$downloaded;processed=$processed;missing=$($missing -join ',')"
 }
 
 function Show-FailureSummary($result) {
@@ -92,7 +87,7 @@ for ($pass = 1; $pass -le $MaxPasses; $pass++) {
     $previousFingerprint = $fingerprint
     if ($stagnantPasses -ge $NoProgressLimit) {
       Write-Host ''
-      Write-Host "NO_PROGRESS: $($stagnantPasses + 1) passadas consecutivas sem ganho de cobertura nem mudanca nas falhas." -ForegroundColor Yellow
+      Write-Host "NO_PROGRESS: $($stagnantPasses + 1) passadas consecutivas sem ganho real de cobertura." -ForegroundColor Yellow
       Show-FailureSummary $result
       Write-Host 'Veja errors.jsonl e runner.log em Downloads\Cursos\<Curso>\_xcursos-runner\.'
       exit 4
