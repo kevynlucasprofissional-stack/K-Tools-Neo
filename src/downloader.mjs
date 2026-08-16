@@ -27,7 +27,7 @@ function diagnosticTail(output='',max=4000){const safe=redactSensitiveText(Strin
 export function parseYtDlpProgress(line=''){const s=String(line);const pct=s.match(/\[download\]\s+(\d+(?:\.\d+)?)%/i);if(!pct)return null;const speed=s.match(/\bat\s+([^\s]+\/s)/i);const eta=s.match(/\bETA\s+([0-9:]+)/i);return{percent:Number(pct[1]),speedText:speed?.[1]||null,eta:eta?.[1]||null};}
 function safeDownloadExtension(filename=''){const ext=path.extname(String(filename||'')).toLowerCase();return /^\.[a-z0-9]{1,8}$/i.test(ext)?ext:'.mp4';}
 function methodKey(filePath=''){return path.resolve(String(filePath||''));}
-export function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Math.trunc(Number(stat?.mtimeMs)||0)};}
+export function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Number(stat?.mtimeMs)||0};}
 export function sameFileFingerprint(a,b){return Boolean(a&&b&&Number(a.size)===Number(b.size)&&Number(a.mtimeMs)===Number(b.mtimeMs));}
 
 export class MediaDownloader {
