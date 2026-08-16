@@ -6,7 +6,7 @@ import path from 'node:path';
 import { StateStore, readJsonl } from '../src/state.mjs';
 
 async function tmp(){return await fs.mkdtemp(path.join(os.tmpdir(),'xc-resume-cache-'));}
-function fingerprint(stat){return{size:stat.size,mtimeMs:Math.trunc(stat.mtimeMs)};}
+function fingerprint(stat){return{size:stat.size,mtimeMs:stat.mtimeMs};}
 async function makeStore({withFingerprint=true}={}){
   const root=await tmp();const store=new StateStore({outputRoot:root,courseName:'Cache Course',totalPositions:1});
   await store.initialize({resume:false,workPageUrl:'https://www.xcursos.com/curso/c/aula/1'});
@@ -27,6 +27,15 @@ test('changed file refuses persisted cache and runs validator again',async()=>{
   const invalid=await store.verifyFileBackedEntries(async p=>{calls++;const stat=await fs.stat(p);return{size:stat.size,duration:42,codec:'h264',fileFingerprint:fingerprint(stat)};});
   assert.deepEqual(invalid,[]);assert.equal(calls,1);
   await store.verifyFileBackedEntries(async()=>{calls++;throw new Error('second resume should use refreshed cache');});assert.equal(calls,1);
+});
+
+test('same-size file with changed mtime refuses persisted cache',async()=>{
+  const{store,file}=await makeStore();let calls=0;const before=await fs.stat(file);
+  await fs.writeFile(file,'VIDEO-DATA');
+  const future=new Date(Date.now()+2_000);await fs.utimes(file,future,future);
+  const after=await fs.stat(file);assert.equal(after.size,before.size);assert.notEqual(after.mtimeMs,before.mtimeMs);
+  const invalid=await store.verifyFileBackedEntries(async p=>{calls++;const stat=await fs.stat(p);return{size:stat.size,duration:42,codec:'h264',fileFingerprint:fingerprint(stat)};});
+  assert.deepEqual(invalid,[]);assert.equal(calls,1);
 });
 
 test('legacy manifest without fingerprint validates once and is migrated durably',async()=>{
