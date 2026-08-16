@@ -11,7 +11,7 @@ async function makeStore({withFingerprint=true}={}){
   const root=await tmp();const store=new StateStore({outputRoot:root,courseName:'Cache Course',totalPositions:1});
   await store.initialize({resume:false,workPageUrl:'https://www.xcursos.com/curso/c/aula/1'});
   const file=path.join(store.courseDir,'001 - Aula.mp4');await fs.mkdir(store.courseDir,{recursive:true});await fs.writeFile(file,'video-data');
-  const stat=await fs.stat(file);const validation={size:stat.size,duration:42,codec:'h264',...(withFingerprint?{fileFingerprint:fingerprint(stat)}:{})};
+  const stat=await fs.stat(file);const validation={size:stat.size,duration:42,codec:'h264',downloadMethod:'YTDLP',...(withFingerprint?{fileFingerprint:fingerprint(stat)}:{})};
   await store.commit({position:1,status:'DOWNLOADED',lessonTitle:'Aula',lessonUrl:'https://www.xcursos.com/curso/c/aula/1',outputFile:file,validation});
   return{root,store,file};
 }
@@ -26,6 +26,7 @@ test('changed file refuses persisted cache and runs validator again',async()=>{
   const{store,file}=await makeStore();let calls=0;await fs.appendFile(file,'changed');
   const invalid=await store.verifyFileBackedEntries(async p=>{calls++;const stat=await fs.stat(p);return{size:stat.size,duration:42,codec:'h264',fileFingerprint:fingerprint(stat)};});
   assert.deepEqual(invalid,[]);assert.equal(calls,1);
+  assert.equal(store.get(1).validation.downloadMethod,'YTDLP');
   await store.verifyFileBackedEntries(async()=>{calls++;throw new Error('second resume should use refreshed cache');});assert.equal(calls,1);
 });
 
@@ -38,16 +39,16 @@ test('same-size file with changed mtime refuses persisted cache',async()=>{
   assert.deepEqual(invalid,[]);assert.equal(calls,1);
 });
 
-test('legacy manifest without fingerprint validates once and is migrated durably',async()=>{
+test('legacy manifest without fingerprint validates once, migrates durably and preserves metadata',async()=>{
   const{store}=await makeStore({withFingerprint:false});let calls=0;
   await store.verifyFileBackedEntries(async p=>{calls++;const stat=await fs.stat(p);return{size:stat.size,duration:42,codec:'h264',fileFingerprint:fingerprint(stat)};});
   assert.equal(calls,1);
-  const records=await readJsonl(store.manifestPath);assert.ok(records[0].validation.fileFingerprint);
+  const records=await readJsonl(store.manifestPath);assert.ok(records[0].validation.fileFingerprint);assert.equal(records[0].validation.downloadMethod,'YTDLP');
   await store.verifyFileBackedEntries(async()=>{calls++;throw new Error('migrated cache should be used');});assert.equal(calls,1);
 });
 
 test('explicit audit ignores resume cache and performs full validation',async()=>{
   const{store}=await makeStore();let calls=0;
   const audit=await store.audit({validator:async p=>{calls++;const stat=await fs.stat(p);return{size:stat.size,duration:42,codec:'h264',fileFingerprint:fingerprint(stat)};}});
-  assert.equal(calls,1);assert.deepEqual(audit.invalidFilePositions,[]);
+  assert.equal(calls,1);assert.deepEqual(audit.invalidFilePositions,[]);assert.equal(store.get(1).validation.downloadMethod,'YTDLP');
 });
