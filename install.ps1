@@ -1,6 +1,6 @@
 param([switch]$NoPathUpdate)
 $ErrorActionPreference='Stop'
-function Step($m){Write-Host "[XCursos V4.2.4] $m" -ForegroundColor Cyan}
+function Step($m){Write-Host "[XCursos V4.2.5] $m" -ForegroundColor Cyan}
 function Warn($m){Write-Host "[AVISO] $m" -ForegroundColor Yellow}
 
 $node=Get-Command node -ErrorAction SilentlyContinue
