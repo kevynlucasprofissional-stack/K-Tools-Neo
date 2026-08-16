@@ -1,6 +1,6 @@
 {
   "name": "xcursos-runner",
-  "version": "4.2.4",
+  "version": "4.2.5",
   "description": "Deterministic XCursos downloader using Node.js + Playwright CDP + human Chrome + yt-dlp + ffprobe",
   "type": "module",
   "bin": {
