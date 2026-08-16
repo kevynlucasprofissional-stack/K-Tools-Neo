@@ -96,7 +96,7 @@ export class MediaDownloader {
     try { stat=await fs.stat(filePath); } catch { throw new RunnerError('Arquivo final não existe.',{code:'VERIFY_FILE_MISSING'}); }
     if(!stat.isFile() || stat.size<=0)throw new RunnerError('Arquivo final está vazio.',{code:'VERIFY_EMPTY_FILE'});
     const fingerprint=fileFingerprintFromStat(stat);const key=methodKey(filePath);const cached=this.validationCacheByPath.get(key);
-    if(cached&&sameFileFingerprint(cached.fingerprint,fingerprint))return cached.validation;
+    if(cached&&sameFileFingerprint(cached.fingerprint,fingerprint)){this.validationCacheByPath.delete(key);return cached.validation;}
     if(cached)this.validationCacheByPath.delete(key);
     const r=await this.processRunner(this.ffprobePath,['-v','error','-select_streams','v:0','-show_entries','stream=codec_name,codec_type','-show_entries','format=duration,size','-of','json',filePath],{timeoutMs:this.limits.ffprobeTimeoutMs,signal});
     if(r.code!==0)throw new RunnerError(`ffprobe falhou: ${String(r.stderr||'').trim().slice(-1200)}`,{code:'VERIFY_FFPROBE_FAILED'});
@@ -105,9 +105,7 @@ export class MediaDownloader {
     const video=streams.find(s=>s.codec_type==='video');
     if(!video || !(duration>0))throw new RunnerError('Validação falhou: sem stream de vídeo ou duração positiva.',{code:'VERIFY_NO_VIDEO_STREAM'});
     const downloadMethod=this.downloadMethodByPath.get(key)||null;
-    const validation={size:stat.size,duration,codec:video.codec_name||null,fileFingerprint:fingerprint,...(downloadMethod?{downloadMethod}:{})};
-    this.validationCacheByPath.set(key,{fingerprint,validation});
-    return validation;
+    return{size:stat.size,duration,codec:video.codec_name||null,fileFingerprint:fingerprint,...(downloadMethod?{downloadMethod}:{})};
   }
 
   async tryNativeDownload({ refererUrl, paths, signal=null }={}) {
