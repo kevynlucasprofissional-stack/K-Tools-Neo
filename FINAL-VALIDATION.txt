@@ -1,45 +1,50 @@
-XCursos Runner V4.2.4
+XCursos Runner V4.2.5
 
-BASELINE V4.2.3
+BASELINE
+V4.2.4 release baseline: 251/251 PASS before V4.2.5 changes.
+
+LIVE ROOT CAUSE EVIDENCE
+- aula 108 can expose a valid signed DIRECT_MP4 when player is ready
+- errors.jsonl proved generic GTM iframe could be selected before video readiness
+- yt-dlp then reported Unsupported URL for googletagmanager.com
+- repeated VERIFY failures produced files without a valid video stream and/or positive duration
+
+V4.2.5 HARDENING
+- generic analytics/tracking iframe rejected as lesson media
+- recognized player iframe allowlist
+- mediaSourceConfidence: PROVEN / SUPPORTED_IFRAME / UNTRUSTED
+- pre-download assertion prevents untrusted media from reaching yt-dlp
+- bounded media readiness wait: 12s default, 250ms poll
+- MEDIA_NOT_READY is transient and never committed as progress
+- generic YTDLP_FAILED on proven signed direct MP4 can refresh the same lesson
+- VERIFY failure preserves concrete ffprobe code
+- signed direct MP4 verification failure can refresh + clean redownload
+- clean recovery uses --no-continue and removes only matching partial artifacts
+- refresh validates same position/course/TOTAL and refuses media object changes
+- prior BLOCKED checkpoint starts a fresh retry budget on a new execution
+- xcursos-all NO_PROGRESS uses real coverage, not failure-label oscillation
+
+AUTOMATED VALIDATION
+GitHub Actions / Node 24
+npm install: PASS
 npm run check: PASS
-npm test: 234/234 PASS
+tests: 264
+pass: 262
+fail: 0
+skipped: 2
+cancelled: 0
 
-FINAL CODE REGRESSION
-npm run check: PASS
-npm test: 251/251 PASS
-FAIL: 0
+SKIPS
+2 real ffmpeg/ffprobe integration tests were skipped because those executables were unavailable in the Linux CI runner. Fake/semantic ffprobe and downloader regressions passed.
 
-LIVE HTML 108 REGRESSION
-course: VENDA TODO SANTO DIA 2026 - LEANDRO LADEIRA
-module: 5. Vídeo de vendas - VSL
-lesson: e_Aula
-position: 108 / 198
-media: DIRECT_MP4
-source: video.src
-signed direct MP4: true
-materials: true
-DRM: false
-
-V4.2.4 HARDENING
-- lesson-scoped network media generations
-- network/DOM media-object correlation
-- DOM current media protected from stale cross-lesson network candidates
-- sanitized media fingerprints in diagnostics
-- semantic yt-dlp failure codes and sanitized stderr tail
-- refresh of transient signed-media failures
-- media refresh cannot change video object silently
-- failureSummary for pending download causes
-- xcursos-all no-progress detection
-- POSITION_UNOBSERVABLE instead of false POSITION_REGRESSION for null counter
-
-SECURITY
-No real signed credentials are intentionally shipped. Security scan must pass before packaging.
+SECURITY / POLICY INVARIANTS
+- signed URL queries are not persisted in clear
+- Authorization/Cookie/token redaction remains enabled
+- materials are not video
+- no DRM bypass
+- no Cloudflare/CAPTCHA automation or bypass
+- user state/manifest/valid course files are not deleted during recovery
 
 WINDOWS
-PowerShell scripts remain ASCII-only and avoid PS7-only ?. / ?? operators.
-Real Windows PowerShell 5.1 execution and live XCursos/Chrome/CDP remain user-environment tests.
-
-RELEASE VALIDATION
-security scan: 87 files, 0 plausible real secret findings
-PowerShell: install/download-all/uninstall ASCII-only; no ?. / ??; no 2>&1 JSON contamination
-npm pack --dry-run: PASS; version 4.2.4; 87 files; ~1.6 MB package; ~3.4 MB unpacked
+Operational PowerShell scripts remain ASCII-only and avoid PS7-only ?. / ?? operators.
+Live Windows/Chrome/CDP validation remains the next release gate for positions 108 and 113-123.
