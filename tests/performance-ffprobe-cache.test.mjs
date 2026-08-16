@@ -13,19 +13,22 @@ function nativePage(){
   return{isClosed:()=>false,locator:()=>({first:()=>locator}),waitForEvent:async()=>download};
 }
 
-test('native download plus runner-style validation invokes ffprobe only once',async()=>{
+test('native download plus immediate runner validation invokes ffprobe only once, then cache is consumed',async()=>{
   const root=await tmp();let ffprobeCalls=0;
   const d=new MediaDownloader({ytDlpPath:'yt',ffprobePath:'ff',pageResolver:async()=>nativePage(),processRunner:async command=>{if(command==='ff'){ffprobeCalls++;return goodProbe();}throw new Error('yt-dlp must not run');}});
   const paths={moduleDir:root,baseName:'007 - Aula',template:path.join(root,'007 - Aula.%(ext)s')};
   const result=await d.download({mediaUrl:'https://cdn.example/7.mp4',refererUrl:'https://www.xcursos.com/curso/c/aula/7',paths});
   assert.equal(result.ok,true);assert.equal(result.downloadMethod,'XCURSOS_NATIVE');assert.equal(ffprobeCalls,1);
   const validation=await d.validateVideo(result.finalPath);
-  assert.equal(ffprobeCalls,1);assert.equal(validation.downloadMethod,'XCURSOS_NATIVE');assert.ok(validation.fileFingerprint);assert.equal(validation.fileFingerprint.size,(await fs.stat(result.finalPath)).size);
+  assert.equal(ffprobeCalls,1);assert.equal(validation.downloadMethod,'XCURSOS_NATIVE');assert.ok(validation.fileFingerprint);
+  await d.validateVideo(result.finalPath);assert.equal(ffprobeCalls,2);
 });
 
-test('validation cache is invalidated when file fingerprint changes',async()=>{
-  const root=await tmp();const file=path.join(root,'x.mp4');await fs.writeFile(file,'abc');let ffprobeCalls=0;
-  const d=new MediaDownloader({ffprobePath:'ff',processRunner:async()=>{ffprobeCalls++;return goodProbe();}});
-  await d.validateVideo(file);await d.validateVideo(file);assert.equal(ffprobeCalls,1);
-  await fs.appendFile(file,'changed');await d.validateVideo(file);assert.equal(ffprobeCalls,2);
+test('native one-shot reuse is refused if final file fingerprint changes before consumption',async()=>{
+  const root=await tmp();let ffprobeCalls=0;
+  const d=new MediaDownloader({ytDlpPath:'yt',ffprobePath:'ff',pageResolver:async()=>nativePage(),processRunner:async command=>{if(command==='ff'){ffprobeCalls++;return goodProbe();}throw new Error('yt-dlp must not run');}});
+  const paths={moduleDir:root,baseName:'007 - Aula',template:path.join(root,'007 - Aula.%(ext)s')};
+  const result=await d.download({mediaUrl:'https://cdn.example/7.mp4',refererUrl:'https://www.xcursos.com/curso/c/aula/7',paths});
+  assert.equal(ffprobeCalls,1);await fs.appendFile(result.finalPath,'changed');
+  await d.validateVideo(result.finalPath);assert.equal(ffprobeCalls,2);
 });
