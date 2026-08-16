@@ -1,6 +1,12 @@
 import { MATERIALS_PATH } from './constants.mjs';
 import { decodeHtmlEntities, redactUrl, stripTags } from './utils.mjs';
 
+const TRUSTED_PLAYER_HOSTS = [
+  'player.vimeo.com','vimeo.com','www.youtube.com','youtube.com','www.youtube-nocookie.com','youtube-nocookie.com',
+  'fast.wistia.net','fast.wistia.com','wistia.com','www.loom.com','loom.com','player.hotmart.com',
+];
+const ANALYTICS_HOST_RE = /(?:^|\.)(?:googletagmanager\.com|google-analytics\.com|doubleclick\.net|googlesyndication\.com|facebook\.net|connect\.facebook\.net)$/i;
+
 function attr(tag, name) {
   const re = new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`, 'i');
   const m = String(tag || '').match(re);
@@ -10,6 +16,26 @@ function attr(tag, name) {
 function tagTexts(html, tag) {
   const re = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
   return [...String(html).matchAll(re)].map(m => stripTags(m[1])).filter(Boolean);
+}
+
+function hostOf(url=''){
+  try{return new URL(String(url)).hostname.toLowerCase();}catch{return '';}
+}
+
+export function isTrustedPlayerIframeUrl(url=''){
+  const host=hostOf(url);if(!host||ANALYTICS_HOST_RE.test(host))return false;
+  return TRUSTED_PLAYER_HOSTS.some(allowed=>host===allowed||host.endsWith(`.${allowed}`));
+}
+
+export function mediaSourceConfidence({videoUrl=null,mediaType='NONE'}={}){
+  if(!/^https?:/i.test(String(videoUrl||'')))return 'UNTRUSTED';
+  if(['DIRECT_MP4','HLS','DASH'].includes(mediaType))return 'PROVEN';
+  if(mediaType==='EXTERNAL_IFRAME'&&isTrustedPlayerIframeUrl(videoUrl))return 'SUPPORTED_IFRAME';
+  return 'UNTRUSTED';
+}
+
+export function isSafeDownloadMedia(meta={}){
+  return mediaSourceConfidence(meta)!=='UNTRUSTED';
 }
 
 export function parseCounter(text = '') {
@@ -36,6 +62,7 @@ export function parseCounter(text = '') {
 function classifyMediaUrl(url, source = 'unknown') {
   if (!url || String(url).includes(MATERIALS_PATH)) return null;
   const value = decodeHtmlEntities(url);
+  if(source==='iframe'&&!isTrustedPlayerIframeUrl(value))return null;
   let type = 'UNKNOWN';
   if (/\.mp4(?:[?#]|$)/i.test(value)) type = 'DIRECT_MP4';
   else if (/\.m3u8(?:[?#]|$)/i.test(value)) type = 'HLS';
@@ -94,51 +121,44 @@ function chooseModuleName(html, lessonTitle) {
 
 export function parseXcursosLessonHtml(html, pageUrl = '') {
   if (!html || typeof html !== 'string') throw new Error('HTML vazio ou inválido.');
-  const bodyText = stripTags(html);
-  const h1s = tagTexts(html, 'h1');
+  const value=String(html);const bodyText = stripTags(value);
+  const h1s = tagTexts(value, 'h1');
   const lessonTitle = h1s[0] || null;
   const counter = parseCounter(bodyText);
-  const media = extractMedia(html);
-  const courseName = chooseCourseName(html);
-  const moduleName = chooseModuleName(html, lessonTitle);
-  const pageTitle = tagTexts(html, 'title')[0] || null;
-  return {
-    site: 'xcursos',
-    pageUrl,
-    pageTitle,
-    courseName: courseName || 'Curso XCursos',
-    lessonTitle: lessonTitle || 'Aula',
-    moduleName,
-    currentPosition: counter?.current ?? null,
-    totalPositions: counter?.total ?? null,
-    videoUrl: media?.url || null,
-    videoUrlRedacted: media?.redacted || null,
-    mediaType: media?.type || 'NONE',
-    mediaSource: media?.source || null,
+  const media = extractMedia(value);
+  const courseName = chooseCourseName(value);
+  const moduleName = chooseModuleName(value, lessonTitle);
+  const pageTitle = tagTexts(value, 'title')[0] || null;
+  const videoTags=value.match(/<video\b[^>]*>/gi)||[];
+  const iframeUrls=(value.match(/<iframe\b[^>]*>/gi)||[]).map(x=>attr(x,'src')).filter(Boolean);
+  const hasTrustedPlayerIframe=iframeUrls.some(isTrustedPlayerIframeUrl);
+  const hasUntrustedIframe=iframeUrls.some(x=>!isTrustedPlayerIframeUrl(x));
+  const result={
+    site: 'xcursos',pageUrl,pageTitle,courseName: courseName || 'Curso XCursos',lessonTitle: lessonTitle || 'Aula',moduleName,
+    currentPosition: counter?.current ?? null,totalPositions: counter?.total ?? null,
+    videoUrl: media?.url || null,videoUrlRedacted: media?.redacted || null,mediaType: media?.type || 'NONE',mediaSource: media?.source || null,
     isSignedDirectMp4: Boolean(media?.type === 'DIRECT_MP4' && /[?&]X-Amz-/i.test(media.url)),
-    hasMaterialsLinks: String(html).includes(MATERIALS_PATH),
-    drmDetected: detectDrm(html),
+    hasMaterialsLinks: value.includes(MATERIALS_PATH),drmDetected: detectDrm(value),
+    hasVideoElement:videoTags.length>0,hasTrustedPlayerIframe,hasUntrustedIframe,
   };
+  return {...result,mediaSourceConfidence:mediaSourceConfidence(result)};
 }
 
 export function normalizeLiveLessonMeta(meta = {}, page = {}) {
-  const media = classifyMediaUrl(meta.videoUrl || meta.currentSrc || null, meta.mediaSource || 'live');
+  const direct = classifyMediaUrl(meta.videoUrl || meta.currentSrc || null, meta.mediaSource || 'live');
+  const iframe = direct?null:classifyMediaUrl(meta.iframeUrl || null,'iframe');
+  const media=direct||iframe;
   const current = Number(meta.currentPosition); const total = Number(meta.totalPositions);
-  return {
-    site: 'xcursos',
-    pageUrl: meta.pageUrl || page.url || '',
-    pageTitle: meta.pageTitle || page.title || null,
-    courseName: String(meta.courseName || '').trim() || 'Curso XCursos',
-    lessonTitle: String(meta.lessonTitle || '').trim() || 'Aula',
-    moduleName: String(meta.moduleName || '').trim() || null,
-    currentPosition: Number.isFinite(current) && current > 0 ? current : null,
-    totalPositions: Number.isFinite(total) && total > 1 ? total : null,
-    videoUrl: media?.url || null,
-    videoUrlRedacted: media?.redacted || null,
-    mediaType: media?.type || (meta.iframeUrl ? 'EXTERNAL_IFRAME' : 'NONE'),
-    mediaSource: media?.source || null,
+  const hasTrustedPlayerIframe=Boolean(meta.hasTrustedPlayerIframe||(meta.iframeUrl&&isTrustedPlayerIframeUrl(meta.iframeUrl)));
+  const hasUntrustedIframe=Boolean(meta.hasUntrustedIframe||(meta.iframeUrl&&!isTrustedPlayerIframeUrl(meta.iframeUrl)));
+  const result={
+    site: 'xcursos',pageUrl: meta.pageUrl || page.url || '',pageTitle: meta.pageTitle || page.title || null,
+    courseName: String(meta.courseName || '').trim() || 'Curso XCursos',lessonTitle: String(meta.lessonTitle || '').trim() || 'Aula',moduleName: String(meta.moduleName || '').trim() || null,
+    currentPosition: Number.isFinite(current) && current > 0 ? current : null,totalPositions: Number.isFinite(total) && total > 1 ? total : null,
+    videoUrl: media?.url || null,videoUrlRedacted: media?.redacted || null,mediaType: media?.type || 'NONE',mediaSource: media?.source || null,
     isSignedDirectMp4: Boolean(media?.type === 'DIRECT_MP4' && /[?&]X-Amz-/i.test(media.url)),
-    hasMaterialsLinks: Boolean(meta.hasMaterialsLinks),
-    drmDetected: Boolean(meta.drmDetected),
+    hasMaterialsLinks: Boolean(meta.hasMaterialsLinks),drmDetected: Boolean(meta.drmDetected),
+    hasVideoElement:Boolean(meta.hasVideoElement),hasTrustedPlayerIframe,hasUntrustedIframe,
   };
+  return {...result,mediaSourceConfidence:mediaSourceConfidence(result)};
 }
