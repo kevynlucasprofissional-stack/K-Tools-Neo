@@ -1,5 +1,24 @@
 # Changelog
 
+## V4.2.6 — guia pinada e árvore de módulos/submódulos
+
+- enumeração de abas do Chrome passa a ser passiva: `pages()` não instala mais observers de auth/rede em todas as páginas abertas;
+- somente a guia escolhida como work page recebe os observers do XCursos Runner;
+- `BrowserSession` passa a obter o CDP Target ID e o `PageController` mantém a identidade da guia de trabalho por target, independentemente da guia/janela que estiver em primeiro plano;
+- recovery prefere o target pinado; múltiplas abas com a mesma URL sem identidade recuperável geram `PAGE_RECOVERY_AMBIGUOUS` em vez de escolha arbitrária;
+- recovery nunca reutiliza uma aba alheia apenas por estar disponível: somente `about:blank` pode ser reaproveitada, caso contrário uma nova página é criada;
+- Chrome dedicado passa a usar `--disable-background-timer-throttling`, `--disable-renderer-backgrounding` e `--disable-backgrounding-occluded-windows` para reduzir desaceleração quando o usuário trabalha em outra guia/janela;
+- a metadata de aula passa a carregar `modulePath[]`, preservando hierarquias com profundidade arbitrária e mantendo `moduleName` como leaf compatível;
+- inspeção live identifica a aula ativa na sidebar visível e sobe pelos grupos ancestrais de aulas/arquivos para formar a árvore externa → interna;
+- downloader espelha a hierarquia no disco como `curso / módulo / submódulo / ... / aula`;
+- `modulePath` é persistido em in-flight state e manifesto;
+- registros antigos sem `modulePath` continuam válidos por fallback para `moduleName`;
+- arquivos antigos não são movidos automaticamente e reparos preservam o caminho de saída já conhecido;
+- árvores profundas/títulos longos ganham redução determinística por segmento para respeitar o limite seguro de caminho no Windows;
+- regressões V4.2.6 cobrem isolamento de observers, Target ID pinning, flags de background, árvore de três níveis, persistência no manifesto e path guard;
+- validação pré-release no GitHub Actions: 273 testes, 271 PASS, 0 FAIL e 2 SKIPPED por ausência de ffmpeg/ffprobe reais no runner Linux;
+- nenhuma mudança adiciona bypass de DRM, Cloudflare ou CAPTCHA.
+
 ## V4.2.5 — media readiness e recuperação de integridade
 
 - corrige o bug live em que um iframe do Google Tag Manager podia ser promovido a mídia da aula quando o `<video>` ainda não tinha `src` pronto;
