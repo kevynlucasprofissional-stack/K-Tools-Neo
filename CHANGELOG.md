@@ -1,5 +1,22 @@
 # Changelog
 
+## V4.2.5 — media readiness e recuperação de integridade
+
+- corrige o bug live em que um iframe do Google Tag Manager podia ser promovido a mídia da aula quando o `<video>` ainda não tinha `src` pronto;
+- adiciona política semântica para iframe: analytics/tracking são recusados e somente hosts de players reconhecidos podem ser `EXTERNAL_IFRAME`;
+- adiciona `mediaSourceConfidence` com `PROVEN`, `SUPPORTED_IFRAME` e `UNTRUSTED`;
+- adiciona barreira pré-download: mídia não comprovada nunca é enviada ao yt-dlp;
+- adiciona espera limitada de media readiness após navegação/refresh e status transitório `MEDIA_NOT_READY`;
+- `YTDLP_FAILED` genérico em direct signed MP4 ganha refresh limitado da mesma aula, mantendo validação de posição/curso/TOTAL e identidade do objeto;
+- `VERIFY_FAILED` passa a preservar o código concreto do ffprobe, como `VERIFY_NO_VIDEO_STREAM`;
+- arquivo rejeitado pelo ffprobe é isolado e, para signed direct MP4, pode disparar refresh + clean redownload;
+- clean redownload usa `--no-continue` e remove somente `.part/.ytdl/.temp` que pertencem à saída da posição atual;
+- checkpoint `BLOCKED` de uma execução anterior volta como `READY` com novo orçamento de tentativas, sem apagar manifesto ou arquivos válidos;
+- `xcursos-all` detecta `NO_PROGRESS` por cobertura real (`downloaded`, `processed`, `missingPositions`), não por mudanças cosméticas entre `VERIFY_FAILED` e `YTDLP_FAILED`;
+- adiciona regressões específicas para GTM, múltiplos trackers, player atrasado, mídia untrusted, refresh de `YTDLP_FAILED`, recovery de ffprobe e retry epoch;
+- validação pré-release no GitHub Actions: 264 testes, 262 PASS, 0 FAIL e 2 SKIPPED por ausência de ffmpeg/ffprobe no runner Linux;
+- nenhuma mudança adiciona bypass de DRM ou Cloudflare.
+
 ## 4.2.1 — estabilização de navegação “Próxima”
 
 - adiciona `ActionabilityProbe` com `trial:true`, estabilidade por frames, hit-test do centro, animations/transitions e diagnóstico sanitizado;
