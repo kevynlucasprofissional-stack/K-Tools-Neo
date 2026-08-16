@@ -1,102 +1,84 @@
-# XCursos Runner V4.2.4 — Test Results
+# XCursos Runner V4.2.5 — Test Results
 
 ## Baseline
 
-V4.2.3 intacta antes de qualquer alteração:
+V4.2.4 antes das alterações da V4.2.5:
 
 - `npm run check`: PASS
-- `npm test`: 234/234 PASS
+- `npm test`: 251/251 PASS no pacote local de release V4.2.4
+
+## Evidência live que originou a V4.2.5
+
+Os logs da aula 108 mostraram `DIRECT_MP4` correto quando o player estava pronto. O `errors.jsonl` revelou que, durante navegação rápida, algumas tentativas selecionavam o iframe do Google Tag Manager como mídia e entregavam `https://www.googletagmanager.com/ns.html?...` ao yt-dlp. Outras tentativas criavam arquivos que o ffprobe rejeitava por ausência de stream de vídeo/duração positiva.
+
+## Ciclo RED → GREEN
+
+### 1. Semântica de iframe
+
+RED: GTM era `EXTERNAL_IFRAME` e podia chegar ao downloader.
+
+GREEN:
+- analytics/tracking deixam de ser candidatos;
+- iframe só é aceito para player reconhecido;
+- `mediaSourceConfidence`: `PROVEN`, `SUPPORTED_IFRAME`, `UNTRUSTED`;
+- múltiplos trackers continuam sem mídia elegível.
+
+### 2. Media readiness
+
+RED: contador/título podiam estar prontos antes do `<video src>` e a aula era processada cedo demais.
+
+GREEN:
+- espera limitada padrão de 12 s, poll 250 ms;
+- posição, curso e TOTAL são revalidados durante a espera;
+- MP4 que aparece depois é escolhido;
+- ausência transitória vira `MEDIA_NOT_READY`;
+- mídia `UNTRUSTED` não chega ao yt-dlp.
+
+### 3. Recovery de download/verificação
+
+RED: `YTDLP_FAILED` genérico e `VERIFY_FAILED` não recebiam recovery suficiente.
+
+GREEN:
+- direct signed MP4 pode renovar a mesma aula em `YTDLP_FAILED` genérico;
+- ffprobe failure preserva código concreto como `VERIFY_NO_VIDEO_STREAM`;
+- arquivo inválido é colocado em quarentena;
+- refresh revalida mesma posição/curso/TOTAL e mesmo objeto de mídia;
+- retry de verificação é clean: `--no-continue` e limpeza apenas dos parciais da saída atual.
+
+### 4. Retry epoch
+
+RED: checkpoint `BLOCKED` preservava `attempts` esgotados na execução seguinte.
+
+GREEN: `BLOCKED -> READY` inicia uma nova execução com `attempts=0`, `priority=0` e sem erro antigo. `IN_FLIGHT` de crash continua com semântica própria de resume.
+
+### 5. NO_PROGRESS
+
+RED: a cobertura permanecia 185/198, mas a alternância `VERIFY_FAILED ↔ YTDLP_FAILED` mudava o fingerprint e impedia parada.
+
+GREEN: fingerprint usa somente `downloaded + processed + missingPositions`. As causas continuam exibidas, mas não fingem progresso.
+
+## Validação final pré-release no GitHub Actions
+
+No PR da V4.2.5:
+
+- `npm install`: PASS
+- `npm run check`: PASS
+- tests: 264
+- PASS: 262
 - FAIL: 0
+- SKIPPED: 2
+- CANCELLED: 0
 
-## Método RED → GREEN
-
-### Lesson-scoped media generation
-
-Observação: `NetworkMediaObserver` era por Page e `best()` podia selecionar resposta antiga.
-
-RED: resposta 107.mp4 observada, nova aula 108 iniciada, `best()` ainda via 107.
-
-Correção: `beginGeneration()`, candidates/best filtrados pela generation corrente; `navigateExact`, `navigateNext` e refresh abrem nova generation.
-
-GREEN: resposta da 107 deixa de ser elegível para a 108.
-
-### Correlação network × DOM
-
-Observação: rede tinha prioridade absoluta sobre `video.currentSrc/src`.
-
-RED: DOM aponta 108.mp4 e rede antiga aponta 107.mp4.
-
-Correção: correlação por `hostname + pathname`, query ignorada. Rede só substitui DOM HTTP quando o objeto é o mesmo; mismatch usa DOM atual.
-
-GREEN: 108 selecionada; 107 ignorada.
-
-### Aula 108 real
-
-Foi criada fixture sanitizada derivada do HTML live anexado. Valida 108/198, módulo `5. Vídeo de vendas - VSL`, título `e_Aula`, DIRECT_MP4 R2 assinado, materiais presentes e DRM false.
-
-### yt-dlp diagnostics
-
-RED: 403/network reset retornavam apenas `EXPIRED`/`FAILED` sem causa persistível.
-
-Correção: `failureCode` e `diagnosticTail` sanitizado.
-
-GREEN: HTTP_403 e NETWORK_RESET classificados; signed query não aparece no diagnóstico.
-
-### Signed media refresh
-
-RED: NETWORK_RESET em direct signed MP4 não renovava a mídia antes de devolver falha ao scheduler.
-
-Correção: refresh limitado para 403/429/5xx/network reset/timeout/DNS/TLS/process timeout; posição e objeto de vídeo são revalidados.
-
-GREEN: falha transitória pode ser resolvida no mesmo `processPosition`; objeto diferente é recusado com MEDIA_REFRESH_OBJECT_CHANGED.
-
-### failureSummary
-
-RED: `downloadCourse` BLOCKED não expunha causa agregada; causa antiga permanecia mesmo se a posição fosse resolvida depois.
-
-Correção: resumo por code/count/positions e remoção da posição quando a tentativa posterior termina saudável.
-
-GREEN: somente falhas realmente pendentes permanecem no resumo.
-
-### xcursos-all no-progress
-
-RED: wrapper não tinha detecção de passadas idênticas.
-
-Correção: `NoProgressLimit` (default 3), fingerprint de downloaded+missing+causes e saída `NO_PROGRESS`.
-
-GREEN: script contém proteção sem misturar stderr no JSON.
-
-### Counter temporarily unreadable
-
-RED: `current=null` antes de Próxima virava POSITION_REGRESSION.
-
-Correção: reinspeção curta e `POSITION_UNOBSERVABLE` transient quando o contador continua ilegível.
-
-GREEN: null transitório recupera sem click duplo; null persistente não é regressão falsa.
-
-## Regressão intermediária
-
-Após as mudanças funcionais e antes do bump de release:
-
-- `npm run check`: PASS
-- `npm test`: 250/250 PASS
-
-## Final
-
-Após correção da telemetria stale e atualização de release:
-
-- `npm run check`: PASS
-- `npm test`: 251/251 PASS
-- FAIL: 0
-- skipped: 0
-- cancelled: 0
+Os 2 skips são testes de integração que dependem de ffmpeg/ffprobe reais e foram pulados no runner Linux porque essas ferramentas não estavam disponíveis naquele ambiente.
 
 ## Invariants preservados
 
 - N/TOTAL continua fonte principal de posição.
-- Action → observation → decision na Próxima permanece.
+- Ação → observação → decisão na Próxima permanece.
 - N→N+2 e N→N-1 não são aceitos silenciosamente.
 - Navegação não cria commit.
 - Signed URL completa não é persistida.
 - Materiais não são mídia.
 - DRM não é contornado.
+- Cloudflare/login continuam humanos.
+- Estado, manifesto e vídeos válidos não são apagados durante recovery.
