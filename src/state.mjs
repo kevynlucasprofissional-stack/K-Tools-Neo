@@ -358,7 +358,7 @@ export class StateStore {
       if(useCache&&cachedValidationMatches(rec,fingerprint))continue;
       try{
         const validation=await validator(rec.outputFile);
-        if(validation?.fileFingerprint){rec.validation=sanitizeForPersistence(validation);manifestChanged=true;}
+        if(validation?.fileFingerprint){rec.validation=sanitizeForPersistence({...rec.validation,...validation});manifestChanged=true;}
       }catch{invalid.push(position);}
     }
     if(manifestChanged)await rewriteJsonlAtomic(this.manifestPath,this.manifestRecords);
