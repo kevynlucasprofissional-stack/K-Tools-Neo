@@ -1,6 +1,6 @@
 import { LESSON_URL_RE, XCURSOS_HOME_URL, DEFAULT_LIMITS } from './constants.mjs';
 import { BrowserAutomationError, TransitionError } from './errors.mjs';
-import { parseCounter, parseXcursosLessonHtml, normalizeLiveLessonMeta } from './parser.mjs';
+import { parseCounter, parseXcursosLessonHtml, normalizeLiveLessonMeta, isSafeDownloadMedia } from './parser.mjs';
 import { sleep } from './utils.mjs';
 import { BrowserSession, isTargetClosedError } from './browser-session.mjs';
 import { safePageContent } from './safe-page-content.mjs';
@@ -24,7 +24,7 @@ export class PageController {
     this.session=session;this.logger=logger;this.limits={...DEFAULT_LIMITS,...limits};
     this.authObserver=authObserver||new RedirectAuthObserver({logger});
     this.networkObserver=networkObserver||new NetworkMediaObserver({logger});this.adaptiveLocator=adaptiveLocator||new AdaptiveLocator();this.actionabilityProbe=actionabilityProbe||new ActionabilityProbe({trialTimeoutMs:this.limits.actionabilityTrialTimeoutMs});this.debugSnapshots=debugSnapshots||null;
-    this.refs=new WeakMap();this.trackedPages=new Set();this.mediaDiagnosticsByPage=new WeakMap();this.nextId=1;this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;
+    this.refs=new WeakMap();this.trackedPages=new Set();this.mediaDiagnosticsByPage=new WeakMap();this.lessonInspectionCache=new WeakMap();this.nextId=1;this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;
     this.capabilities={...session.capabilities,pageController:true};
   }
 
@@ -32,15 +32,16 @@ export class PageController {
     if(!page)return null;let r=this.refs.get(page);if(!r){r=new PageRef(page,this.nextId++);this.refs.set(page,r);}if(observe)this.observeRef(r);return r;
   }
   observeRef(ref){const page=ref?.handle;if(!page||this.trackedPages.has(page))return ref;this.trackedPages.add(page);this.authObserver.attach(page);this.networkObserver?.attach?.(page);return ref;}
-  detachRef(ref){const page=ref?.handle;if(!page||!this.trackedPages.has(page))return;this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);this.trackedPages.delete(page);}
+  detachRef(ref){const page=ref?.handle;if(!page||!this.trackedPages.has(page))return;this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);this.trackedPages.delete(page);this.lessonInspectionCache.delete(page);}
   async pinWorkingPage(ref){
     if(!ref?.handle)throw new BrowserAutomationError('Página de trabalho ausente para pin.',{code:'WORK_PAGE_MISSING'});
     if(this.pinnedRef?.handle&&this.pinnedRef.handle!==ref.handle)this.detachRef(this.pinnedRef);
     this.observeRef(ref);this.pinnedRef=ref;this.pinnedUrl=ref.url||this.pinnedUrl||null;const target=await this.session.getTargetId?.(ref.handle);if(target)this.pinnedTargetId=target;return ref;
   }
   mark(ref,health){if(ref)ref.health=health;return ref;}
+  invalidateInspection(ref){const page=ref?.handle;if(page)this.lessonInspectionCache.delete(page);}
   async connect(opts={}){const r=await this.session.connect(opts);this.capabilities={...r,pageController:true};return this.capabilities;}
-  async close(){for(const page of this.trackedPages){this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);}this.trackedPages.clear();this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;await this.session.disconnect();this.refs=new WeakMap();this.mediaDiagnosticsByPage=new WeakMap();}
+  async close(){for(const page of this.trackedPages){this.authObserver?.detach?.(page);this.networkObserver?.detach?.(page);}this.trackedPages.clear();this.pinnedRef=null;this.pinnedTargetId=null;this.pinnedUrl=null;await this.session.disconnect();this.refs=new WeakMap();this.mediaDiagnosticsByPage=new WeakMap();this.lessonInspectionCache=new WeakMap();}
   async cleanupCreatedPages(){}
 
   async pages(){const pages=await this.session.getPages();return pages.map(p=>this.ref(p));}
@@ -64,7 +65,7 @@ export class PageController {
   }
 
   async recoverRef(ref,{url=null}={}){
-    const stable=url||ref?.url||this.pinnedUrl||null;const targetId=this.pinnedTargetId||await this.session.getTargetId?.(ref?.handle);this.mark(ref,'STALE');
+    const stable=url||ref?.url||this.pinnedUrl||null;const targetId=this.pinnedTargetId||await this.session.getTargetId?.(ref?.handle);this.invalidateInspection(ref);this.mark(ref,'STALE');
     await this.logger?.log('PAGE','Recovering pinned work page',{url:stable,targetPinned:Boolean(targetId)});
     try{
       this.mark(ref,'RECOVERING');await this.session.reconnect();const handles=await this.session.getPages();let recovered=null;
@@ -81,10 +82,10 @@ export class PageController {
   }
 
   async navigateExact(ref,url){
-    if(!isLessonUrl(url))throw new BrowserAutomationError('Tentativa de navegar para URL que não é aula XCursos.',{code:'NAV_EXACT_INVALID_URL',details:{url}});
+    if(!isLessonUrl(url))throw new BrowserAutomationError('Tentativa de navegar para URL que não é aula XCursos válida.',{code:'NAV_EXACT_INVALID_URL',details:{url}});
     if(!ref?.handle||pageClosed(ref.handle))ref=await this.recoverRef(ref,{url});
     try{
-      ref=await this.pinWorkingPage(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'navigate-exact',lessonUrl:url});
+      ref=await this.pinWorkingPage(ref);this.invalidateInspection(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'navigate-exact',lessonUrl:url});
       await ref.handle.goto(url,{waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});
       await this.authObserver.assertLesson(ref.handle,{requestedUrl:url});
       await this.waitForLessonShell(ref);ref._title=await ref.handle.title().catch(()=>ref._title);this.mark(ref,'HEALTHY');return ref;
@@ -105,6 +106,8 @@ export class PageController {
   async inspectLesson(ref){
     if(!ref?.handle||pageClosed(ref.handle))throw new BrowserAutomationError('A página Playwright não está mais disponível.',{code:'PAGE_CLOSED'});
     await this.authObserver.assertLesson(ref.handle,{requestedUrl:ref.url});
+    const cached=this.lessonInspectionCache.get(ref.handle);const ttl=Math.max(0,Number(this.limits.inspectionCacheTtlMs)||0);
+    if(ttl>0&&cached?.url===ref.url&&(Date.now()-cached.at)<=ttl)return cached.result;
     try{
       await this.waitForLessonShell(ref);
       const [html,live,title]=await Promise.all([
@@ -146,10 +149,11 @@ export class PageController {
         networkStatus:network?.status??null,networkType:network?.type||null,networkObjectFingerprint:correlation.networkObjectFingerprint,
         liveObjectFingerprint:correlation.liveObjectFingerprint,correlation,
       });
+      if(isSafeDownloadMedia(result))this.lessonInspectionCache.set(ref.handle,{url:ref.url,at:Date.now(),result});else this.lessonInspectionCache.delete(ref.handle);
       this.mark(ref,'HEALTHY');return result;
     }catch(error){
       if(error?.code)throw error;
-      if(isTargetClosedError(error)){this.mark(ref,'STALE');throw new BrowserAutomationError(String(error?.message||error),{code:'PAGE_CLOSED',cause:error});}
+      if(isTargetClosedError(error)){this.invalidateInspection(ref);this.mark(ref,'STALE');throw new BrowserAutomationError(String(error?.message||error),{code:'PAGE_CLOSED',cause:error});}
       throw new BrowserAutomationError(`Falha ao inspecionar aula via Playwright/CDP: ${String(error?.message||error)}`,{code:'LESSON_INSPECT_FAILED',cause:error,details:{url:ref.url}});
     }
   }
@@ -215,7 +219,7 @@ export class PageController {
     const before=await this.inspectPositionForAction(ref);
     if(!Number.isInteger(before?.current))throw new TransitionError(`Posição antes de Próxima não pôde ser observada com confiança; esperada ${from}.`,{kind:'POSITION_UNOBSERVABLE',details:{from,target:to,observed:null}});
     if(before.current!==from)throw new TransitionError(`Posição antes de Próxima é ${before.current}, esperada ${from}.`,{kind:before.current>from?'POSITION_SKIP':'POSITION_REGRESSION',details:{from,target:to,observed:before.current}});
-    this.networkObserver?.beginGeneration?.(ref.handle,{reason:'next',lessonUrl:null});
+    this.invalidateInspection(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'next',lessonUrl:null});
     let found=await this.findNextLocator(ref);let probe=await this.actionabilityProbe.probe(found.locator);let probeAfterNeutralize=null;let cleanupMotion=null;let motionNeutralized=false;
     try{
       if(this.actionabilityProbe.shouldNeutralize(probe)){
@@ -247,8 +251,6 @@ export class PageController {
         }
       }
 
-      // Every action is followed by an observation before another action is allowed.
-      // A target-closed normal click already observed during recovery above; observing again is harmless and keeps one path.
       const afterNormal=await this.observeNextTransition(ref,{fromPosition:from,target:to,timeoutMs:normalFailure?observeAfterNormal:this.limits.transitionTimeoutMs});
       if(afterNormal.changed)return{page:ref,lesson:afterNormal.lesson,method:normalFailure?.code==='NEXT_ACTION_INTERRUPTED'?'normal-click-target-closed-but-transitioned':(normalFailure?'normal-click-timeout-but-transitioned':'normal-click'),probe,probeAfterNeutralize,motionNeutralized};
       if(!normalFailure)throw new TransitionError(`Clique em Próxima foi executado, mas a posição permaneceu em ${from}.`,{kind:'NEXT_TRANSITION_FAILED',details:{from,target:to,strategy:'normal-click'}});
@@ -289,7 +291,7 @@ export class PageController {
     const originalUrl=ref?.url||null;
     try{
       if(!ref?.handle||pageClosed(ref.handle))throw new Error('Target page, context or browser has been closed');
-      ref=await this.pinWorkingPage(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'refresh',lessonUrl:originalUrl});
+      ref=await this.pinWorkingPage(ref);this.invalidateInspection(ref);this.networkObserver?.beginGeneration?.(ref.handle,{reason:'refresh',lessonUrl:originalUrl});
       await ref.handle.reload({waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});await this.authObserver.assertLesson(ref.handle,{requestedUrl:originalUrl});await this.waitForLessonShell(ref);return ref;
     }catch(error){
       if(isTargetClosedError(error)&&originalUrl&&isLessonUrl(originalUrl)){const recovered=await this.recoverRef(ref,{url:originalUrl});return await this.navigateExact(recovered,originalUrl);}
@@ -309,7 +311,7 @@ export class PageController {
   mediaDiagnostics(ref){return this.mediaDiagnosticsByPage.get(ref?.handle)||null;}
   redirectHistory(ref){return this.authObserver?.history?.(ref?.handle)||[];}
 
-  async openInteractive(url=XCURSOS_HOME_URL){await this.connect();let ref=(await this.pages()).find(r=>r.url&&r.url!=='about:blank')||await this.ensurePage();if(ref.url!==url)await ref.handle.goto(url,{waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});try{await ref.handle.bringToFront();}catch{}return ref;}
+  async openInteractive(url=XCURSOS_HOME_URL){await this.connect();let ref=(await this.pages()).find(r=>r.url&&r.url!=='about:blank')||await this.ensurePage();if(ref.url!==url){this.invalidateInspection(ref);await ref.handle.goto(url,{waitUntil:'domcontentloaded',timeout:this.limits.navigationTimeoutMs});}try{await ref.handle.bringToFront();}catch{}return ref;}
   async findOpenLessonPage(){const refs=await this.pages();const lessons=refs.filter(r=>isLessonUrl(r.url));return lessons.length?lessons.at(-1):null;}
 }
 
