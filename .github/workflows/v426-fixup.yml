@@ -1,0 +1,52 @@
+name: V4.2.6 Fixup
+
+on:
+  push:
+    branches: [fix/v4.2.6-tab-pinning-module-tree]
+    paths:
+      - tools/v426-fixup.mjs
+      - .github/workflows/v426-fixup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v4.2.6-tab-pinning-module-tree
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Apply implementation and compatibility fixup
+        run: |
+          node tools/v426-apply.mjs
+          node tools/v426-fixup.mjs
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Full test suite
+        run: npm test
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          if git diff --quiet -- src tests; then
+            echo "implementation already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src tests
+          git commit -m "feat: pin work tab and mirror module hierarchy"
+          git push origin HEAD:fix/v4.2.6-tab-pinning-module-tree
