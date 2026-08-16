@@ -4,25 +4,23 @@ Downloader determinístico para cursos XCursos aos quais o usuário já possui a
 
 ## Versão atual
 
-**V4.2.4**
+**V4.2.5**
 
-O snapshot inicial está em [`XCursos-Runner-V4.2.4/`](./XCursos-Runner-V4.2.4/).
+O projeto está versionado diretamente na raiz do repositório:
 
-Principais diretórios:
-
-- `XCursos-Runner-V4.2.4/src/` — código-fonte
-- `XCursos-Runner-V4.2.4/tests/` — suíte de regressão
-- `XCursos-Runner-V4.2.4/test-fixtures/` — fixtures sanitizadas e HTML de teste
+- `src/` — código-fonte
+- `tests/` — suíte de regressão
+- `test-fixtures/` — fixtures sanitizadas e HTML de teste
 
 ## Qualidade
 
-A V4.2.4 foi empacotada com **251/251 testes passando** e `npm run check` verde.
+Na validação pré-release da V4.2.5, `npm run check` ficou verde e a suíte registrou **264 testes: 262 PASS, 0 FAIL, 2 SKIPPED**. Os 2 skips são integrações que exigem ffmpeg/ffprobe reais no runner Linux do GitHub Actions.
 
 O workflow em `.github/workflows/ci.yml` executa syntax check e suíte completa em pushes e pull requests para `main`.
 
 ## Fluxo de desenvolvimento
 
-Próximas mudanças devem seguir:
+Mudanças devem seguir:
 
 1. branch de trabalho;
 2. teste RED que reproduz o problema;
@@ -39,7 +37,8 @@ Usuario
   -> XCursosCourseRunner
   -> BrowserSession (CDP)
   -> PageController (semantica XCursos)
-  -> NetworkMediaObserver -> DOM/HTML fallback
+  -> NetworkMediaObserver + DOM/HTML comprovados
+  -> media readiness / source confidence
   -> LessonScheduler + DurableSchedulerCheckpoint + RetryPolicy
   -> yt-dlp
   -> ffprobe
@@ -58,7 +57,7 @@ Não usa OpenCode, LLM, MCP, BrowserClaw, proxy rotation, CAPTCHA automático ou
 
 ## Instalação / atualização
 
-Extraia o ZIP e rode no Windows PowerShell:
+Extraia o release e rode no Windows PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
@@ -67,10 +66,11 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 Abra um terminal novo e confira:
 
 ```powershell
+xcursos version
 xcursos doctor
 ```
 
-A instalação por cima da V4.1.x preserva `%LOCALAPPDATA%\XCursosRunner\chrome-profile`, configuração, manifesto e vídeos já baixados.
+A atualização preserva `%LOCALAPPDATA%\XCursosRunner\chrome-profile`, configuração, manifesto e vídeos já baixados.
 
 ## Autenticação humana
 
@@ -81,7 +81,7 @@ xcursos login
 1. o runner abre/reutiliza Google Chrome com perfil dedicado;
 2. Playwright ainda não está conectado;
 3. faça Cloudflare/login manualmente;
-4. abra uma videoaula (para um curso novo completo, posição `1 / TOTAL`);
+4. abra uma videoaula;
 5. pressione ENTER no terminal;
 6. só então Playwright conecta via CDP.
 
@@ -143,11 +143,12 @@ Ritmo aumenta sob 403/429/5xx/timeouts e cai gradualmente após sucessos, sempre
 - nenhum salto `N -> N+2` é aceito silenciosamente;
 - commit durável acontece antes de Próxima;
 - uma posição concluída não é baixada novamente;
-- `DOWNLOAD_FAILED`, `VERIFY_FAILED` e `MEDIA_NOT_FOUND` não podem virar novo commit de progresso;
+- falhas retryable não viram novo commit de progresso;
 - DRM não é contornado;
 - materiais não são vídeo;
 - URLs assinadas, Authorization e Cookie não são persistidos em claro;
-- sidebar index não é usado como posição global.
+- sidebar index não é usado como posição global;
+- navegação nunca cria commit.
 
 ## Estado por curso
 
@@ -160,6 +161,7 @@ Ritmo aumenta sob 403/429/5xx/timeouts e cai gradualmente após sucessos, sempre
   runner.log
   run.lock
   scheduler.checkpoint.json
+  lesson-navigation-index.json
   debug\
 ```
 
@@ -192,53 +194,55 @@ Falhas de Próxima geram snapshot sanitizado com actionability, bounding boxes, 
 
 No Windows PowerShell, o wrapper configura UTF-8 explicitamente para comunicação com o processo Node, mantendo os arquivos `.ps1` em ASCII para compatibilidade com PowerShell 5.1. JSON final continua em stdout; progresso continua em stderr.
 
-Para validar especificamente o bug live depois da atualização, use o procedimento de `LIVE-TESTS.md`, especialmente o range 38→42.
-
 ## V4.2.2 — reposicionamento seguro
 
-O runner nao depende mais de `goToPosition()` para retomar um range quando o Chrome esta longe da primeira posicao pendente.
+A V4.2.2 introduziu índice durável de navegação e caminhada confirmada `N -> N+1`. A V4.2.3 completou essa arquitetura removendo o fallback arbitrário pela sidebar: `goToPosition()` permanece apenas como guard explícito que recusa indexação não comprovada.
 
-A ordem de reposicionamento e:
-
-```text
-1. pagina atual ja e o alvo
-2. pagina atual = alvo - 1 e a anterior esta concluida -> uma unica Proxima validada
-3. URL exata conhecida no indice/manifesto
-4. checkpoint conhecido mais proximo abaixo do alvo -> caminhada N -> N+1 validada
-5. pagina atual -> caminhada somente se todas as posicoes atravessadas ja estao concluidas
-6. somente depois disso o fallback legado goToPosition(), que continua recusando sidebar indexing nao comprovado
-```
-
-Cada pagina confirmada alimenta:
+Cada página confirmada alimenta:
 
 ```text
 <Curso>\_xcursos-runner\lesson-navigation-index.json
 ```
 
-Esse arquivo nao substitui `manifest.jsonl`; ele serve somente para reposicionamento deterministico e e reconstruivel.
+Esse arquivo não substitui `manifest.jsonl`; ele serve somente para reposicionamento determinístico e é reconstruível.
 
-`RuntimeStats` agora diferencia:
+`RuntimeStats` diferencia:
 
 ```text
-coverageProcessed = posicoes unicas cobertas
-runOperations      = operacoes executadas nesta sessao
+coverageProcessed = posições únicas cobertas
+runOperations      = operações executadas nesta sessão
 ```
-
-Assim, executar `xcursos current` sobre uma aula ja concluida nao cria progresso ficticio nem ETA de poucos segundos para centenas de aulas.
-
 
 ## V4.2.3 — Reposition Engine
 
-Reposicionamento agora é planejado por `NavigationPlanner` e independente da saúde do download. `repairPositions` e gaps no manifesto podem ser atravessados sem commit. O índice V2 mantém `courseAnchor`, invalida entradas stale e aprende posições observadas. Novos comandos: `xcursos version` e `xcursos diagnose-reposition --target N --json`.
+Reposicionamento é planejado por `NavigationPlanner` e independente da saúde do download. `repairPositions` e gaps no manifesto podem ser atravessados sem commit. O índice V2 mantém `courseAnchor`, invalida entradas stale e aprende posições observadas. Novos comandos: `xcursos version` e `xcursos diagnose-reposition --target N --json`.
 
-## V4.2.4 — estabilização das aulas restantes
+## V4.2.4 — isolamento e diagnóstico de mídia
 
-A V4.2.4 endurece especificamente o pipeline de mídia observado nas aulas `e_Aula` restantes:
+- respostas de vídeo isoladas por aula/generation;
+- resposta antiga de outra aula não ganha do `video.src` atual;
+- URL assinada nova só substitui DOM antigo para o mesmo objeto de mídia;
+- `probe --json` mostra fingerprints sanitizados;
+- `errors.jsonl` registra causa do yt-dlp e tail sanitizado;
+- falhas transitórias de MP4 assinado podem renovar mídia da mesma aula;
+- refresh recusa troca silenciosa de objeto;
+- `failureSummary` agrega causas e posições.
 
-- respostas de vídeo são isoladas por aula/generation;
-- uma resposta antiga de outra aula não pode ganhar do `video.src` atual;
-- URLs assinadas novas podem substituir URLs DOM antigas somente para o mesmo objeto R2;
-- `probe --json` mostra `mediaDiagnostics` com fingerprints seguros;
-- `errors.jsonl` registra a causa do yt-dlp e um tail sanitizado;
-- falhas 403/rede em MP4 assinado podem renovar a mídia por refresh da mesma aula;
-- `xcursos-all` para após repetição comprovada sem progresso, em vez de desperdiçar passadas idênticas.
+## V4.2.5 — media readiness e recuperação de arquivos inválidos
+
+A V4.2.5 nasce do diagnóstico live das posições 108 e 113–123:
+
+- iframe genérico deixou de ser candidato automático de mídia;
+- Google Tag Manager, analytics/tracking e hosts equivalentes são recusados como vídeo;
+- iframe só é aceito quando pertence a player reconhecido;
+- cada candidato recebe confiança `PROVEN`, `SUPPORTED_IFRAME` ou `UNTRUSTED`;
+- o runner aguarda por uma janela limitada o MP4/HLS/DASH comprovado aparecer após navegação;
+- estado transitório de player vira `MEDIA_NOT_READY`, não download de iframe irrelevante;
+- mídia `UNTRUSTED` nunca chega ao yt-dlp;
+- `YTDLP_FAILED` genérico em direct signed MP4 pode receber um refresh seguro da mesma aula;
+- `VERIFY_FAILED` preserva o código concreto do ffprobe e, em signed direct MP4, pode fazer refresh + redownload limpo;
+- redownload de recuperação usa `--no-continue` e remove somente artefatos parciais correspondentes à posição atual;
+- checkpoint `BLOCKED` de execução anterior ganha um novo orçamento de retry sem apagar estado/manifesto;
+- `xcursos-all` mede `NO_PROGRESS` por cobertura real (`downloaded + processed + missingPositions`), não pela oscilação do rótulo da falha.
+
+Nenhuma mudança adiciona bypass de DRM ou Cloudflare.
