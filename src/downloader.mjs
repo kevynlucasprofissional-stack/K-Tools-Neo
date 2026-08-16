@@ -27,11 +27,13 @@ function diagnosticTail(output='',max=4000){const safe=redactSensitiveText(Strin
 export function parseYtDlpProgress(line=''){const s=String(line);const pct=s.match(/\[download\]\s+(\d+(?:\.\d+)?)%/i);if(!pct)return null;const speed=s.match(/\bat\s+([^\s]+\/s)/i);const eta=s.match(/\bETA\s+([0-9:]+)/i);return{percent:Number(pct[1]),speedText:speed?.[1]||null,eta:eta?.[1]||null};}
 function safeDownloadExtension(filename=''){const ext=path.extname(String(filename||'')).toLowerCase();return /^\.[a-z0-9]{1,8}$/i.test(ext)?ext:'.mp4';}
 function methodKey(filePath=''){return path.resolve(String(filePath||''));}
+export function fileFingerprintFromStat(stat){return{size:Number(stat?.size)||0,mtimeMs:Math.trunc(Number(stat?.mtimeMs)||0)};}
+export function sameFileFingerprint(a,b){return Boolean(a&&b&&Number(a.size)===Number(b.size)&&Number(a.mtimeMs)===Number(b.mtimeMs));}
 
 export class MediaDownloader {
   constructor({ processRunner = runProcess, logger = null, limits = {}, ytDlpPath = null, ffprobePath = null, pageResolver = findConnectedPageByUrl } = {}) {
     this.processRunner = processRunner; this.logger=logger; this.limits={...DEFAULT_LIMITS,...limits};
-    this.ytDlpPath=ytDlpPath; this.ffprobePath=ffprobePath;this.pageResolver=pageResolver;this.downloadMethodByPath=new Map();
+    this.ytDlpPath=ytDlpPath; this.ffprobePath=ffprobePath;this.pageResolver=pageResolver;this.downloadMethodByPath=new Map();this.validationCacheByPath=new Map();
   }
 
   async preflight() {
@@ -70,6 +72,7 @@ export class MediaDownloader {
   }
 
   async quarantineCorrupt(filePath) {
+    const key=methodKey(filePath);this.validationCacheByPath.delete(key);this.downloadMethodByPath.delete(key);
     const quarantine=`${filePath}.corrupt-${Date.now()}`;
     try { await fs.rename(filePath,quarantine); return quarantine; }
     catch(error){ throw new RunnerError(`Arquivo inválido não pôde ser movido para quarentena: ${path.basename(filePath)}`,{code:'CORRUPT_FILE_QUARANTINE_FAILED',cause:error,details:{filePath}}); }
@@ -81,7 +84,7 @@ export class MediaDownloader {
     const removed=[];
     for(const entry of entries){
       if(!entry.isFile()||!entry.name.startsWith(`${baseName}.`)||!/\.(?:part|ytdl|temp)$/i.test(entry.name))continue;
-      const full=path.join(moduleDir,entry.name);
+      const full=path.join(moduleDir,entry.name);const key=methodKey(full);this.validationCacheByPath.delete(key);this.downloadMethodByPath.delete(key);
       try{await fs.unlink(full);removed.push(full);}catch(error){if(error?.code!=='ENOENT')throw new RunnerError(`Artefato parcial não pôde ser removido: ${entry.name}`,{code:'PARTIAL_CLEANUP_FAILED',cause:error,details:{filePath:full}});}
     }
     return removed;
@@ -92,14 +95,19 @@ export class MediaDownloader {
     let stat;
     try { stat=await fs.stat(filePath); } catch { throw new RunnerError('Arquivo final não existe.',{code:'VERIFY_FILE_MISSING'}); }
     if(!stat.isFile() || stat.size<=0)throw new RunnerError('Arquivo final está vazio.',{code:'VERIFY_EMPTY_FILE'});
+    const fingerprint=fileFingerprintFromStat(stat);const key=methodKey(filePath);const cached=this.validationCacheByPath.get(key);
+    if(cached&&sameFileFingerprint(cached.fingerprint,fingerprint))return cached.validation;
+    if(cached)this.validationCacheByPath.delete(key);
     const r=await this.processRunner(this.ffprobePath,['-v','error','-select_streams','v:0','-show_entries','stream=codec_name,codec_type','-show_entries','format=duration,size','-of','json',filePath],{timeoutMs:this.limits.ffprobeTimeoutMs,signal});
     if(r.code!==0)throw new RunnerError(`ffprobe falhou: ${String(r.stderr||'').trim().slice(-1200)}`,{code:'VERIFY_FFPROBE_FAILED'});
     let meta; try{meta=JSON.parse(r.stdout);}catch{throw new RunnerError('ffprobe não retornou JSON válido.',{code:'VERIFY_FFPROBE_INVALID_JSON'});}
     const duration=Number(meta?.format?.duration||0); const streams=Array.isArray(meta?.streams)?meta.streams:[];
     const video=streams.find(s=>s.codec_type==='video');
     if(!video || !(duration>0))throw new RunnerError('Validação falhou: sem stream de vídeo ou duração positiva.',{code:'VERIFY_NO_VIDEO_STREAM'});
-    const downloadMethod=this.downloadMethodByPath.get(methodKey(filePath))||null;
-    return { size:stat.size,duration,codec:video.codec_name||null,...(downloadMethod?{downloadMethod}:{}) };
+    const downloadMethod=this.downloadMethodByPath.get(key)||null;
+    const validation={size:stat.size,duration,codec:video.codec_name||null,fileFingerprint:fingerprint,...(downloadMethod?{downloadMethod}:{})};
+    this.validationCacheByPath.set(key,{fingerprint,validation});
+    return validation;
   }
 
   async tryNativeDownload({ refererUrl, paths, signal=null }={}) {
@@ -154,9 +162,11 @@ export class MediaDownloader {
       try{await fs.rm(tempPath,{force:true});}catch{}
       return{attempted:true,ok:false,failureCode:error?.code||'NATIVE_PROMOTE_FAILED',diagnosticTail:diagnosticTail(error?.message||error),error};
     }
-    this.downloadMethodByPath.set(methodKey(finalPath),'XCURSOS_NATIVE');
+    const tempKey=methodKey(tempPath),finalKey=methodKey(finalPath);this.validationCacheByPath.delete(tempKey);this.downloadMethodByPath.delete(tempKey);
+    this.downloadMethodByPath.set(finalKey,'XCURSOS_NATIVE');
+    const finalValidation={...validation,downloadMethod:'XCURSOS_NATIVE'};this.validationCacheByPath.set(finalKey,{fingerprint:validation.fileFingerprint,validation:finalValidation});
     await this.logger?.log('NATIVE_DOWNLOAD','Completed and validated',{output:finalPath,duration:validation.duration,size:validation.size});
-    return{attempted:true,ok:true,finalPath,downloadMethod:'XCURSOS_NATIVE',validation:{...validation,downloadMethod:'XCURSOS_NATIVE'}};
+    return{attempted:true,ok:true,finalPath,downloadMethod:'XCURSOS_NATIVE',validation:finalValidation};
   }
 
   async download({ mediaUrl, refererUrl, paths, signal=null, onProgress=null, cleanStart=false }) {
