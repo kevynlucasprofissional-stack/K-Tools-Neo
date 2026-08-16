@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_LIMITS } from './constants.mjs';
+import { DEFAULT_LIMITS, VIDEO_DOWNLOAD_PATH } from './constants.mjs';
 import { RunnerError } from './errors.mjs';
+import { findConnectedPageByUrl } from './browser-session.mjs';
+import { normalizeNativeDownloadUrl } from './parser.mjs';
 import { findExecutable, runProcess } from './process.mjs';
 import { redactUrl, redactSensitiveText, sanitizeSegment, truncateWithHash } from './utils.mjs';
 
@@ -23,11 +25,13 @@ export function classifyYtDlpFailure(output=''){
 }
 function diagnosticTail(output='',max=4000){const safe=redactSensitiveText(String(output||''));return safe.length>max?safe.slice(-max):safe;}
 export function parseYtDlpProgress(line=''){const s=String(line);const pct=s.match(/\[download\]\s+(\d+(?:\.\d+)?)%/i);if(!pct)return null;const speed=s.match(/\bat\s+([^\s]+\/s)/i);const eta=s.match(/\bETA\s+([0-9:]+)/i);return{percent:Number(pct[1]),speedText:speed?.[1]||null,eta:eta?.[1]||null};}
+function safeDownloadExtension(filename=''){const ext=path.extname(String(filename||'')).toLowerCase();return /^\.[a-z0-9]{1,8}$/i.test(ext)?ext:'.mp4';}
+function methodKey(filePath=''){return path.resolve(String(filePath||''));}
 
 export class MediaDownloader {
-  constructor({ processRunner = runProcess, logger = null, limits = {}, ytDlpPath = null, ffprobePath = null } = {}) {
+  constructor({ processRunner = runProcess, logger = null, limits = {}, ytDlpPath = null, ffprobePath = null, pageResolver = findConnectedPageByUrl } = {}) {
     this.processRunner = processRunner; this.logger=logger; this.limits={...DEFAULT_LIMITS,...limits};
-    this.ytDlpPath=ytDlpPath; this.ffprobePath=ffprobePath;
+    this.ytDlpPath=ytDlpPath; this.ffprobePath=ffprobePath;this.pageResolver=pageResolver;this.downloadMethodByPath=new Map();
   }
 
   async preflight() {
@@ -94,28 +98,101 @@ export class MediaDownloader {
     const duration=Number(meta?.format?.duration||0); const streams=Array.isArray(meta?.streams)?meta.streams:[];
     const video=streams.find(s=>s.codec_type==='video');
     if(!video || !(duration>0))throw new RunnerError('Validação falhou: sem stream de vídeo ou duração positiva.',{code:'VERIFY_NO_VIDEO_STREAM'});
-    return { size:stat.size,duration,codec:video.codec_name||null };
+    const downloadMethod=this.downloadMethodByPath.get(methodKey(filePath))||null;
+    return { size:stat.size,duration,codec:video.codec_name||null,...(downloadMethod?{downloadMethod}:{}) };
+  }
+
+  async tryNativeDownload({ refererUrl, paths, signal=null }={}) {
+    if(signal?.aborted)throw new RunnerError('Download abortado.',{code:'PROCESS_ABORTED'});
+    if(typeof this.pageResolver!=='function')return{attempted:false,ok:false,failureCode:'NATIVE_PAGE_RESOLVER_UNAVAILABLE'};
+    const page=await this.pageResolver(refererUrl);
+    if(!page||page.isClosed?.()===true||typeof page.locator!=='function'||typeof page.waitForEvent!=='function')return{attempted:false,ok:false,failureCode:'NATIVE_PAGE_UNAVAILABLE'};
+    let locator;
+    try{locator=page.locator(`a[href*="${VIDEO_DOWNLOAD_PATH}"]`).first();}catch{return{attempted:false,ok:false,failureCode:'NATIVE_BUTTON_UNAVAILABLE'};}
+    let count=0;try{count=await locator.count();}catch{return{attempted:false,ok:false,failureCode:'NATIVE_BUTTON_UNAVAILABLE'};}
+    if(count<1)return{attempted:false,ok:false,failureCode:'NATIVE_BUTTON_UNAVAILABLE'};
+    let href=null;try{href=await locator.getAttribute('href');}catch{}
+    const nativeDownloadUrl=normalizeNativeDownloadUrl(href,refererUrl);
+    if(!nativeDownloadUrl)return{attempted:false,ok:false,failureCode:'NATIVE_BUTTON_UNTRUSTED'};
+
+    await fs.mkdir(paths.moduleDir,{recursive:true});
+    await this.logger?.log('NATIVE_DOWNLOAD','Starting browser download',{output:paths.template});
+    let download;
+    try{
+      [download]=await Promise.all([
+        page.waitForEvent('download',{timeout:this.limits.nativeDownloadEventTimeoutMs}),
+        locator.click({timeout:this.limits.nativeDownloadEventTimeoutMs,noWaitAfter:true}),
+      ]);
+    }catch(error){
+      return{attempted:true,ok:false,failureCode:'NATIVE_DOWNLOAD_EVENT_FAILED',diagnosticTail:diagnosticTail(error?.message||error),error};
+    }
+    if(signal?.aborted)throw new RunnerError('Download abortado.',{code:'PROCESS_ABORTED'});
+    let browserFailure=null;try{browserFailure=await download.failure();}catch(error){browserFailure=String(error?.message||error);}
+    if(browserFailure)return{attempted:true,ok:false,failureCode:'NATIVE_DOWNLOAD_FAILED',diagnosticTail:diagnosticTail(browserFailure)};
+
+    let suggested='';try{suggested=download.suggestedFilename?.()||'';}catch{}
+    const ext=safeDownloadExtension(suggested);
+    const tempPath=path.join(paths.moduleDir,`${paths.baseName}.native-${process.pid}-${Date.now()}${ext}.part`);
+    try{await download.saveAs(tempPath);}catch(error){
+      try{await fs.rm(tempPath,{force:true});}catch{}
+      return{attempted:true,ok:false,failureCode:'NATIVE_SAVE_FAILED',diagnosticTail:diagnosticTail(error?.message||error),error};
+    }
+    if(signal?.aborted)throw new RunnerError('Download abortado.',{code:'PROCESS_ABORTED'});
+
+    let validation;
+    try{validation=await this.validateVideo(tempPath,{signal});}
+    catch(error){
+      let quarantine=null;try{quarantine=await this.quarantineCorrupt(tempPath);}catch{}
+      return{attempted:true,ok:false,failureCode:error?.code||'NATIVE_VERIFY_FAILED',diagnosticTail:diagnosticTail(error?.message||error),quarantine,error};
+    }
+
+    const finalPath=path.join(paths.moduleDir,`${paths.baseName}${ext}`);
+    try{
+      if(fsSync.existsSync(finalPath))throw new RunnerError('Arquivo final apareceu durante o download nativo.',{code:'DUPLICATE_OUTPUT_FILES'});
+      await fs.rename(tempPath,finalPath);
+    }catch(error){
+      try{await fs.rm(tempPath,{force:true});}catch{}
+      return{attempted:true,ok:false,failureCode:error?.code||'NATIVE_PROMOTE_FAILED',diagnosticTail:diagnosticTail(error?.message||error),error};
+    }
+    this.downloadMethodByPath.set(methodKey(finalPath),'XCURSOS_NATIVE');
+    await this.logger?.log('NATIVE_DOWNLOAD','Completed and validated',{output:finalPath,duration:validation.duration,size:validation.size});
+    return{attempted:true,ok:true,finalPath,downloadMethod:'XCURSOS_NATIVE',validation:{...validation,downloadMethod:'XCURSOS_NATIVE'}};
   }
 
   async download({ mediaUrl, refererUrl, paths, signal=null, onProgress=null, cleanStart=false }) {
     await fs.mkdir(paths.moduleDir,{recursive:true});
     if(cleanStart)await this.clearPartialArtifacts(paths.moduleDir,paths.baseName);
+
+    let nativeFailure=null;
+    const native=await this.tryNativeDownload({refererUrl,paths,signal});
+    if(native.ok)return native;
+    if(native.attempted){
+      nativeFailure={failureCode:native.failureCode||'NATIVE_DOWNLOAD_FAILED',diagnosticTail:native.diagnosticTail||null,quarantine:native.quarantine||null};
+      await this.logger?.log('NATIVE_FALLBACK','Native lesson download failed; falling back to yt-dlp',nativeFailure);
+    }
+
+    if(!/^https?:/i.test(String(mediaUrl||''))){
+      const failureCode=nativeFailure?.failureCode||'MEDIA_URL_UNAVAILABLE';
+      return{ok:false,kind:'FAILED',failureCode,diagnosticTail:nativeFailure?.diagnosticTail||'Nenhuma URL de mídia segura disponível para fallback yt-dlp.',...(nativeFailure?{nativeFailure}: {})};
+    }
+
     const resumeArg=cleanStart?'--no-continue':'--continue';
     const args=['--no-playlist',resumeArg,'--no-overwrites','--retries','3','--fragment-retries','3','--referer',refererUrl,'--print','after_move:filepath','-o',paths.template,mediaUrl];
-    await this.logger?.log('DOWNLOAD','Starting',{media:redactUrl(mediaUrl),output:paths.template,cleanStart:Boolean(cleanStart)});
+    await this.logger?.log('DOWNLOAD','Starting yt-dlp fallback',{media:redactUrl(mediaUrl),output:paths.template,cleanStart:Boolean(cleanStart),nativeAttempted:Boolean(native.attempted)});
     let r;
     const feed=chunk=>{if(!onProgress)return;for(const line of String(chunk).split(/\r?\n/)){const p=parseYtDlpProgress(line);if(p)onProgress(p);}};
     try{r=await this.processRunner(this.ytDlpPath,args,{timeoutMs:this.limits.downloadTimeoutMs,signal,onStdout:feed,onStderr:feed});}
     catch(error){
       if(error?.code==='PROCESS_ABORTED')throw error;
       const failureCode=error?.code==='PROCESS_TIMEOUT'?'PROCESS_TIMEOUT':String(error?.code||'SPAWN_ERROR');
-      return {ok:false,kind:error?.code==='PROCESS_TIMEOUT'?'TIMEOUT':'SPAWN_ERROR',failureCode,diagnosticTail:diagnosticTail(error?.message||error),error};
+      return {ok:false,kind:error?.code==='PROCESS_TIMEOUT'?'TIMEOUT':'SPAWN_ERROR',failureCode,diagnosticTail:diagnosticTail(error?.message||error),error,...(nativeFailure?{nativeFailure}: {})};
     }
     const combined=`${r.stdout}\n${r.stderr}`;
-    if(r.code!==0){const failureCode=classifyYtDlpFailure(combined);return {ok:false,kind:failureCode==='DRM'?'DRM':looksExpired(combined)?'EXPIRED':'FAILED',failureCode,diagnosticTail:diagnosticTail(combined),code:r.code,stdout:r.stdout,stderr:r.stderr};}
+    if(r.code!==0){const failureCode=classifyYtDlpFailure(combined);return {ok:false,kind:failureCode==='DRM'?'DRM':looksExpired(combined)?'EXPIRED':'FAILED',failureCode,diagnosticTail:diagnosticTail(combined),code:r.code,stdout:r.stdout,stderr:r.stderr,...(nativeFailure?{nativeFailure}: {})};}
     let finalPath=r.stdout.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).at(-1);
     if(!finalPath || !fsSync.existsSync(finalPath))finalPath=await this.findExistingFinal(paths.moduleDir,paths.baseName);
-    if(!finalPath)return {ok:false,kind:'NO_FINAL_PATH',code:r.code,stdout:r.stdout,stderr:r.stderr};
-    return {ok:true,finalPath,stdout:r.stdout,stderr:r.stderr};
+    if(!finalPath)return {ok:false,kind:'NO_FINAL_PATH',code:r.code,stdout:r.stdout,stderr:r.stderr,...(nativeFailure?{nativeFailure}: {})};
+    this.downloadMethodByPath.set(methodKey(finalPath),'YTDLP');
+    return {ok:true,finalPath,downloadMethod:'YTDLP',stdout:r.stdout,stderr:r.stderr,...(nativeFailure?{nativeFailure}: {})};
   }
 }
