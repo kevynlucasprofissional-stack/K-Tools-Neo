@@ -15,6 +15,24 @@ function workItem(record){
 function persistedError(record){return sanitizeForPersistence({timestamp:record?.timestamp||null,scope:record?.scope||null,position:record?.position??null,status:record?.status||null,code:record?.code||record?.failureCode||null,message:record?.message||null,attempt:record?.attempt??null,maxAttempts:record?.maxAttempts??null,delayMs:record?.delayMs??null});}
 function reasonError(reason,code){if(reason instanceof Error){if(!reason.code)reason.code=code;return reason;}const error=new Error(redactSensitiveText(String(reason??code)));error.code=code;return error;}
 function md(value=''){return String(value??'').replace(/\|/g,'\\|').replace(/\r?\n/g,' ');}
+function errorCodes(report){return [...(report.summary?.persistedErrors||[]).map(x=>x.code||x.status),...(report.errors||[]).map(x=>x.error?.code)].filter(Boolean).map(String);}
+function matches(codes,re){return codes.filter(code=>re.test(code));}
+function finding(code,severity,title,evidence,recommendation){return sanitizeForPersistence({code,severity,title,evidence,recommendation});}
+
+export function deriveDiagnosticFindings(report={}){
+  const codes=errorCodes(report);const audit=report.summary?.audit||{};const stats=report.summary?.stats||{};const byEvent=report.eventSummary?.byEvent||{};const findings=[];
+  const network=matches(codes,/(?:NETWORK|ECONN|ETIMEDOUT|EAI_AGAIN|DNS|TLS|HTTP_429|HTTP_5XX|NAV_NETWORK)/i);if(network.length)findings.push(finding('NETWORK_INSTABILITY','WARN','Falhas de rede/conectividade foram observadas',{codes:[...new Set(network)]},'Revisar os eventos e retries imediatamente anteriores, estado da conexão CDP e disponibilidade da rede.'));
+  const browser=matches(codes,/(?:PAGE_CLOSED|CDP_|BROWSER_DISCONNECTED|LESSON_REFRESH)/i);if(browser.length)findings.push(finding('BROWSER_SESSION_INSTABILITY','WARN','A sessão do navegador/página exigiu recuperação',{codes:[...new Set(browser)]},'Revisar reconexões CDP, snapshots e mudanças de target/página durante a execução.'));
+  const nav=matches(codes,/(?:NEXT_NOT_FOUND|NEXT_ACTIONABILITY_TIMEOUT|POSITION_UNOBSERVABLE|POSITION_OBSERVATION_FAILED)/i);if(nav.length)findings.push(finding('NAVIGATION_CONFIDENCE','WARN','A automação não conseguiu confirmar a navegação com confiança suficiente',{codes:[...new Set(nav)]},'Revisar snapshot da UI, actionability e candidatos de Próxima. Este é o equivalente mais próximo de baixa confiança heurística; o projeto não usa um modelo de IA para decidir a navegação.'));
+  const media=matches(codes,/(?:MEDIA_NOT_READY|MEDIA_NOT_FOUND|NATIVE_.*FAILED|YTDLP_FAILED)/i);if(media.length)findings.push(finding('MEDIA_DETECTION_OR_DOWNLOAD','WARN','Houve dificuldade para provar ou obter a mídia da aula',{codes:[...new Set(media)]},'Comparar metadata, network snapshot, botão de download nativo e fallback yt-dlp da posição afetada.'));
+  const verify=matches(codes,/(?:VERIFY_|CORRUPT|INVALID_FILE)/i);const invalid=Array.isArray(audit.invalidFilePositions)?audit.invalidFilePositions:[];if(verify.length||invalid.length)findings.push(finding('FILE_INTEGRITY','ERROR','Validação ou integridade de arquivo requer atenção',{codes:[...new Set(verify)],positions:invalid},'Revisar ffprobe, quarentena, tamanho/duração/codec e staging da posição afetada.'));
+  const missing=Array.isArray(audit.missingPositions)?audit.missingPositions:[];if(missing.length)findings.push(finding('COVERAGE_GAP','ERROR','A auditoria encontrou posições sem resultado terminal',{positions:missing},'Revisar scheduler/checkpoint e o último erro de cada posição ausente.'));
+  const processEvents=Number(byEvent.SUBPROCESS_TIMEOUT||0)+Number(byEvent.SUBPROCESS_ABORTED||0)+Number(byEvent.SUBPROCESS_ERROR||0);if(processEvents>0)findings.push(finding('SUBPROCESS_FAILURE','WARN','Subprocessos externos falharam, expiraram ou foram abortados',{events:processEvents},'Revisar eventos PROCESS para yt-dlp/ffprobe, exit code, duração e stderr sanitizado.'));
+  const retries=Number(stats.retries||0);if(retries>0)findings.push(finding('RETRY_PRESSURE','INFO','A execução precisou repetir operações',{retries},'Usar os eventos RETRY para verificar causa, tentativa, delay e se o problema se concentrou em uma posição.'));
+  const fatal=(report.errors||[]).filter(x=>x.fatal);if(fatal.length)findings.push(finding('FATAL_PROCESS_ERROR','ERROR','A execução terminou por erro não recuperado',{codes:fatal.map(x=>x.error?.code||'UNKNOWN')},'Começar pela stack capturada no relatório e pelos eventos imediatamente anteriores ao erro fatal.'));
+  if(audit.healthyComplete===false&&!missing.length&&!invalid.length)findings.push(finding('FINAL_AUDIT_UNHEALTHY','WARN','A cobertura existe, mas a auditoria final não considerou o curso saudável',{failureSummary:report.summary?.failureSummary||null},'Revisar failureSummary, posições bloqueadas e erros persistidos.'));
+  return findings;
+}
 
 export class IntegratedRunDiagnostics extends RunDiagnostics {
   constructor(options={}){super(options);this.integratedFinalized=false;}
@@ -28,17 +46,20 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
   async finalize(options={}){
     if(this.integratedFinalized)return await this.readReport();
     const base=await super.finalize(options);if(!base)return base;
-    const persistence=await this.persistenceSummary();const report=sanitizeForPersistence({...base,summary:{...base.summary,...persistence}});
+    const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report)});
     await atomicWriteJson(this.reportJsonPath,report);
     await fs.writeFile(this.reportMarkdownPath,this.renderIntegratedMarkdown(report),'utf8');
     this.integratedFinalized=true;return report;
   }
 
   renderIntegratedMarkdown(report){
-    let text=super.renderMarkdown(report);const items=report.summary?.currentRunWorkItems||[];const errors=report.summary?.persistedErrors||[];
+    let text=super.renderMarkdown(report);const items=report.summary?.currentRunWorkItems||[];const errors=report.summary?.persistedErrors||[];const findings=report.diagnosticFindings||[];
     const extra=['','## Reconstrução desta execução','',`- Unidades/posições concluídas nesta execução: ${items.length}`,`- Erros persistidos nesta execução: ${errors.length}`];
     if(items.length){extra.push('','### Unidades processadas','', '| Posição | Status | Tentativas | Aula | Módulo |','|---|---|---|---|---|',...items.map(x=>`| ${md(x.position)} | ${md(x.status)} | ${md(x.attempts)} | ${md(x.lessonTitle||'')} | ${md(x.moduleName||'')} |`));}
     if(errors.length){extra.push('','### Erros persistidos do fluxo','', '| Hora | Escopo | Posição | Código/Status | Mensagem |','|---|---|---|---|---|',...errors.map(x=>`| ${md(x.timestamp)} | ${md(x.scope)} | ${md(x.position??'')} | ${md(x.code||x.status||'')} | ${md(x.message||'')} |`));}
+    extra.push('','## Possíveis pontos de falha','');
+    if(!findings.length)extra.push('Nenhum padrão de falha foi derivado das evidências registradas nesta execução.');
+    else for(const item of findings)extra.push(`### ${md(item.code)} — ${md(item.title)}`,'',`- Severidade: **${md(item.severity)}**`,`- Evidência: ${md(JSON.stringify(item.evidence||{}))}`,`- Próxima investigação: ${md(item.recommendation||'')}`,'');
     return `${text.trimEnd()}\n${extra.join('\n')}\n`;
   }
 
