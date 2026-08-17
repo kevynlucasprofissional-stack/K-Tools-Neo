@@ -118,7 +118,7 @@ export async function main(argv=process.argv.slice(2),deps={}){
       case 'audit':result=await auditRecent({...config,outputRoot:runtime.outputRoot},{logger,processRunner:observedProcessRunner});break;
       case 'version':result={ok:true,status:'VERSION',...(await getRunnerInfo())};break;
       case 'diagnose-reposition':{const target=Number(parsed.options.target);if(!Number.isInteger(target))throw Object.assign(new Error('`diagnose-reposition` exige --target N.'),{code:'TARGET_REQUIRED'});result=await diagnoseReposition({...runnerRuntime,target,playwrightLoader:deps.playwrightLoader});break;}
-      case 'doctor':result=await runDoctor({config:{...config,outputRoot:runtime.outputRoot,chromePath:runtime.chromePath,cdpEndpoint:runtime.cdpEndpoint},playwrightLoader:deps.playwrightLoader,fetchImpl:deps.fetchImpl});break;
+      case 'doctor':result=await runDoctor({config:{...config,outputRoot:runtime.outputRoot,chromePath:runtime.chromePath,cdpEndpoint:runtime.cdpEndpoint},playwrightLoader:deps.playwrightLoader,fetchImpl:deps.fetchImpl,processRunner:observedProcessRunner});break;
       default:throw Object.assign(new Error(`Comando desconhecido: ${parsed.command}`),{code:'CLI_UNKNOWN_COMMAND'});
     }
     const remembered=result?.lesson?.pageUrl||result?.workPageUrl||result?.state?.workPageUrl||null;
