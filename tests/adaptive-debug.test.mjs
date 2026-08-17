@@ -31,7 +31,10 @@ test('DebugSnapshotManager creates sanitized bounded diagnostic bundle',async()=
   assert.equal((await fs.readFile(path.join(latest,'screenshot.png'))).toString(),'PNG');
 });
 
-test('Debug snapshot filesystem failure never replaces original execution error',async()=>{const m=new DebugSnapshotManager({debugRoot:'/dev/null/nope'});const r=await m.capture({position:1,error:new Error('x')});assert.equal(r.ok,false);});
+test('Debug snapshot filesystem failure never replaces original execution error',async()=>{
+  const root=await tmp();const blocker=path.join(root,'not-a-directory');await fs.writeFile(blocker,'file');
+  const m=new DebugSnapshotManager({debugRoot:path.join(blocker,'nope')});const r=await m.capture({position:1,error:new Error('x')});assert.equal(r.ok,false);
+});
 
 test('Debug snapshot rotation enforces age and total-size limits',async()=>{
   const root=await tmp();await fs.mkdir(root,{recursive:true});
