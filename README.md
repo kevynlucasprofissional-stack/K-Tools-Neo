@@ -12,11 +12,12 @@ Não há breaking change intencional em relação à linha 4.x. Estado, manifest
 
 ## Estado de qualidade
 
-A validação final da base que originou a V4.3.0 foi executada em **Ubuntu e Windows**.
+A validação da V4.3.0 é executada em **Ubuntu e Windows**.
 
-- **389 testes por lane**;
-- Ubuntu: **387 PASS, 0 FAIL, 2 SKIPPED** — os skips dependem de ffmpeg/ffprobe reais ausentes naquele runner;
-- Windows: **389 PASS, 0 FAIL**;
+- **388 testes por lane**;
+- Ubuntu: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- Windows: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- os 2 skips dependem de ffmpeg/ffprobe reais ausentes nos runners atuais;
 - syntax check: PASS nos dois sistemas;
 - Windows PowerShell 5.1 smoke: PASS;
 - `diagnostics-check`: PASS;
