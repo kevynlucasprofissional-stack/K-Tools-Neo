@@ -65,7 +65,8 @@ export function redactSensitiveText(value = '') {
     .replace(/https?:\/\/[^\s"'<>]+/gi, url => isSensitiveSignedUrl(url) ? redactUrl(url) : url)
     .replace(/([?&](?:x-amz-[^=]+|signature|sig|token|auth|authorization|expires?|policy|key(?:id)?|api[_-]?key|access[_-]?token|session(?:id|token)?|credential)=)[^&\s]+/gi, '$1<redacted>')
     .replace(/(Authorization\s*[:=]\s*(?:Bearer\s+)?)[^\s,;]+/gi,'$1<redacted>')
-    .replace(/(Cookie\s*[:=]\s*)[^\r\n]+/gi,'$1<redacted>');
+    .replace(/(Cookie\s*[:=]\s*)[^\r\n]+/gi,'$1<redacted>')
+    .replace(/\b((?:token|api[_-]?key|access[_-]?token|refresh[_-]?token|session(?:id|token)?|credential|password|secret)\s*[=:]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,'$1<redacted>');
 }
 
 export function sanitizeForPersistence(value, seen = new WeakSet()) {
@@ -135,7 +136,6 @@ export async function atomicWriteJsonDurable(filePath, value) {
       throw replaceError;
     }
   }
-  // Best-effort directory fsync on POSIX. Windows does not reliably permit opening directories.
   if (process.platform !== 'win32') {
     let dirHandle=null;
     try {dirHandle=await fs.open(path.dirname(filePath),'r');await dirHandle.sync();} catch {} finally {await dirHandle?.close().catch(()=>{});}
@@ -149,7 +149,6 @@ export async function atomicWriteJson(filePath, value) {
   try {
     await fs.rename(temp, filePath);
   } catch (error) {
-    // Some Windows filesystems reject replacing an existing destination via rename.
     if (!['EEXIST','EPERM','ENOTEMPTY'].includes(error?.code)) {
       await fs.rm(temp,{force:true}).catch(()=>{});
       throw error;

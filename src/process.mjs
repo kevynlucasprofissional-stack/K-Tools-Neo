@@ -12,10 +12,8 @@ function appendTail(current, chunk, maxBytes) {
   let combined=current+chunk;
   const bytes=Buffer.byteLength(combined);
   if(bytes<=maxBytes)return{text:combined,truncated:false};
-  // Keep the tail: yt-dlp prints after_move:filepath at the end and diagnostics are usually most useful there.
   let buf=Buffer.from(combined);
   buf=buf.subarray(Math.max(0,buf.length-maxBytes));
-  // Avoid beginning in the middle of a UTF-8 continuation byte.
   while(buf.length && (buf[0]&0xC0)===0x80)buf=buf.subarray(1);
   return{text:buf.toString('utf8'),truncated:true};
 }
@@ -49,7 +47,7 @@ export async function runProcess(command, args = [], { cwd, timeoutMs = 0, env, 
 
     if(signal){
       abortHandler=()=>{
-        abortError=new RunnerError(`${path.basename(command)} foi interrompido por force stop`,{code:'PROCESS_ABORTED'});
+        abortError=new RunnerError(`${path.basename(command)} foi interrompido por force stop`,{code:'PROCESS_ABORTED',details:{pid:child.pid??null}});
         forceKill();
         failSafeTimer=setTimeout(()=>finishReject(abortError),Math.max(0,killGraceMs)+1000);failSafeTimer.unref?.();
       };
@@ -58,11 +56,10 @@ export async function runProcess(command, args = [], { cwd, timeoutMs = 0, env, 
     }
 
     if (timeoutMs > 0) timeoutTimer = setTimeout(() => {
-      timeoutError=new RunnerError(`${path.basename(command)} excedeu timeout de ${timeoutMs}ms`, { code:'PROCESS_TIMEOUT' });
+      timeoutError=new RunnerError(`${path.basename(command)} excedeu timeout de ${timeoutMs}ms`, { code:'PROCESS_TIMEOUT',details:{pid:child.pid??null,timeoutMs} });
       if(process.platform==='win32') forceKill();
       else { try { if(child.exitCode===null)child.kill('SIGTERM'); } catch {} }
       hardKillTimer=setTimeout(forceKill,Math.max(0,killGraceMs));
-      // Last-resort guard: never hang forever if the OS does not deliver close after a kill attempt.
       failSafeTimer=setTimeout(()=>finishReject(timeoutError),Math.max(0,killGraceMs)+5000);
       hardKillTimer.unref?.(); failSafeTimer.unref?.();
     }, timeoutMs);
@@ -73,7 +70,7 @@ export async function runProcess(command, args = [], { cwd, timeoutMs = 0, env, 
       if(timeoutError){finishReject(timeoutError);return;}
       if(abortError){finishReject(abortError);return;}
       settled = true;
-      resolve({ code: code ?? -1, signal, stdout, stderr, stdoutTruncated, stderrTruncated });
+      resolve({ pid:child.pid??null, code: code ?? -1, signal, stdout, stderr, stdoutTruncated, stderrTruncated });
     });
   });
 }
