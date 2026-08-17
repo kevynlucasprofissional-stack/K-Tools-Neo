@@ -36,6 +36,7 @@ export function deriveDiagnosticFindings(report={}){
 
 export class IntegratedRunDiagnostics extends RunDiagnostics {
   constructor(options={}){super(options);this.integratedFinalized=false;}
+  reference(){return sanitizeForPersistence({runId:this.runId,runDir:this.runDir,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath,events:this.eventPath});}
 
   async persistenceSummary(){
     const manifest=since(await readJsonl(this.artifacts.get('manifest')?.path),this.startedAtMs).map(workItem);
