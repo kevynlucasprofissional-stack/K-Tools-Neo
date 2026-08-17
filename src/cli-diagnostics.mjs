@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { RunnerLogger } from './logger.mjs';
 import { IntegratedRunDiagnostics, installFatalDiagnosticHandlers } from './integrated-diagnostics.mjs';
+import { recoverInterruptedDiagnosticRuns } from './diagnostic-recovery.mjs';
 import { sanitizeForPersistence, sanitizeSegment } from './utils.mjs';
 
 const SAFE_RUNTIME_KEYS=['resume','cdpEndpoint','cdpPort','outputRoot','profileDir','chromePath'];
@@ -29,12 +30,15 @@ function bootstrapRoot(env=process.env,processRef=process){
   return path.join(typeof processRef?.cwd==='function'?processRef.cwd():process.cwd(),'.xcursos-runner-bootstrap');
 }
 
-export async function startCliDiagnostics({outputRoot,command,argv=[],processRef=process,env=process.env,sink=null,diagnosticsFactory=null,logger=null,exitFn=null}={}){
+export async function startCliDiagnostics({outputRoot,command,argv=[],processRef=process,env=process.env,sink=null,diagnosticsFactory=null,logger=null,exitFn=null,recoveryFn=recoverInterruptedDiagnosticRuns}={}){
+  let recovery=null;
+  try{recovery=await recoveryFn({outputRoot,hostname:env?.COMPUTERNAME||env?.HOSTNAME||undefined});}catch{}
   const sharedLogger=logger||new RunnerLogger({sink});
   const diagnostics=diagnosticsFactory?await diagnosticsFactory({outputRoot,command,argv,processRef,env,logger:sharedLogger}):new IntegratedRunDiagnostics({outputRoot,command,argv,processRef,env});
   await diagnostics.start({logger:sharedLogger,context:{command}});
+  if(recovery?.recovered?.length)await diagnostics.phase('DIAGNOSTIC_RECOVERY','PASS',{recoveredRuns:recovery.recovered.map(x=>x.runId)});
   const uninstallFatal=installFatalDiagnosticHandlers({diagnostics,processRef,exitFn});
-  return{logger:sharedLogger,diagnostics,uninstallFatal};
+  return{logger:sharedLogger,diagnostics,uninstallFatal,recovery};
 }
 
 export function attachResultArtifacts(diagnostics,result,outputRoot){
