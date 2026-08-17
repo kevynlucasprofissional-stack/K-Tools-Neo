@@ -78,15 +78,15 @@ export class DiagnosticLiveness {
     catch(error){this.lastPersistFailure=sanitizeForPersistence({code:error?.code||'LIVENESS_WRITE_FAILED',message:error?.message||String(error)});return{ok:false,filePath,error:this.lastPersistFailure};}
   }
 
-  async heartbeat({expectedAtMs=null,persist=true}={}){
-    const now=Number(this.nowFn());if(expectedAtMs!=null)this.lastEventLoopDelayMs=Math.max(0,now-Number(expectedAtMs));this.lastHeartbeatAtMs=now;const snap=this.snapshot();if(persist)await this.persist();return snap;
+  heartbeat({expectedAtMs=null,persist=true}={}){
+    const now=Number(this.nowFn());if(expectedAtMs!=null)this.lastEventLoopDelayMs=Math.max(0,now-Number(expectedAtMs));this.lastHeartbeatAtMs=now;const snap=this.snapshot();if(persist)void this.persist();return snap;
   }
 
   start({filePath=this.filePath,intervalMs=this.heartbeatIntervalMs}={}){
     if(filePath!==undefined)this.filePath=filePath;if(this.timer)return this;
     const every=Math.max(1_000,Number(intervalMs)||this.heartbeatIntervalMs);this.nextExpectedAtMs=Number(this.nowFn())+every;
-    this.timer=setInterval(()=>{const expected=this.nextExpectedAtMs;this.nextExpectedAtMs+=every;void this.heartbeat({expectedAtMs:expected,persist:true});},every);this.timer.unref?.();return this;
+    this.timer=setInterval(()=>{const expected=this.nextExpectedAtMs;this.nextExpectedAtMs+=every;this.heartbeat({expectedAtMs:expected,persist:true});},every);this.timer.unref?.();return this;
   }
 
-  async stop({persist=true}={}){if(this.timer){clearInterval(this.timer);this.timer=null;}if(persist)await this.heartbeat({persist:true});return this.snapshot();}
+  async stop({persist=true}={}){if(this.timer){clearInterval(this.timer);this.timer=null;}const snap=this.heartbeat({persist:false});if(persist)await this.persist();return snap;}
 }
