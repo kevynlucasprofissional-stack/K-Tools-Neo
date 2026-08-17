@@ -20,7 +20,7 @@ export class RunDiagnostics {
     this.runId=runId||`${runStamp(new Date(Number(nowFn())))}-${crypto.randomUUID().slice(0,8)}`;
     this.fallbackOutputRoot=path.resolve(String(this.env?.XCURSOS_DIAGNOSTIC_FALLBACK_ROOT||path.join(os.tmpdir(),'XCursosRunner','diagnostic-fallback')));
     this.configureStorage(this.outputRoot);
-    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;this.finalEventRecorded=false;this.metaDirty=true;
+    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.effectiveConfig=null;this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;this.finalEventRecorded=false;this.metaDirty=true;
     this.storageFailures=[];this.primaryStorageAvailable=true;this.fallbackStorageUsed=false;this.memoryOnly=false;
     this.codeIdentity=codeIdentity?sanitizeForPersistence(codeIdentity):null;this.codeIdentityResolver=codeIdentityResolver;
   }
@@ -61,6 +61,10 @@ export class RunDiagnostics {
     this.metaDirty=true;return this.codeIdentity;
   }
 
+  setConfiguration(snapshot={}){
+    this.effectiveConfig=sanitizeForPersistence(snapshot||{});this.metaDirty=true;return this.effectiveConfig;
+  }
+
   async syncMetadata({allowFallback=false}={}){
     if(!this.started||!this.metaDirty||this.memoryOnly)return false;
     try{await atomicWriteJson(this.metaPath,this.baseMetadata());this.metaDirty=false;return true;}
@@ -86,7 +90,7 @@ export class RunDiagnostics {
   baseMetadata(){
     const p=this.processRef||process;
     return sanitizeForPersistence({
-      schemaVersion:1,runId:this.runId,command:this.command,argv:this.argv,startedAt:this.startedAt,codeIdentity:this.codeIdentity,
+      schemaVersion:1,runId:this.runId,command:this.command,argv:this.argv,startedAt:this.startedAt,codeIdentity:this.codeIdentity,effectiveConfig:this.effectiveConfig,
       process:{pid:p.pid??null,nodeVersion:p.version??process.version,platform:p.platform??process.platform,arch:p.arch??process.arch,cwd:typeof p.cwd==='function'?p.cwd():process.cwd(),hostname:os.hostname()},
       context:this.context,
     });
@@ -167,7 +171,7 @@ export class RunDiagnostics {
     const report=sanitizeForPersistence({
       schemaVersion:1,runId:this.runId,command:this.command,argv:this.argv,startedAt:this.startedAt,endedAt:new Date(endedAtMs).toISOString(),durationMs:Math.max(0,endedAtMs-this.startedAtMs),
       outcome:{status:String(status||'UNKNOWN'),ok:ok==null?null:Boolean(ok),exitCode:exitCode==null?null:Number(exitCode),reason:reason||null},
-      codeIdentity:this.codeIdentity,environment:this.baseMetadata().process,context:this.context,
+      codeIdentity:this.codeIdentity,effectiveConfig:this.effectiveConfig,environment:this.baseMetadata().process,context:this.context,
       summary:{audit,stats,resultStatus:safeResult?.status||null,failureSummary:safeResult?.failureSummary||null},
       phases:this.phases,anomalies:this.anomalies,errors:this.errors,eventSummary,artifacts,diagnosticHealth:this.diagnosticHealth(),
       files:{events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath},
@@ -179,7 +183,7 @@ export class RunDiagnostics {
   async readReport(){try{return JSON.parse(await fs.readFile(this.reportJsonPath,'utf8'));}catch{return this.finalReport||null;}}
 
   renderMarkdown(report){
-    const audit=report.summary?.audit||{};const health=report.diagnosticHealth||{};const identity=report.codeIdentity||{};const lines=[
+    const audit=report.summary?.audit||{};const health=report.diagnosticHealth||{};const identity=report.codeIdentity||{};const config=report.effectiveConfig||{};const lines=[
       '# XCursos Runner — Relatório de Diagnóstico','',
       `- **Run ID:** ${code(report.runId)}`,
       `- **Comando:** ${code(report.command)}`,
@@ -195,6 +199,9 @@ export class RunDiagnostics {
       `- Branch: ${code(identity.branch||'n/d')}`,
       `- CLI: ${code(identity.cliPath||'n/d')}`,
       `- Install root: ${code(identity.installRoot||'n/d')}`,
+      '', '## Configuração efetiva','',
+      `- Runtime: ${code(JSON.stringify(config.runtime||{}))}`,
+      `- Limites: ${code(JSON.stringify(config.limits||{}))}`,
       '', '## Resumo da execução','',
     ];
     if(audit&&Object.keys(audit).length){lines.push(`- Processados: ${audit.processed??'n/d'} / ${audit.total??'n/d'}`,`- Downloads: ${audit.downloaded??'n/d'} | Já presentes: ${audit.alreadyPresent??'n/d'} | Sem vídeo: ${audit.noVideo??'n/d'}`,`- Posições pendentes: ${Array.isArray(audit.missingPositions)?audit.missingPositions.join(', ')||'nenhuma':'n/d'}`,`- Arquivos inválidos: ${Array.isArray(audit.invalidFilePositions)?audit.invalidFilePositions.join(', ')||'nenhum':'n/d'}`);}else lines.push('- Auditoria final não disponível para esta execução.');
