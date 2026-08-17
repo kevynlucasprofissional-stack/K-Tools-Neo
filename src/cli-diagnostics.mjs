@@ -2,6 +2,7 @@ import path from 'node:path';
 import { RunnerLogger } from './logger.mjs';
 import { IntegratedRunDiagnostics, installFatalDiagnosticHandlers } from './integrated-diagnostics.mjs';
 import { recoverInterruptedDiagnosticRuns } from './diagnostic-recovery.mjs';
+import { enforceDiagnosticRetention } from './diagnostic-retention.mjs';
 import { DiagnosticLiveness } from './diagnostic-liveness.mjs';
 import { sanitizeForPersistence, sanitizeSegment } from './utils.mjs';
 
@@ -30,10 +31,17 @@ function bootstrapRoot(env=process.env,processRef=process){
   if(env?.XDG_STATE_HOME)return path.join(env.XDG_STATE_HOME,'xcursos-runner');
   return path.join(typeof processRef?.cwd==='function'?processRef.cwd():process.cwd(),'.xcursos-runner-bootstrap');
 }
+function transcriptRoot(env=process.env){
+  if(env?.LOCALAPPDATA)return path.join(env.LOCALAPPDATA,'XCursosRunner','logs');
+  if(env?.TEMP)return path.join(env.TEMP,'XCursosRunner','logs');
+  return null;
+}
 
-export async function startCliDiagnostics({outputRoot,command,argv=[],processRef=process,env=process.env,sink=null,diagnosticsFactory=null,logger=null,exitFn=null,recoveryFn=recoverInterruptedDiagnosticRuns,livenessFactory=null}={}){
+export async function startCliDiagnostics({outputRoot,command,argv=[],processRef=process,env=process.env,sink=null,diagnosticsFactory=null,logger=null,exitFn=null,recoveryFn=recoverInterruptedDiagnosticRuns,retentionFn=enforceDiagnosticRetention,livenessFactory=null}={}){
   let recovery=null;
   try{recovery=await recoveryFn({outputRoot,hostname:env?.COMPUTERNAME||env?.HOSTNAME||undefined});}catch{}
+  let retention=null;
+  try{retention=await retentionFn({outputRoot,transcriptRoot:transcriptRoot(env),protectedRunIds:(recovery?.active||[]).map(x=>x.runId)});}catch{}
   const sharedLogger=logger||new RunnerLogger({sink});
   const diagnostics=diagnosticsFactory?await diagnosticsFactory({outputRoot,command,argv,processRef,env,logger:sharedLogger}):new IntegratedRunDiagnostics({outputRoot,command,argv,processRef,env});
   const liveness=livenessFactory?await livenessFactory({diagnostics,processRef}):new DiagnosticLiveness({runId:diagnostics.runId,pid:processRef?.pid??process.pid});
@@ -41,8 +49,11 @@ export async function startCliDiagnostics({outputRoot,command,argv=[],processRef
   await diagnostics.start({logger:sharedLogger,context:{command}});
   if(liveness&&diagnostics.runDir){const livenessPath=path.join(diagnostics.runDir,'liveness.json');liveness.configure?.({filePath:livenessPath,runId:diagnostics.runId,pid:processRef?.pid??process.pid});diagnostics.addArtifact?.('liveness',livenessPath,{description:'Heartbeat/liveness da execução'});liveness.start?.({filePath:livenessPath});await liveness.persist?.();}
   if(recovery?.recovered?.length)await diagnostics.phase('DIAGNOSTIC_RECOVERY','PASS',{recoveredRuns:recovery.recovered.map(x=>x.runId)});
+  if(retention&&(retention.deletedRuns?.length||retention.deletedTranscripts?.length||retention.errors?.length)){
+    await diagnostics.phase('DIAGNOSTIC_RETENTION',retention.errors?.length?'WARN':'PASS',{deletedRuns:retention.deletedRuns||[],deletedTranscripts:retention.deletedTranscripts||[],errors:retention.errors||[]});
+  }
   const uninstallFatal=installFatalDiagnosticHandlers({diagnostics,processRef,exitFn});
-  return{logger:sharedLogger,diagnostics,uninstallFatal,recovery,liveness};
+  return{logger:sharedLogger,diagnostics,uninstallFatal,recovery,retention,liveness};
 }
 
 export function attachResultArtifacts(diagnostics,result,outputRoot){
