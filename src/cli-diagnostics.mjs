@@ -1,7 +1,22 @@
 import path from 'node:path';
 import { RunnerLogger } from './logger.mjs';
 import { IntegratedRunDiagnostics, installFatalDiagnosticHandlers } from './integrated-diagnostics.mjs';
-import { sanitizeSegment } from './utils.mjs';
+import { sanitizeForPersistence, sanitizeSegment } from './utils.mjs';
+
+const SAFE_RUNTIME_KEYS=['resume','cdpEndpoint','cdpPort','outputRoot','profileDir','chromePath'];
+const SAFE_LIMIT_KEYS=[
+  'browserLaunchTimeoutMs','navigationTimeoutMs','inspectTimeoutMs','inspectionCacheTtlMs','transitionTimeoutMs','transitionPollMs',
+  'actionabilityTrialTimeoutMs','nextPostActionObservationMs','nextRecoveryObservationMs','mediaReadyTimeoutMs','mediaReadyPollMs',
+  'nativeDownloadEventTimeoutMs','navigationRetries','mediaRefreshRetries','downloadRetries','retryBaseDelayMs','retryMaxDelayMs','retryJitterRatio',
+  'throttleMinDelayMs','throttleMaxDelayMs','downloadTimeoutMs','ffprobeTimeoutMs','minVideoBytes','minDurationSeconds','maxFullPath',
+  'processTailBytes','nativeBrowserLockWaitMs','nativeBrowserLockPollMs','nativeBrowserLockStaleMs','repositionMaxWalkSteps',
+];
+
+function pick(source,keys){const out={};for(const key of keys)if(source&&source[key]!==undefined)out[key]=source[key];return out;}
+
+export function buildEffectiveDiagnosticConfig({runtime={},limits={}}={}){
+  return sanitizeForPersistence({schemaVersion:1,runtime:pick(runtime,SAFE_RUNTIME_KEYS),limits:pick(limits,SAFE_LIMIT_KEYS)});
+}
 
 function courseRootFromResult(result,outputRoot){
   if(result?.courseRoot)return path.resolve(result.courseRoot);
