@@ -13,13 +13,13 @@ import { runDoctor } from './doctor.mjs';
 import { safeError, sanitizeForPersistence } from './utils.mjs';
 import { StateStore, discoverRecentState } from './state.mjs';
 import { MediaDownloader } from './downloader.mjs';
-import { startCliDiagnostics, finalizeCliDiagnostics } from './cli-diagnostics.mjs';
+import { startCliDiagnostics, finalizeCliDiagnostics, writeBootstrapFailureReport } from './cli-diagnostics.mjs';
 import { createObservedProcessRunner } from './process-observer.mjs';
 
 process.stdout.setDefaultEncoding?.('utf8');
 process.stderr.setDefaultEncoding?.('utf8');
 
-const HELP=`XCursos Runner V4.2.4 — Node + Playwright CDP + Chrome humano + CLI\n\nComandos:\n  xcursos browser [--url URL]        Abre/reusa o Chrome dedicado com CDP local\n  xcursos login [--url URL]          Abre Chrome, permite Cloudflare/login humano e salva a aula atual\n  xcursos probe [--url URL]          Conecta ao Chrome aberto e inspeciona a aula sem baixar\n  xcursos current [--url URL]        Baixa/valida somente a aula atual\n  xcursos range --start N --end M    Processa intervalo determinístico\n  xcursos download [--url URL]       Baixa o curso inteiro (primeira execução deve começar na aula 1)\n  xcursos status                     Mostra configuração e último estado conhecido\n  xcursos doctor                     Verifica Node, playwright-core, Chrome, CDP, yt-dlp e ffprobe\n  xcursos version                    Mostra versão e caminhos reais da instalação\n  xcursos diagnose-reposition --target N --json  Planeja reposicionamento sem navegar\n  xcursos config --output DIR        Altera diretório de saída\n  xcursos config --chrome PATH       Define chrome.exe manualmente\n  xcursos config --port 9222         Altera porta CDP local\n\nOpções comuns:\n  --url URL            URL exata de uma aula XCursos\n  --output DIR         Sobrescreve diretório de saída nesta execução\n  --chrome PATH        Sobrescreve caminho do Google Chrome nesta execução\n  --port N             Sobrescreve porta CDP local nesta execução\n  --no-resume          Inicia novo manifesto para o curso\n  --json               Saída somente JSON\n`;
+const HELP=`XCursos Runner V4.2.6 — Node + Playwright CDP + Chrome humano + CLI\n\nComandos:\n  xcursos browser [--url URL]        Abre/reusa o Chrome dedicado com CDP local\n  xcursos login [--url URL]          Abre Chrome, permite Cloudflare/login humano e salva a aula atual\n  xcursos probe [--url URL]          Conecta ao Chrome aberto e inspeciona a aula sem baixar\n  xcursos current [--url URL]        Baixa/valida somente a aula atual\n  xcursos range --start N --end M    Processa intervalo determinístico\n  xcursos download [--url URL]       Baixa o curso inteiro (primeira execução deve começar na aula 1)\n  xcursos status                     Mostra configuração e último estado conhecido\n  xcursos doctor                     Verifica Node, playwright-core, Chrome, CDP, yt-dlp e ffprobe\n  xcursos version                    Mostra versão e caminhos reais da instalação\n  xcursos diagnose-reposition --target N --json  Planeja reposicionamento sem navegar\n  xcursos config --output DIR        Altera diretório de saída\n  xcursos config --chrome PATH       Define chrome.exe manualmente\n  xcursos config --port 9222         Altera porta CDP local\n\nOpções comuns:\n  --url URL            URL exata de uma aula XCursos\n  --output DIR         Sobrescreve diretório de saída nesta execução\n  --chrome PATH        Sobrescreve caminho do Google Chrome nesta execução\n  --port N             Sobrescreve porta CDP local nesta execução\n  --no-resume          Inicia novo manifesto para o curso\n  --json               Saída somente JSON\n`;
 
 export function parseCli(argv=process.argv.slice(2)){
   const command=argv[0]||'help';const rest=argv.slice(1);
@@ -133,4 +133,11 @@ export async function main(argv=process.argv.slice(2),deps={}){
   }finally{lifecycle.uninstallFatal();}
 }
 
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){main().then(code=>{process.exitCode=code;});}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+  main().then(code=>{process.exitCode=code;}).catch(async error=>{
+    const diagnostics=await writeBootstrapFailureReport(error,{argv:process.argv.slice(2),processRef:process,env:process.env});
+    const failure={ok:false,status:'BOOTSTRAP_ERROR',error:safeError(error),diagnostics};
+    if(process.argv.includes('--json'))printJson(failure);else printHuman(failure);
+    process.exitCode=2;
+  });
+}
