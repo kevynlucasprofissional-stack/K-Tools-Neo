@@ -20,17 +20,18 @@ function diagnosticFailure({timestamp,target,filePath,error}){
 }
 
 export class RunnerLogger {
-  constructor({ logFile = null, eventFile = null, sink = null, runId = null, context = null, nowFn = Date.now, diagnosticFailureSink = null, maxDiagnosticFailures = 20 } = {}) {
+  constructor({ logFile = null, eventFile = null, sink = null, runId = null, context = null, nowFn = Date.now, diagnosticFailureSink = null, eventObserver = null, maxDiagnosticFailures = 20 } = {}) {
     this.logFile=logFile;this.eventFile=eventFile;this.sink=sink;this.runId=runId||null;this.context=sanitizeForPersistence(context||{});this.nowFn=nowFn;this.sequence=0;
-    this.diagnosticFailureSink=diagnosticFailureSink;this.maxDiagnosticFailures=Math.max(1,Number(maxDiagnosticFailures)||20);this.diagnosticFailures=[];
+    this.diagnosticFailureSink=diagnosticFailureSink;this.eventObserver=eventObserver;this.maxDiagnosticFailures=Math.max(1,Number(maxDiagnosticFailures)||20);this.diagnosticFailures=[];
   }
 
-  configure({logFile,eventFile,runId,context,diagnosticFailureSink}={}){
+  configure({logFile,eventFile,runId,context,diagnosticFailureSink,eventObserver}={}){
     if(logFile!==undefined)this.logFile=logFile;
     if(eventFile!==undefined)this.eventFile=eventFile;
     if(runId!==undefined)this.runId=runId||null;
     if(context!==undefined)this.context=sanitizeForPersistence(context||{});
     if(diagnosticFailureSink!==undefined)this.diagnosticFailureSink=diagnosticFailureSink;
+    if(eventObserver!==undefined)this.eventObserver=eventObserver;
     return this;
   }
 
@@ -70,12 +71,14 @@ export class RunnerLogger {
     const line = `[${timestamp}][${scope}] ${safeMessage}${suffix}`;
     if (this.sink) {try{this.sink(line);}catch(error){this.recordDiagnosticFailure('SINK',error,null);}}
     if (this.logFile) await this.appendDiagnosticFile('HUMAN_LOG',this.logFile,`${line}\n`);
-    if(this.eventFile){
+    const shouldBuildEvent=Boolean(this.eventFile||this.eventObserver);
+    if(shouldBuildEvent){
       const event=sanitizeForPersistence({
         timestamp,runId:this.runId,sequence:++this.sequence,level,scope:String(scope||'APP'),event:meta?.event||'LOG',message:safeMessage,
         context:this.context&&Object.keys(this.context).length?this.context:null,data:safeData,
       });
-      await this.appendDiagnosticFile('EVENT_LOG',this.eventFile,`${JSON.stringify(event)}\n`);
+      if(this.eventFile)await this.appendDiagnosticFile('EVENT_LOG',this.eventFile,`${JSON.stringify(event)}\n`);
+      if(this.eventObserver){try{this.eventObserver(event);}catch(error){this.recordDiagnosticFailure('EVENT_OBSERVER',error,null);}}
     }
     return line;
   }
