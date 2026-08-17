@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import { atomicWriteJson, redactSensitiveText, sanitizeForPersistence, safeError } from './utils.mjs';
+import { atomicWriteJson, redactSensitiveText, sanitizeForPersistence, sanitizeForSharing, safeError } from './utils.mjs';
 import { resolveCodeIdentity } from './version-info.mjs';
 
 function iso(nowFn){return new Date(Number(nowFn())).toISOString();}
@@ -15,6 +15,7 @@ function countBy(items,keyFn){const out={};for(const item of items){const key=St
 function safeArg(arg){return redactSensitiveText(String(arg));}
 const CRITICAL_EVENT=/(?:RUN_STARTED|RUN_FINALIZED|PHASE|ANOMALY|ERROR|FATAL|RETRY|SUBPROCESS|CHROME_|INSPECT|MEDIA|DOWNLOAD|VERIFY|COMMIT|NAV|POSITION|AUDIT|CHECKPOINT)/i;
 function eventPriority(event){const level=String(event?.level||'INFO').toUpperCase();if(level==='FATAL')return 100;if(level==='ERROR')return 90;if(level==='WARN')return 80;if(CRITICAL_EVENT.test(String(event?.event||'')))return 70;return 0;}
+
 export function buildBoundedTimeline(events=[],{maxEvents=500}={}){
   const safeEvents=Array.isArray(events)?events.map(x=>sanitizeForPersistence(x)):[];const total=safeEvents.length;const max=Math.max(2,Math.floor(Number(maxEvents)||500));
   if(total<=max)return{schemaVersion:1,totalEvents:total,includedCount:total,truncated:false,maxEvents:max,selection:'FULL',events:safeEvents};
@@ -35,8 +36,9 @@ export function buildBoundedTimeline(events=[],{maxEvents=500}={}){
 }
 
 export class RunDiagnostics {
-  constructor({outputRoot,command='unknown',argv=[],runId=null,nowFn=Date.now,processRef=process,env=process.env,codeIdentity=null,codeIdentityResolver=resolveCodeIdentity}={}){
+  constructor({outputRoot,command='unknown',argv=[],runId=null,nowFn=Date.now,processRef=process,env=process.env,codeIdentity=null,codeIdentityResolver=resolveCodeIdentity,shareHomeDir=null}={}){
     this.primaryOutputRoot=path.resolve(outputRoot||process.cwd());this.outputRoot=this.primaryOutputRoot;this.command=String(command||'unknown');this.argv=(Array.isArray(argv)?argv:[]).map(safeArg);this.nowFn=nowFn;this.processRef=processRef;this.env=env||{};
+    this.shareHomeDir=shareHomeDir||this.env?.USERPROFILE||this.env?.HOME||os.homedir();
     this.runId=runId||`${runStamp(new Date(Number(nowFn())))}-${crypto.randomUUID().slice(0,8)}`;
     this.fallbackOutputRoot=path.resolve(String(this.env?.XCURSOS_DIAGNOSTIC_FALLBACK_ROOT||path.join(os.tmpdir(),'XCursosRunner','diagnostic-fallback')));
     this.configureStorage(this.outputRoot);
@@ -45,6 +47,7 @@ export class RunDiagnostics {
     this.codeIdentity=codeIdentity?sanitizeForPersistence(codeIdentity):null;this.codeIdentityResolver=codeIdentityResolver;
   }
 
+  shareable(value){return sanitizeForSharing(value,{homeDir:this.shareHomeDir});}
   configureStorage(outputRoot){this.outputRoot=path.resolve(outputRoot);this.rootDir=path.join(this.outputRoot,'_xcursos-diagnostics');this.runDir=path.join(this.rootDir,this.runId);this.eventPath=path.join(this.runDir,'events.jsonl');this.reportJsonPath=path.join(this.runDir,'diagnostic-report.json');this.reportMarkdownPath=path.join(this.runDir,'diagnostic-report.md');this.metaPath=path.join(this.runDir,'run-meta.json');return this;}
   recordStorageFailure(stage,error,filePath=null){const entry=sanitizeForPersistence({timestamp:iso(this.nowFn),stage:String(stage||'DIAGNOSTIC_IO'),path:filePath?path.resolve(String(filePath)):null,code:error?.code||'DIAGNOSTIC_IO_ERROR',message:String(error?.message||error||'Diagnostic I/O failure')});this.storageFailures.push(entry);if(this.storageFailures.length>20)this.storageFailures.shift();return entry;}
   async activateFallback(stage,error,filePath=null){this.recordStorageFailure(stage,error,filePath);if(!this.fallbackStorageUsed)this.primaryStorageAvailable=false;if(this.fallbackStorageUsed){this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}this.fallbackStorageUsed=true;this.configureStorage(this.fallbackOutputRoot);try{await fs.mkdir(this.runDir,{recursive:true});this.logger?.configure?.({eventFile:this.eventPath,runId:this.runId,context:{command:this.command,...this.context}});this.metaDirty=true;return true;}catch(fallbackError){this.recordStorageFailure('FALLBACK_STORAGE',fallbackError,this.runDir);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}}
@@ -62,14 +65,25 @@ export class RunDiagnostics {
   addArtifact(name,filePath,{type='file',description=null}={}){if(!filePath)return null;const entry={name:String(name),path:path.resolve(String(filePath)),type,description};this.artifacts.set(entry.name,entry);return entry;}
   attachCourseArtifacts({courseName=null,metaDir=null,statePath=null,manifestPath=null,errorsPath=null,logPath=null,schedulerPath=null,navigationPath=null,debugRoot=null}={}){if(courseName)this.setContext({courseName});if(metaDir)this.addArtifact('courseMetadataDir',metaDir,{type:'directory',description:'Diretório persistente de metadados do curso'});for(const [name,value,description] of [['state',statePath,'Estado atual/resume'],['manifest',manifestPath,'Resultado terminal por posição'],['errors',errorsPath,'Erros persistidos'],['runnerLog',logPath,'Log humano legado'],['schedulerCheckpoint',schedulerPath,'Checkpoint do scheduler'],['navigationIndex',navigationPath,'Índice de navegação'],['debugSnapshots',debugRoot,'Snapshots HTML/PNG/network de falhas estruturais']])if(value)this.addArtifact(name,value,{type:name==='debugSnapshots'?'directory':'file',description});return this;}
   async artifactIndex(){const entries=[...this.artifacts.values()];const transcript=this.env?.XCURSOS_POWERSHELL_TRANSCRIPT;if(transcript&&!this.artifacts.has('powershellTranscript'))entries.push({name:'powershellTranscript',path:path.resolve(String(transcript)),type:'file',description:'Transcrição do wrapper PowerShell'});const out=[];for(const entry of entries){out.push(sanitizeForPersistence({...entry,...await exists(entry.path)}));}return out;}
-  refreshReportStorage(report){report.files={events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath};report.diagnosticHealth=this.diagnosticHealth();return report;}
-  async persistReport(report,markdown){if(this.memoryOnly)return false;const write=async()=>{this.refreshReportStorage(report);await atomicWriteJson(this.reportJsonPath,report);await fs.writeFile(this.reportMarkdownPath,markdown,'utf8');};try{await write();return true;}catch(error){const switched=await this.activateFallback('REPORT_WRITE',error,this.reportJsonPath);if(!switched)return false;await this.syncMetadata();try{this.refreshReportStorage(report);await atomicWriteJson(this.reportJsonPath,report);await fs.writeFile(this.reportMarkdownPath,markdown,'utf8');return true;}catch(fallbackError){this.recordStorageFailure('REPORT_FALLBACK_WRITE',fallbackError,this.reportJsonPath);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}}}
+  refreshReportStorage(report){report.files=this.shareable({events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath});report.diagnosticHealth=this.shareable(this.diagnosticHealth());return report;}
+  async persistReport(report,markdown){
+    const shareableReport=this.shareable(report);this.refreshReportStorage(shareableReport);const shareableMarkdown=this.shareable(markdown);
+    if(this.memoryOnly){this.finalReport=shareableReport;return shareableReport;}
+    const write=async()=>{await atomicWriteJson(this.reportJsonPath,shareableReport);await fs.writeFile(this.reportMarkdownPath,shareableMarkdown,'utf8');};
+    try{await write();this.finalReport=shareableReport;return shareableReport;}
+    catch(error){
+      const switched=await this.activateFallback('REPORT_WRITE',error,this.reportJsonPath);if(!switched){this.finalReport=shareableReport;return shareableReport;}await this.syncMetadata();
+      const fallbackReport=this.shareable({...shareableReport,files:{events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath},diagnosticHealth:this.diagnosticHealth()});const fallbackMarkdown=this.shareable(this.renderMarkdown(fallbackReport));
+      try{await atomicWriteJson(this.reportJsonPath,fallbackReport);await fs.writeFile(this.reportMarkdownPath,fallbackMarkdown,'utf8');this.finalReport=fallbackReport;return fallbackReport;}
+      catch(fallbackError){this.recordStorageFailure('REPORT_FALLBACK_WRITE',fallbackError,this.reportJsonPath);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});this.finalReport=fallbackReport;return fallbackReport;}
+    }
+  }
   async finalize({status='UNKNOWN',ok=null,result=null,error=null,exitCode=null,reason=null}={}){
     if(this.finalized)return await this.readReport()||this.finalReport||null;if(!this.started)await this.start({logger:this.logger});if(error)await this.captureError(error,{scope:'FINALIZE',fatal:true});await this.syncMetadata();const endedAtMs=Number(this.nowFn());
     if(!this.finalEventRecorded){this.finalEventRecorded=true;await this.logger?.log?.('DIAGNOSTIC','Run diagnostics finalized',{status:String(status||'UNKNOWN'),report:this.reportMarkdownPath},{event:'RUN_FINALIZED'});}
     const events=this.memoryOnly?[]:await readJsonlSafe(this.eventPath);const artifacts=await this.artifactIndex();const eventSummary={count:events.length,byLevel:countBy(events,x=>x.level),byScope:countBy(events,x=>x.scope),byEvent:countBy(events,x=>x.event)};const timeline=buildBoundedTimeline(events);const safeResult=sanitizeForPersistence(result);const audit=safeResult?.audit||safeResult?.result?.audit||null;const stats=safeResult?.stats||safeResult?.result?.stats||null;
     const report=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,argv:this.argv,startedAt:this.startedAt,endedAt:new Date(endedAtMs).toISOString(),durationMs:Math.max(0,endedAtMs-this.startedAtMs),outcome:{status:String(status||'UNKNOWN'),ok:ok==null?null:Boolean(ok),exitCode:exitCode==null?null:Number(exitCode),reason:reason||null},codeIdentity:this.codeIdentity,effectiveConfig:this.effectiveConfig,environment:this.baseMetadata().process,context:this.context,summary:{audit,stats,resultStatus:safeResult?.status||null,failureSummary:safeResult?.failureSummary||null},phases:this.phases,anomalies:this.anomalies,errors:this.errors,eventSummary,timeline,artifacts,diagnosticHealth:this.diagnosticHealth(),files:{events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath}});
-    this.finalReport=report;await this.persistReport(report,this.renderMarkdown(report));this.finalized=true;this.refreshReportStorage(report);return report;
+    const persisted=await this.persistReport(report,this.renderMarkdown(report));this.finalized=true;return persisted;
   }
   async readReport(){try{return JSON.parse(await fs.readFile(this.reportJsonPath,'utf8'));}catch{return this.finalReport||null;}}
   renderMarkdown(report){
@@ -79,6 +93,6 @@ export class RunDiagnostics {
     if(report.anomalies?.length){lines.push('','### Anomalias','', '| Hora | Severidade | Código | Descrição |','|---|---|---|---|',...report.anomalies.map(x=>`| ${md(x.timestamp)} | ${md(x.severity)} | ${md(x.code)} | ${md(x.message||'')} |`));}
     if(report.errors?.length){lines.push('','### Erros','', '| Hora | Escopo | Fatal | Código | Mensagem |','|---|---|---|---|---|',...report.errors.map(x=>`| ${md(x.timestamp)} | ${md(x.scope)} | ${x.fatal?'sim':'não'} | ${md(x.error?.code||'')} | ${md(x.error?.message||'')} |`));}
     if(health.failures?.length){lines.push('','### Falhas da própria observabilidade','', '| Hora | Estágio/Alvo | Código | Mensagem |','|---|---|---|---|',...health.failures.map(x=>`| ${md(x.timestamp)} | ${md(x.stage||x.target||'DIAGNOSTIC')} | ${md(x.code||'')} | ${md(x.message||'')} |`));}
-    lines.push('','## Artefatos para investigação','', '| Artefato | Existe | Caminho | Descrição |','|---|---|---|---|',...report.artifacts.map(x=>`| ${md(x.name)} | ${x.exists?'sim':'não'} | ${code(x.path)} | ${md(x.description||'')} |`));lines.push('','## Como investigar','',`O arquivo principal para compartilhar é ${code(this.reportJsonPath)}. Ele já contém uma timeline bounded com evidências críticas; ${code(this.eventPath)} permanece disponível para investigação integral quando necessário. O relatório e os eventos usam a sanitização do XCursos Runner para remover tokens, cookies e URLs assinadas.`,'');return `${lines.join('\n')}\n`;
+    lines.push('','## Artefatos para investigação','', '| Artefato | Existe | Caminho | Descrição |','|---|---|---|---|',...report.artifacts.map(x=>`| ${md(x.name)} | ${x.exists?'sim':'não'} | ${code(x.path)} | ${md(x.description||'')} |`));lines.push('','## Como investigar','',`O arquivo principal para compartilhar é ${code(report.files?.reportJson||'$HOME/_xcursos-diagnostics/<runId>/diagnostic-report.json')}. Ele já contém uma timeline bounded com evidências críticas; ${code(report.files?.events||'$HOME/_xcursos-diagnostics/<runId>/events.jsonl')} permanece disponível para investigação integral quando necessário. O relatório compartilhável anonimiza o diretório pessoal como $HOME e remove tokens, cookies e URLs assinadas.`,'');return `${lines.join('\n')}\n`;
   }
 }
