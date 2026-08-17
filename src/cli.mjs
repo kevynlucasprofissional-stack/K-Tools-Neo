@@ -13,7 +13,8 @@ import { runDoctor } from './doctor.mjs';
 import { safeError, sanitizeForPersistence } from './utils.mjs';
 import { StateStore, discoverRecentState } from './state.mjs';
 import { MediaDownloader } from './downloader.mjs';
-import { startCliDiagnostics, finalizeCliDiagnostics, writeBootstrapFailureReport } from './cli-diagnostics.mjs';
+import { DEFAULT_LIMITS } from './constants.mjs';
+import { startCliDiagnostics, finalizeCliDiagnostics, writeBootstrapFailureReport, buildEffectiveDiagnosticConfig } from './cli-diagnostics.mjs';
 import { createObservedProcessRunner } from './process-observer.mjs';
 
 process.stdout.setDefaultEncoding?.('utf8');
@@ -77,20 +78,22 @@ export async function login({configStore,runtime,url=null,playwrightLoader=null,
 
 async function status(config){const recent=await discoverRecentState(config.outputRoot);return{ok:true,status:'STATUS',config:{profileDir:config.profileDir,outputRoot:config.outputRoot,lastLessonUrl:config.lastLessonUrl,chromePath:config.chromePath,cdpEndpoint:config.cdpEndpoint},recentState:recent?.state||null};}
 
-async function auditRecent(config,{logger=null,processRunner=null}={}){
+async function auditRecent(config,{logger=null,processRunner=null,limits=DEFAULT_LIMITS}={}){
   const recent=await discoverRecentState(config.outputRoot);
   if(!recent?.state?.courseName||!recent.state.totalPositions)throw Object.assign(new Error('Nenhum estado de curso encontrado para auditar.'),{code:'STATE_NOT_FOUND'});
   const store=new StateStore({outputRoot:config.outputRoot,courseName:recent.state.courseName,totalPositions:Number(recent.state.totalPositions),logger});
-  await store.initialize({resume:true,workPageUrl:recent.state.workPageUrl});const dl=new MediaDownloader({logger,...(processRunner?{processRunner}:{})});await dl.preflight();const audit=await store.audit({validator:f=>dl.validateVideo(f)});return{ok:audit.healthyComplete,status:'AUDIT',course:recent.state.courseName,courseRoot:store.courseDir,audit};
+  await store.initialize({resume:true,workPageUrl:recent.state.workPageUrl});const dl=new MediaDownloader({logger,limits,...(processRunner?{processRunner}:{})});await dl.preflight();const audit=await store.audit({validator:f=>dl.validateVideo(f)});return{ok:audit.healthyComplete,status:'AUDIT',course:recent.state.courseName,courseRoot:store.courseDir,audit};
 }
 
 export async function main(argv=process.argv.slice(2),deps={}){
   const parsed=parseCli(argv);if(parsed.command==='help'||parsed.options.help){console.log(HELP);return 0;}
   const configStore=deps.configStore||new AppConfigStore();let config=await configStore.load();
+  const effectiveLimits={...DEFAULT_LIMITS,...(deps.limits||{})};
   if(parsed.command==='config'){
     const patch={};if(parsed.options.output)patch.outputRoot=parsed.options.output;if(parsed.options.chrome)patch.chromePath=parsed.options.chrome;if(parsed.options.port!=null)patch.cdpPort=Number(parsed.options.port);
     if(Object.keys(patch).length)config=await configStore.save(patch);
     const lifecycle=await startCliDiagnostics({outputRoot:config.outputRoot,command:'config',argv,processRef:deps.processRef||process,env:deps.env||process.env,diagnosticsFactory:deps.diagnosticsFactory,logger:deps.logger||null,exitFn:deps.exitFn});
+    lifecycle.diagnostics.setConfiguration?.(buildEffectiveDiagnosticConfig({runtime:{profileDir:config.profileDir,chromePath:config.chromePath,outputRoot:config.outputRoot,cdpPort:config.cdpPort,cdpEndpoint:config.cdpEndpoint,resume:true},limits:effectiveLimits}));
     try{
       const result={ok:true,status:'CONFIG',config,diagnostics:lifecycle.diagnostics.reference()};await lifecycle.diagnostics.phase('CONFIG','PASS',{updated:Object.keys(patch)});await finalizeCliDiagnostics({diagnostics:lifecycle.diagnostics,result,exitCode:0,outputRoot:config.outputRoot});parsed.options.json?printJson(result):printHuman(result);return 0;
     }finally{lifecycle.uninstallFatal();}
@@ -99,8 +102,9 @@ export async function main(argv=process.argv.slice(2),deps={}){
   const lifecycle=await startCliDiagnostics({outputRoot:runtime.outputRoot,command:parsed.command,argv,processRef:deps.processRef||process,env:deps.env||process.env,diagnosticsFactory:deps.diagnosticsFactory,logger:deps.logger||null,exitFn:deps.exitFn});
   const logger=lifecycle.logger;const diagnostics=lifecycle.diagnostics;const observedProcessRunner=createObservedProcessRunner({logger,...(deps.processRunner?{baseRunner:deps.processRunner}:{})});
   diagnostics.setContext({resume:runtime.resume,cdpEndpoint:runtime.cdpEndpoint,outputRoot:runtime.outputRoot});
-  const runtimeDownloader=deps.downloader||new MediaDownloader({logger,processRunner:observedProcessRunner});
-  const runnerRuntime={profileDir:runtime.profileDir,cdpEndpoint:runtime.cdpEndpoint,startUrl:runtime.startUrl,outputRoot:runtime.outputRoot,resume:runtime.resume,browser:deps.browser||null,downloader:runtimeDownloader,logger,enableSignalHandlers:true,progressSink:deps.progressSink||((line)=>process.stderr.write(`${line}\n`))};
+  diagnostics.setConfiguration?.(buildEffectiveDiagnosticConfig({runtime,limits:effectiveLimits}));
+  const runtimeDownloader=deps.downloader||new MediaDownloader({logger,processRunner:observedProcessRunner,limits:effectiveLimits});
+  const runnerRuntime={profileDir:runtime.profileDir,cdpEndpoint:runtime.cdpEndpoint,startUrl:runtime.startUrl,outputRoot:runtime.outputRoot,resume:runtime.resume,browser:deps.browser||null,downloader:runtimeDownloader,limits:effectiveLimits,logger,enableSignalHandlers:true,progressSink:deps.progressSink||((line)=>process.stderr.write(`${line}\n`))};
   let result;
   try{
     await diagnostics.phase('COMMAND','START',{command:parsed.command});
@@ -115,7 +119,7 @@ export async function main(argv=process.argv.slice(2),deps={}){
       }
       case 'download':result=await downloadCourse({...runnerRuntime,playwrightLoader:deps.playwrightLoader});break;
       case 'status':result=await status({...config,outputRoot:runtime.outputRoot,cdpEndpoint:runtime.cdpEndpoint});break;
-      case 'audit':result=await auditRecent({...config,outputRoot:runtime.outputRoot},{logger,processRunner:observedProcessRunner});break;
+      case 'audit':result=await auditRecent({...config,outputRoot:runtime.outputRoot},{logger,processRunner:observedProcessRunner,limits:effectiveLimits});break;
       case 'version':result={ok:true,status:'VERSION',...(await getRunnerInfo())};break;
       case 'diagnose-reposition':{const target=Number(parsed.options.target);if(!Number.isInteger(target))throw Object.assign(new Error('`diagnose-reposition` exige --target N.'),{code:'TARGET_REQUIRED'});result=await diagnoseReposition({...runnerRuntime,target,playwrightLoader:deps.playwrightLoader});break;}
       case 'doctor':result=await runDoctor({config:{...config,outputRoot:runtime.outputRoot,chromePath:runtime.chromePath,cdpEndpoint:runtime.cdpEndpoint},playwrightLoader:deps.playwrightLoader,fetchImpl:deps.fetchImpl,processRunner:observedProcessRunner});break;
