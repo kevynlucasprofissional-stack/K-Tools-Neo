@@ -75,7 +75,7 @@ export class HumanChromeLauncher {
   async status(){return await getCdpStatus(this.cdpEndpoint,{fetchImpl:this.fetchImpl});}
   async ensureRunning({url=XCURSOS_HOME_URL,bringUp=true}={}){
     const existing=await this.status();
-    if(existing.ok){await this.logger?.log('BROWSER','Chrome CDP already available',{endpoint:this.cdpEndpoint});return{...existing,alreadyRunning:true,chromePath:this.chromePath||null,profileDir:this.profileDir};}
+    if(existing.ok){await this.logger?.log('BROWSER','Chrome CDP already available',{endpoint:this.cdpEndpoint},{event:'CHROME_REUSED'});return{...existing,alreadyRunning:true,chromePath:this.chromePath||null,profileDir:this.profileDir};}
     const chromePath=await findChromeExecutable({explicitPath:this.chromePath});
     await fs.mkdir(this.profileDir,{recursive:true});
     const port=Number(new URL(this.cdpEndpoint).port||9222);
@@ -90,13 +90,20 @@ export class HumanChromeLauncher {
       '--disable-backgrounding-occluded-windows',
     ];
     if(bringUp&&url)args.push(url);
+    await this.logger?.log('BROWSER','Launching detached human Chrome',{chromePath,endpoint:this.cdpEndpoint,profileDir:this.profileDir,args},{event:'CHROME_SPAWN_START'});
     let child;
     try{
       child=this.spawnImpl(chromePath,args,{detached:true,stdio:'ignore',windowsHide:false,shell:false});
       child.unref?.();
-    }catch(error){throw new BrowserAutomationError(`Falha ao abrir Google Chrome: ${String(error?.message||error)}`,{code:'CHROME_LAUNCH_FAILED',cause:error,details:{chromePath}});}
-    const ready=await waitForCdp(this.cdpEndpoint,{timeoutMs:this.launchTimeoutMs,fetchImpl:this.fetchImpl});
-    await this.logger?.log('BROWSER','Human Chrome started with local CDP',{endpoint:this.cdpEndpoint,profileDir:this.profileDir});
+      await this.logger?.log('BROWSER','Detached Chrome process spawned',{pid:child?.pid??null,endpoint:this.cdpEndpoint},{event:'CHROME_SPAWNED'});
+    }catch(error){
+      await this.logger?.error?.('BROWSER','Failed to spawn detached Chrome',{code:'CHROME_LAUNCH_FAILED',chromePath,message:String(error?.message||error)},{event:'CHROME_SPAWN_FAILED'});
+      throw new BrowserAutomationError(`Falha ao abrir Google Chrome: ${String(error?.message||error)}`,{code:'CHROME_LAUNCH_FAILED',cause:error,details:{chromePath}});
+    }
+    let ready;
+    try{ready=await waitForCdp(this.cdpEndpoint,{timeoutMs:this.launchTimeoutMs,fetchImpl:this.fetchImpl});}
+    catch(error){await this.logger?.error?.('BROWSER','Chrome process started but CDP did not become ready',{pid:child?.pid??null,code:error?.code||'CDP_NOT_READY',endpoint:this.cdpEndpoint,details:error?.details||null},{event:'CHROME_CDP_NOT_READY'});throw error;}
+    await this.logger?.log('BROWSER','Human Chrome started with local CDP',{endpoint:this.cdpEndpoint,profileDir:this.profileDir,pid:child?.pid??null},{event:'CHROME_READY'});
     return{...ready,alreadyRunning:false,chromePath,profileDir:this.profileDir,pid:child?.pid??null};
   }
 }
