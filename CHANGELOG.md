@@ -1,5 +1,165 @@
 # Changelog
 
+## V4.3.0 — resiliência de longa duração e diagnóstico autocontido
+
+A V4.3.0 consolida as melhorias incorporadas após a V4.2.6. É uma release minor compatível com a linha 4.x: adiciona capacidades novas sem breaking change intencional em manifesto, checkpoint, perfil do Chrome ou estrutura de arquivos já existente.
+
+### Download nativo e integridade
+
+- prioriza o botão nativo confiável do XCursos antes do yt-dlp;
+- usa `Browser.setDownloadBehavior` via CDP com `allowAndName` e staging isolado por GUID;
+- aguarda conclusão do download antes de ffprobe/promoção;
+- promove arquivo validado por rename para o destino determinístico;
+- restaura a política de download do Chrome no `finally`;
+- `download.path()` é fallback antes de `saveAs()`;
+- `saveAs()` permanece somente como último fallback;
+- resíduos de staging são limpos e downloads cancelados/incompletos não são promovidos;
+- `validation.downloadMethod` persiste `XCURSOS_NATIVE` ou `YTDLP`;
+- mantém yt-dlp como fallback quando o fluxo nativo falha e existe mídia segura.
+
+### Performance
+
+- cache curto de inspeção para metadata já comprovadamente baixável;
+- estados de media readiness ainda incompletos não entram no cache;
+- `AutoThrottle` deixa de tratar a duração normal de download como instabilidade;
+- ffprobe do download nativo pode ser reutilizado uma única vez imediatamente após promoção do mesmo fingerprint;
+- resume persiste `validation.fileFingerprint = {size, mtimeMs}` e pula nova validação somente quando o arquivo continua idêntico;
+- alteração de tamanho ou `mtimeMs` força ffprobe novamente;
+- `audit` explícito continua completo e não usa o fast cache de resume.
+
+### Resiliência de navegação e execução longa
+
+- recuperação limitada de erros transitórios `net::ERR_*`, incluindo `ERR_NETWORK_ACCESS_DENIED`;
+- erros permanentes e erros de rede desconhecidos não entram em retry cego;
+- logs de retry passam a registrar posição, código semântico, causa concreta, tentativa/máximo e delay;
+- páginas comprovadamente apenas de materiais usam fast-path estrutural sem esperar media readiness desnecessariamente;
+- vídeo+materiais, botão nativo e iframe inesperado continuam no caminho conservador;
+- ETA exige amostras mínimas, usa mediana inicial e média aparada em janela recente para resistir a outliers;
+- retries/falhas não inflam artificialmente amostras de ETA.
+
+### Pacote de diagnóstico por execução
+
+Cada execução passa a poder gerar `<outputRoot>/_xcursos-diagnostics/<runId>/` com:
+
+- `diagnostic-report.json` — artefato principal e compartilhável;
+- `diagnostic-report.md` — versão legível;
+- `events.jsonl` — timeline integral local;
+- `run-meta.json` — metadata da execução;
+- `liveness.json` — último snapshot de liveness;
+- `emergency-crash.json` quando o fluxo normal de relatório não puder ser concluído.
+
+O sistema registra eventos estruturados correlacionados por `runId`, sem remover o `runner.log` humano existente.
+
+### Subprocessos e PowerShell
+
+- yt-dlp, ffprobe e probes do doctor passam pelo observador de subprocessos;
+- registra PID, duração, exit code, signal, timeout/abort, truncamento e tails sanitizados quando necessário;
+- spawn/readiness do Chrome ficam observáveis;
+- `download-all.ps1` cria transcript em `%LOCALAPPDATA%\XCursosRunner\logs` com fallback adequado;
+- o transcript é referenciado pelos relatórios filhos;
+- mantém compatibilidade com Windows PowerShell 5.1 e scripts operacionais ASCII-only.
+
+### Observabilidade fail-soft
+
+- falhas diagnósticas como `ENOSPC`, `EACCES`, arquivo bloqueado ou diretório inacessível tentam fallback e não devem derrubar uma execução funcionalmente saudável;
+- persistência funcional de `state`, manifesto e checkpoint continua fail-hard;
+- falhas do próprio diagnóstico permanecem registráveis em memória/fallback quando possível.
+
+### Consistência entre artefatos
+
+- `RUN_FINALIZED` é gravado antes do snapshot físico usado pelo relatório;
+- `eventSummary.count` passa a corresponder à timeline final persistida;
+- finalização idempotente escreve um único evento terminal;
+- `run-meta.json` recebe o contexto efetivo da execução por flush atômico em boundaries aguardados/finalização;
+- relatório, metadata e evento terminal convergem em curso/output/resume/CDP/comando quando disponíveis.
+
+### Identidade exata do código
+
+- relatório e metadata registram `packageVersion`, `runnerVersion`, `cliPath`, `installRoot`, Node e identidade de fonte;
+- commit/branch são registrados somente quando comprováveis por build env ou checkout Git;
+- fallback explícito `PACKAGE_VERSION_ONLY` evita inventar SHA em instalações empacotadas.
+
+### Snapshot da configuração efetiva
+
+- snapshot seguro registra valores realmente usados de retries, timeouts, media readiness, download, navigation, throttle, scheduler, CDP, resume e limites;
+- usa whitelist explícita;
+- cookies, Authorization, tokens, credenciais, URLs assinadas e dados de sessão não são incluídos.
+
+### Relatório compartilhável autocontido
+
+- `diagnostic-report.json` incorpora timeline bounded;
+- preserva começo/fim e prioriza WARN/ERROR/FATAL, retries, subprocessos, inspeção, navegação, verificação e commit;
+- mantém contexto temporal de execuções longas sem transformar o relatório em arquivo gigante;
+- não incorpora vídeo, HTML bruto ou screenshot por padrão.
+
+### Recuperação de execução interrompida
+
+- uma nova execução procura runs antigos com metadata/eventos mas sem finalização válida;
+- distingue run concluído, run ainda ativo e run órfão;
+- run órfão pode ser reconstruído como `INTERRUPTED` com último evento, posição, subprocesso e timeline disponível;
+- PID/host e janela de segurança reduzem falsos positivos;
+- não promete capturar o instante de uma queda de energia/taskkill forçado — a reconstrução é posterior.
+
+### Liveness e possível stall
+
+- heartbeat leve com PID, estágio, posição, operação, memória e event-loop delay;
+- acompanha último progresso real e subprocesso ativo;
+- diferencia `POSSIBLE_STALL`, `ACTIVE_LONG_OPERATION` e `EXPECTED_WAIT`;
+- download/subprocesso longo e retry/backoff não são automaticamente tratados como travamento.
+
+### Self-test diagnóstico
+
+Novo comando:
+
+```text
+xcursos diagnostics-check --json
+```
+
+Executa uma sessão controlada, sem Chrome e sem credenciais, validando evento, contexto, sanitização, erro simulado, subprocesso Node, JSON/Markdown, metadata, timeline, liveness, identidade, caminhos e consistência de contagens.
+
+### Privacidade de caminhos
+
+- JSON/Markdown compartilháveis anonimizam a home local como `$HOME` em Windows e POSIX;
+- paths operacionais reais permanecem disponíveis nos artefatos locais necessários à investigação/operação;
+- sanitização de secrets continua ativa.
+
+### Retenção e rotação
+
+- política conservadora por idade, quantidade e tamanho total;
+- runs com erro/crash recebem prioridade de preservação sobre sucessos equivalentes;
+- runs ativos são protegidos;
+- cleanup se limita a artefatos diagnósticos reconhecidos e transcripts `xcursos-all-*.log`;
+- arquivos de curso nunca são candidatos;
+- falha de cleanup é fail-soft.
+
+### CI multiplataforma
+
+- suíte completa passa a rodar em `ubuntu-latest` e `windows-latest`;
+- Windows valida PowerShell 5.1 real, paths com espaços/acentos, `%LOCALAPPDATA%`, transcript, subprocessos, JSON/Markdown/events/metadata/liveness e sanitização `$HOME`;
+- a validação Windows revelou e corrigiu duas premissas de teste, sem necessidade de mudar o produto: uso não portátil de `/dev/null/nope` e expectativa POSIX de SIGTERM grace no Windows;
+- smoke autenticado com XCursos/Chrome humano continua local e não roda na CI.
+
+### Validação da V4.3.0
+
+- matriz Ubuntu + Windows: PASS;
+- **388 testes coletados por lane**;
+- Ubuntu: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- Windows: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- os skips atuais dependem de ffmpeg/ffprobe reais ausentes nos runners;
+- syntax check: PASS em ambos;
+- Windows PowerShell 5.1 diagnostic smoke: PASS;
+- auditoria final correlaciona report/events/meta/liveness/manifest/errors/config/build/download/ffprobe.
+
+### Invariantes
+
+- nenhum bypass de DRM, Cloudflare ou CAPTCHA;
+- navegação continua determinística e sujeita a `N -> N+1`;
+- manifesto/state/checkpoint permanecem persistência funcional fail-hard;
+- diagnóstico é fail-soft;
+- mídia não confiável não chega ao downloader;
+- signed URLs e credenciais não são persistidas em claro;
+- não há LLM decidindo navegação.
+
 ## V4.2.6 — guia pinada e árvore de módulos/submódulos
 
 - enumeração de abas do Chrome passa a ser passiva: `pages()` não instala mais observers de auth/rede em todas as páginas abertas;

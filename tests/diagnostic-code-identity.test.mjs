@@ -29,6 +29,6 @@ test('code identity explicitly falls back to package version when git identity i
 
 test('diagnostic JSON and Markdown include the code identity that generated the run',async()=>{
   const root=await tmp();const diag=new RunDiagnostics({outputRoot:root,command:'version',runId:'identity-report',env:{}});await diag.start({logger:new RunnerLogger()});const report=await diag.finalize({status:'VERSION',ok:true,exitCode:0});
-  assert.ok(report.codeIdentity);assert.equal(report.codeIdentity.runnerVersion,'4.2.6');assert.ok(report.codeIdentity.cliPath);assert.ok(report.codeIdentity.installRoot);assert.ok(['GIT_COMMIT','BUILD_ENV','PACKAGE_VERSION_ONLY'].includes(report.codeIdentity.sourceIdentity));
-  const markdown=await fs.readFile(diag.reportMarkdownPath,'utf8');assert.match(markdown,/Identidade do código/i);assert.match(markdown,/4\.2\.6/);
+  assert.ok(report.codeIdentity);assert.equal(report.codeIdentity.runnerVersion,'4.3.0');assert.ok(report.codeIdentity.cliPath);assert.ok(report.codeIdentity.installRoot);assert.ok(['GIT_COMMIT','BUILD_ENV','PACKAGE_VERSION_ONLY'].includes(report.codeIdentity.sourceIdentity));
+  const markdown=await fs.readFile(diag.reportMarkdownPath,'utf8');assert.match(markdown,/Identidade do código/i);assert.match(markdown,/4\.3\.0/);
 });

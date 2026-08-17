@@ -18,16 +18,18 @@ test('PowerShell 5.1 compatibility: operational ps1 files are ASCII-only and avo
 
 test('V4.2 release exposes scheduler/network/recovery/runtime modules in syntax check',()=>{for(const name of ['browser-session','page-controller','network-media-observer','lesson-scheduler','retry-policy','scheduler-checkpoint','runtime-stats','auto-throttle','shutdown-controller','adaptive-locator','debug-snapshots','safe-page-content','redirect-auth-observer'])assert.match(pkg.scripts.check,new RegExp(`src/${name}\\.mjs`),name);});
 
-test('V4.2.6 packages pinned-tab and nested module-tree release metadata',async()=>{
+test('V4.3.0 packages current resilience and diagnostics release metadata',async()=>{
   const state=await fs.readFile(new URL('../src/state.mjs',import.meta.url),'utf8');
   const chrome=await fs.readFile(new URL('../src/chrome-launcher.mjs',import.meta.url),'utf8');
   const downloader=await fs.readFile(new URL('../src/downloader.mjs',import.meta.url),'utf8');
-  assert.equal(pkg.version,'4.2.6');
+  assert.equal(pkg.version,'4.3.0');
   assert.match(pkg.scripts.check,/src\/navigation-index\.mjs/);assert.match(pkg.scripts.check,/src\/navigation-planner\.mjs/);assert.match(pkg.scripts.check,/src\/observed-navigation\.mjs/);assert.match(pkg.scripts.check,/src\/version-info\.mjs/);assert.match(pkg.scripts.check,/src\/parser\.mjs/);
+  for(const name of ['run-diagnostics','integrated-diagnostics','diagnostic-recovery','diagnostic-retention','diagnostic-liveness','diagnostics-selftest','cli-diagnostics'])assert.match(pkg.scripts.check,new RegExp(`src/${name}\\.mjs`),name);
   assert.match(state,/lesson-navigation-index\.json/);assert.match(state,/modulePath/);
-  assert.match(installer,/V4\.2\.6/);
+  assert.match(installer,/V4\.3\.0/);
+  assert.match(cli,/XCursos Runner V4\.3\.0/);
   assert.match(runner,/MEDIA_NOT_READY/);assert.match(runner,/waitForProvenMedia/);assert.match(runner,/modulePath/);
   assert.match(controller,/pinnedTargetId/);assert.match(session,/getTargetId/);
   assert.match(chrome,/disable-background-timer-throttling/);
-  assert.match(downloader,/modulePath/);
+  assert.match(downloader,/modulePath/);assert.match(downloader,/Browser\.setDownloadBehavior/);
 });
