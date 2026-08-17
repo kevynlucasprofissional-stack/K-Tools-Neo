@@ -25,6 +25,8 @@ test('final audit reconstructs one run consistently across report, events, metad
   await diag.start({logger,context:{command:'download'}});liveness.configure({filePath:livenessPath,runId:diag.runId,pid:process.pid});await liveness.persist();
   diag.setContext({resume:true,cdpEndpoint:'http://127.0.0.1:9222',outputRoot});diag.setConfiguration({schemaVersion:1,runtime:{resume:true,cdpEndpoint:'http://127.0.0.1:9222',outputRoot,profileDir:path.join(fakeHome,'AppData','Local','XCursosProfile')},limits:{downloadRetries:3,navigationRetries:2,mediaReadyTimeoutMs:15000}});
   diag.attachCourseArtifacts({courseName:'Curso Diagnóstico',metaDir,statePath:path.join(metaDir,'state.json'),manifestPath,errorsPath,logPath:path.join(metaDir,'runner.log'),schedulerPath:path.join(metaDir,'scheduler.checkpoint.json'),navigationPath:path.join(metaDir,'lesson-navigation-index.json'),debugRoot:path.join(metaDir,'debug')});
+  // Mirrors cli-diagnostics.attachResultArtifacts(): attaching artifacts and setting the effective course root are separate operations.
+  diag.setContext({courseRoot});
   await diag.phase('COMMAND','START',{command:'download'});
 
   const timestamp=new Date().toISOString();
