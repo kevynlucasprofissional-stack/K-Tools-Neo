@@ -8,6 +8,11 @@ function courseRootFromResult(result,outputRoot){
   const course=result?.course||result?.state?.courseName||null;
   return course?path.join(path.resolve(outputRoot),sanitizeSegment(course,'Curso XCursos',90)):null;
 }
+function bootstrapRoot(env=process.env,processRef=process){
+  if(env?.LOCALAPPDATA)return path.join(env.LOCALAPPDATA,'XCursosRunner');
+  if(env?.XDG_STATE_HOME)return path.join(env.XDG_STATE_HOME,'xcursos-runner');
+  return path.join(typeof processRef?.cwd==='function'?processRef.cwd():process.cwd(),'.xcursos-runner-bootstrap');
+}
 
 export async function startCliDiagnostics({outputRoot,command,argv=[],processRef=process,env=process.env,sink=null,diagnosticsFactory=null,logger=null,exitFn=null}={}){
   const sharedLogger=logger||new RunnerLogger({sink});
@@ -29,4 +34,11 @@ export async function finalizeCliDiagnostics({diagnostics,result=null,error=null
   const status=error?'ERROR':(result?.status||'COMPLETE');const ok=error?false:(result?.ok??true);const code=exitCode==null?(ok===false?2:0):exitCode;
   try{return await diagnostics.finalize({status,ok,result,error,exitCode:code});}
   catch(finalizeError){await diagnostics.emergency?.(finalizeError,'CLI_REPORT_FAILED');return null;}
+}
+
+export async function writeBootstrapFailureReport(error,{argv=[],processRef=process,env=process.env}={}){
+  const diagnostics=new IntegratedRunDiagnostics({outputRoot:bootstrapRoot(env,processRef),command:'bootstrap',argv,processRef,env});
+  try{await diagnostics.start({logger:new RunnerLogger(),context:{phase:'CLI_BOOTSTRAP'}});await diagnostics.finalize({status:'BOOTSTRAP_ERROR',ok:false,error,exitCode:2,reason:'Failure before normal diagnostic lifecycle'});}
+  catch(reportError){await diagnostics.emergency?.(reportError,'BOOTSTRAP_REPORT_FAILED');}
+  return diagnostics.reference();
 }
