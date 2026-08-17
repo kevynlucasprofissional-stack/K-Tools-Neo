@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { RunDiagnostics } from './run-diagnostics.mjs';
-import { atomicWriteJson, redactSensitiveText, sanitizeForPersistence, safeError } from './utils.mjs';
+import { redactSensitiveText, sanitizeForPersistence, safeError } from './utils.mjs';
 
 async function readJsonl(filePath){
   if(!filePath)return[];
@@ -36,7 +37,7 @@ export function deriveDiagnosticFindings(report={}){
 
 export class IntegratedRunDiagnostics extends RunDiagnostics {
   constructor(options={}){super(options);this.integratedFinalized=false;}
-  reference(){return sanitizeForPersistence({runId:this.runId,runDir:this.runDir,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath,events:this.eventPath});}
+  reference(){return sanitizeForPersistence({...super.reference()});}
 
   async persistenceSummary(){
     const manifest=since(await readJsonl(this.artifacts.get('manifest')?.path),this.startedAtMs).map(workItem);
@@ -47,10 +48,10 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
   async finalize(options={}){
     if(this.integratedFinalized)return await this.readReport();
     const base=await super.finalize(options);if(!base)return base;
-    const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report)});
-    await atomicWriteJson(this.reportJsonPath,report);
-    await fs.writeFile(this.reportMarkdownPath,this.renderIntegratedMarkdown(report),'utf8');
-    this.integratedFinalized=true;return report;
+    const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report),diagnosticHealth:this.diagnosticHealth()});
+    this.finalReport=report;
+    await this.persistReport(report,this.renderIntegratedMarkdown(report));
+    this.refreshReportStorage(report);this.finalReport=report;this.integratedFinalized=true;return report;
   }
 
   renderIntegratedMarkdown(report){
@@ -65,7 +66,14 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
   }
 
   async emergency(error,status='DIAGNOSTIC_FINALIZE_FAILED'){
-    try{await fs.mkdir(this.runDir,{recursive:true});const payload=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context});await fs.writeFile(`${this.runDir}/emergency-crash.json`,`${JSON.stringify(payload,null,2)}\n`,'utf8');return payload;}catch{return null;}
+    const payload=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context,diagnosticHealth:this.diagnosticHealth()});
+    const write=async()=>{await fs.mkdir(this.runDir,{recursive:true});await fs.writeFile(path.join(this.runDir,'emergency-crash.json'),`${JSON.stringify(payload,null,2)}\n`,'utf8');};
+    try{if(!this.memoryOnly){await write();return payload;}}
+    catch(writeError){
+      const switched=await this.activateFallback('EMERGENCY_WRITE',writeError,path.join(this.runDir,'emergency-crash.json'));
+      if(switched){try{await write();return payload;}catch(fallbackError){this.recordStorageFailure('EMERGENCY_FALLBACK_WRITE',fallbackError,path.join(this.runDir,'emergency-crash.json'));this.memoryOnly=true;this.logger?.configure?.({eventFile:null});}}
+    }
+    return sanitizeForPersistence({...payload,diagnosticHealth:this.diagnosticHealth()});
   }
 }
 
