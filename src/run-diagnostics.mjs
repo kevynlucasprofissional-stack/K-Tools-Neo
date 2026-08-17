@@ -19,7 +19,7 @@ export class RunDiagnostics {
     this.runId=runId||`${runStamp(new Date(Number(nowFn())))}-${crypto.randomUUID().slice(0,8)}`;
     this.fallbackOutputRoot=path.resolve(String(this.env?.XCURSOS_DIAGNOSTIC_FALLBACK_ROOT||path.join(os.tmpdir(),'XCursosRunner','diagnostic-fallback')));
     this.configureStorage(this.outputRoot);
-    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;this.finalEventRecorded=false;
+    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;this.finalEventRecorded=false;this.metaDirty=true;
     this.storageFailures=[];this.primaryStorageAvailable=true;this.fallbackStorageUsed=false;this.memoryOnly=false;
   }
 
@@ -37,7 +37,7 @@ export class RunDiagnostics {
     if(!this.fallbackStorageUsed)this.primaryStorageAvailable=false;
     if(this.fallbackStorageUsed){this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}
     this.fallbackStorageUsed=true;this.configureStorage(this.fallbackOutputRoot);
-    try{await fs.mkdir(this.runDir,{recursive:true});this.logger?.configure?.({eventFile:this.eventPath,runId:this.runId,context:{command:this.command,...this.context}});return true;}
+    try{await fs.mkdir(this.runDir,{recursive:true});this.logger?.configure?.({eventFile:this.eventPath,runId:this.runId,context:{command:this.command,...this.context}});this.metaDirty=true;return true;}
     catch(fallbackError){this.recordStorageFailure('FALLBACK_STORAGE',fallbackError,this.runDir);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}
   }
 
@@ -49,19 +49,23 @@ export class RunDiagnostics {
 
   reference(){return sanitizeForPersistence({runId:this.runId,runDir:this.runDir,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath,events:this.eventPath,metadata:this.metaPath,diagnosticHealth:this.diagnosticHealth()});}
 
+  async syncMetadata({allowFallback=false}={}){
+    if(!this.started||!this.metaDirty||this.memoryOnly)return false;
+    try{await atomicWriteJson(this.metaPath,this.baseMetadata());this.metaDirty=false;return true;}
+    catch(error){
+      if(!allowFallback){this.recordStorageFailure('RUN_META_SYNC',error,this.metaPath);return false;}
+      const switched=await this.activateFallback('RUN_META_WRITE',error,this.metaPath);if(!switched)return false;
+      try{await atomicWriteJson(this.metaPath,this.baseMetadata());this.metaDirty=false;return true;}
+      catch(fallbackError){this.recordStorageFailure('RUN_META_FALLBACK_WRITE',fallbackError,this.metaPath);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}
+    }
+  }
+
   async start({logger=null,context=null}={}){
     this.started=true;this.logger=logger||this.logger;if(context)this.setContext(context);
     try{await fs.mkdir(this.runDir,{recursive:true});}
     catch(error){await this.activateFallback('RUN_DIR_CREATE',error,this.runDir);}
     this.logger?.configure?.({eventFile:this.memoryOnly?null:this.eventPath,runId:this.runId,context:{command:this.command,...this.context}});
-    const meta=this.baseMetadata();
-    if(!this.memoryOnly){
-      try{await atomicWriteJson(this.metaPath,meta);}
-      catch(error){
-        const switched=await this.activateFallback('RUN_META_WRITE',error,this.metaPath);
-        if(switched){try{await atomicWriteJson(this.metaPath,this.baseMetadata());}catch(fallbackError){this.recordStorageFailure('RUN_META_FALLBACK_WRITE',fallbackError,this.metaPath);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});}}
-      }
-    }
+    await this.syncMetadata({allowFallback:true});
     await this.logger?.log?.('DIAGNOSTIC','Run diagnostics started',{runId:this.runId,runDir:this.runDir},{event:'RUN_STARTED'});
     return this.baseMetadata();
   }
@@ -76,12 +80,14 @@ export class RunDiagnostics {
   }
 
   setContext(patch={}){
-    this.context=sanitizeForPersistence({...this.context,...patch});
+    const next=sanitizeForPersistence({...this.context,...patch});
+    if(JSON.stringify(next)!==JSON.stringify(this.context)){this.context=next;this.metaDirty=true;}else this.context=next;
     this.logger?.setContext?.({command:this.command,...this.context});
     return this.context;
   }
 
   async phase(name,status='INFO',data=null){
+    await this.syncMetadata();
     const entry=sanitizeForPersistence({timestamp:iso(this.nowFn),name:String(name),status:String(status),data});this.phases.push(entry);
     await this.logger?.log?.('PHASE',`${entry.name}: ${entry.status}`,entry.data,{event:'PHASE',level:entry.status==='FAIL'?'ERROR':'INFO'});return entry;
   }
@@ -126,6 +132,7 @@ export class RunDiagnostics {
     catch(error){
       const switched=await this.activateFallback('REPORT_WRITE',error,this.reportJsonPath);
       if(!switched)return false;
+      await this.syncMetadata();
       try{this.refreshReportStorage(report);await atomicWriteJson(this.reportJsonPath,report);await fs.writeFile(this.reportMarkdownPath,markdown,'utf8');return true;}
       catch(fallbackError){this.recordStorageFailure('REPORT_FALLBACK_WRITE',fallbackError,this.reportJsonPath);this.memoryOnly=true;this.logger?.configure?.({eventFile:null});return false;}
     }
@@ -134,6 +141,7 @@ export class RunDiagnostics {
   async finalize({status='UNKNOWN',ok=null,result=null,error=null,exitCode=null,reason=null}={}){
     if(this.finalized)return await this.readReport()||this.finalReport||null;if(!this.started)await this.start({logger:this.logger});
     if(error)await this.captureError(error,{scope:'FINALIZE',fatal:true});
+    await this.syncMetadata();
     const endedAtMs=Number(this.nowFn());
     if(!this.finalEventRecorded){
       this.finalEventRecorded=true;
