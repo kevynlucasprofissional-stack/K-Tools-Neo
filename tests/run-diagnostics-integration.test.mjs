@@ -21,7 +21,7 @@ async function runWithDiagnostics({failPositions=[]}={}){
 
 test('integrated success report reconstructs runner work, decisions, artifacts and final outcome',async()=>{
   const {result,report}=await runWithDiagnostics();assert.equal(result.status,'RANGE_COMPLETE');assert.equal(report.outcome.status,'RANGE_COMPLETE');assert.equal(report.summary.currentRunWorkItemCount,3);assert.deepEqual(report.summary.currentRunWorkItems.map(x=>x.position),[1,2,3]);
-  assert.ok(report.eventSummary.count>5);assert.ok(report.eventSummary.byScope.DOWNLOAD>=3);assert.ok(report.eventSummary.byScope.COMMIT>=3);
+  assert.ok(report.eventSummary.count>5);assert.ok(report.eventSummary.byScope.VERIFY>=3);assert.ok(report.eventSummary.byScope.COMMIT>=3);
   assert.equal(report.artifacts.find(x=>x.name==='manifest').exists,true);assert.equal(report.artifacts.find(x=>x.name==='runnerLog').exists,true);assert.equal(report.diagnosticFindings.some(x=>x.severity==='ERROR'),false);
 });
 
