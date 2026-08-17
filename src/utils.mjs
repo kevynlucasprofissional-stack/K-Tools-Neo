@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 
 const SENSITIVE_QUERY_KEY = /^(?:x-amz-.+|signature|sig|token|auth|authorization|expires?|policy|key(?:id)?|api[_-]?key|access[_-]?token|session(?:id|token)?|credential)$/i;
@@ -86,6 +87,28 @@ export function sanitizeForPersistence(value, seen = new WeakSet()) {
     }
   }
   return out;
+}
+
+function escapeRegExp(value){return String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function normalizedHome(homeDir){const value=String(homeDir||'').replace(/[\\/]+$/,'');return value&&value!=='/'?value:null;}
+
+export function redactHomePath(value,{homeDir=os.homedir()}={}){
+  const text=String(value??'');const home=normalizedHome(homeDir);if(!home)return text;
+  const windows=/^[A-Za-z]:[\\/]/.test(home)||home.includes('\\');
+  const flags=windows?'gi':'g';const pattern=new RegExp(`${escapeRegExp(home)}(?=$|[\\\\/])`,flags);
+  return text.replace(pattern,'$HOME');
+}
+
+function anonymizeSharing(value,homeDir,seen=new WeakSet()){
+  if(typeof value==='string')return redactHomePath(value,{homeDir});
+  if(value==null||typeof value!=='object')return value;
+  if(seen.has(value))return'<circular>';seen.add(value);
+  if(Array.isArray(value))return value.map(item=>anonymizeSharing(item,homeDir,seen));
+  const out={};for(const [key,item] of Object.entries(value))out[key]=anonymizeSharing(item,homeDir,seen);return out;
+}
+
+export function sanitizeForSharing(value,{homeDir=os.homedir()}={}){
+  return anonymizeSharing(sanitizeForPersistence(value),homeDir);
 }
 
 export function truncateWithHash(value, maxLength) {
