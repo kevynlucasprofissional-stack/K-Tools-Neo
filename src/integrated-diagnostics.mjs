@@ -52,9 +52,8 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
     const base=await super.finalize(options);if(!base)return base;
     await this.liveness?.stop?.({persist:true});const live=this.liveness?.snapshot?.()||null;
     const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,liveness:live,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report),diagnosticHealth:this.diagnosticHealth()});
-    this.finalReport=report;
-    await this.persistReport(report,this.renderIntegratedMarkdown(report));
-    this.refreshReportStorage(report);this.finalReport=report;this.integratedFinalized=true;return report;
+    const persisted=await this.persistReport(report,this.renderIntegratedMarkdown(report));
+    this.finalReport=persisted||this.shareable(report);this.integratedFinalized=true;return this.finalReport;
   }
 
   renderIntegratedMarkdown(report){
@@ -71,14 +70,14 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
 
   async emergency(error,status='DIAGNOSTIC_FINALIZE_FAILED'){
     await this.liveness?.stop?.({persist:true});
-    const payload=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context,liveness:this.liveness?.snapshot?.()||null,diagnosticHealth:this.diagnosticHealth()});
+    const raw=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context,liveness:this.liveness?.snapshot?.()||null,diagnosticHealth:this.diagnosticHealth()});const payload=this.shareable(raw);
     const write=async()=>{await fs.mkdir(this.runDir,{recursive:true});await fs.writeFile(path.join(this.runDir,'emergency-crash.json'),`${JSON.stringify(payload,null,2)}\n`,'utf8');};
     try{if(!this.memoryOnly){await write();return payload;}}
     catch(writeError){
       const switched=await this.activateFallback('EMERGENCY_WRITE',writeError,path.join(this.runDir,'emergency-crash.json'));
       if(switched){try{await write();return payload;}catch(fallbackError){this.recordStorageFailure('EMERGENCY_FALLBACK_WRITE',fallbackError,path.join(this.runDir,'emergency-crash.json'));this.memoryOnly=true;this.logger?.configure?.({eventFile:null});}}
     }
-    return sanitizeForPersistence({...payload,diagnosticHealth:this.diagnosticHealth()});
+    return this.shareable({...payload,diagnosticHealth:this.diagnosticHealth()});
   }
 }
 
