@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { RunDiagnostics } from './run-diagnostics.mjs';
-import { atomicWriteJson, redactSensitiveText, sanitizeForPersistence, safeError } from './utils.mjs';
+import { redactSensitiveText, sanitizeForPersistence, safeError } from './utils.mjs';
 
 async function readJsonl(filePath){
   if(!filePath)return[];
@@ -20,7 +21,7 @@ function matches(codes,re){return codes.filter(code=>re.test(code));}
 function finding(code,severity,title,evidence,recommendation){return sanitizeForPersistence({code,severity,title,evidence,recommendation});}
 
 export function deriveDiagnosticFindings(report={}){
-  const codes=errorCodes(report);const audit=report.summary?.audit||{};const stats=report.summary?.stats||{};const byEvent=report.eventSummary?.byEvent||{};const findings=[];
+  const codes=errorCodes(report);const audit=report.summary?.audit||{};const stats=report.summary?.stats||{};const byEvent=report.eventSummary?.byEvent||{};const live=report.liveness||{};const findings=[];
   const network=matches(codes,/(?:NETWORK|ECONN|ETIMEDOUT|EAI_AGAIN|DNS|TLS|HTTP_429|HTTP_5XX|NAV_NETWORK)/i);if(network.length)findings.push(finding('NETWORK_INSTABILITY','WARN','Falhas de rede/conectividade foram observadas',{codes:[...new Set(network)]},'Revisar os eventos e retries imediatamente anteriores, estado da conexão CDP e disponibilidade da rede.'));
   const browser=matches(codes,/(?:PAGE_CLOSED|CDP_|BROWSER_DISCONNECTED|LESSON_REFRESH)/i);if(browser.length)findings.push(finding('BROWSER_SESSION_INSTABILITY','WARN','A sessão do navegador/página exigiu recuperação',{codes:[...new Set(browser)]},'Revisar reconexões CDP, snapshots e mudanças de target/página durante a execução.'));
   const nav=matches(codes,/(?:NEXT_NOT_FOUND|NEXT_ACTIONABILITY_TIMEOUT|POSITION_UNOBSERVABLE|POSITION_OBSERVATION_FAILED)/i);if(nav.length)findings.push(finding('NAVIGATION_CONFIDENCE','WARN','A automação não conseguiu confirmar a navegação com confiança suficiente',{codes:[...new Set(nav)]},'Revisar snapshot da UI, actionability e candidatos de Próxima. Este é o equivalente mais próximo de baixa confiança heurística; o projeto não usa um modelo de IA para decidir a navegação.'));
@@ -29,14 +30,16 @@ export function deriveDiagnosticFindings(report={}){
   const missing=Array.isArray(audit.missingPositions)?audit.missingPositions:[];if(missing.length)findings.push(finding('COVERAGE_GAP','ERROR','A auditoria encontrou posições sem resultado terminal',{positions:missing},'Revisar scheduler/checkpoint e o último erro de cada posição ausente.'));
   const processEvents=Number(byEvent.SUBPROCESS_TIMEOUT||0)+Number(byEvent.SUBPROCESS_ABORTED||0)+Number(byEvent.SUBPROCESS_ERROR||0);if(processEvents>0)findings.push(finding('SUBPROCESS_FAILURE','WARN','Subprocessos externos falharam, expiraram ou foram abortados',{events:processEvents},'Revisar eventos PROCESS para yt-dlp/ffprobe, exit code, duração e stderr sanitizado.'));
   const retries=Number(stats.retries||0);if(retries>0)findings.push(finding('RETRY_PRESSURE','INFO','A execução precisou repetir operações',{retries},'Usar os eventos RETRY para verificar causa, tentativa, delay e se o problema se concentrou em uma posição.'));
+  if(live.status==='POSSIBLE_STALL')findings.push(finding('POSSIBLE_STALL','WARN','A execução ficou sem progresso real além do limite esperado',{stage:live.stage,position:live.position,operation:live.operation,msSinceProgress:live.msSinceProgress},'Revisar o último progresso real, operação atual e eventos imediatamente anteriores.'));
+  if(live.eventLoopStatus==='DELAYED')findings.push(finding('EVENT_LOOP_DELAY','WARN','O heartbeat observou atraso relevante do event loop',{eventLoopDelayMs:live.eventLoopDelayMs},'Correlacionar com CPU/memória, subprocessos e operação ativa no mesmo período.'));
   const fatal=(report.errors||[]).filter(x=>x.fatal);if(fatal.length)findings.push(finding('FATAL_PROCESS_ERROR','ERROR','A execução terminou por erro não recuperado',{codes:fatal.map(x=>x.error?.code||'UNKNOWN')},'Começar pela stack capturada no relatório e pelos eventos imediatamente anteriores ao erro fatal.'));
   if(audit.healthyComplete===false&&!missing.length&&!invalid.length)findings.push(finding('FINAL_AUDIT_UNHEALTHY','WARN','A cobertura existe, mas a auditoria final não considerou o curso saudável',{failureSummary:report.summary?.failureSummary||null},'Revisar failureSummary, posições bloqueadas e erros persistidos.'));
   return findings;
 }
 
 export class IntegratedRunDiagnostics extends RunDiagnostics {
-  constructor(options={}){super(options);this.integratedFinalized=false;}
-  reference(){return sanitizeForPersistence({runId:this.runId,runDir:this.runDir,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath,events:this.eventPath});}
+  constructor(options={}){super(options);this.integratedFinalized=false;this.liveness=null;}
+  reference(){return sanitizeForPersistence({...super.reference(),liveness:this.liveness?.filePath||null});}
 
   async persistenceSummary(){
     const manifest=since(await readJsonl(this.artifacts.get('manifest')?.path),this.startedAtMs).map(workItem);
@@ -47,15 +50,16 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
   async finalize(options={}){
     if(this.integratedFinalized)return await this.readReport();
     const base=await super.finalize(options);if(!base)return base;
-    const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report)});
-    await atomicWriteJson(this.reportJsonPath,report);
-    await fs.writeFile(this.reportMarkdownPath,this.renderIntegratedMarkdown(report),'utf8');
-    this.integratedFinalized=true;return report;
+    await this.liveness?.stop?.({persist:true});const live=this.liveness?.snapshot?.()||null;
+    const persistence=await this.persistenceSummary();let report=sanitizeForPersistence({...base,liveness:live,summary:{...base.summary,...persistence}});report=sanitizeForPersistence({...report,diagnosticFindings:deriveDiagnosticFindings(report),diagnosticHealth:this.diagnosticHealth()});
+    const persisted=await this.persistReport(report,this.renderIntegratedMarkdown(report));
+    this.finalReport=persisted||this.shareable(report);this.integratedFinalized=true;return this.finalReport;
   }
 
   renderIntegratedMarkdown(report){
-    let text=super.renderMarkdown(report);const items=report.summary?.currentRunWorkItems||[];const errors=report.summary?.persistedErrors||[];const findings=report.diagnosticFindings||[];
+    let text=super.renderMarkdown(report);const items=report.summary?.currentRunWorkItems||[];const errors=report.summary?.persistedErrors||[];const findings=report.diagnosticFindings||[];const live=report.liveness||null;
     const extra=['','## Reconstrução desta execução','',`- Unidades/posições concluídas nesta execução: ${items.length}`,`- Erros persistidos nesta execução: ${errors.length}`];
+    if(live)extra.push(`- Liveness final: **${md(live.status)}** | etapa=${md(live.stage||'n/d')} | posição=${md(live.position??'n/d')} | sem progresso=${md(live.msSinceProgress??'n/d')} ms | event-loop=${md(live.eventLoopStatus||'n/d')}`);
     if(items.length){extra.push('','### Unidades processadas','', '| Posição | Status | Tentativas | Aula | Módulo |','|---|---|---|---|---|',...items.map(x=>`| ${md(x.position)} | ${md(x.status)} | ${md(x.attempts)} | ${md(x.lessonTitle||'')} | ${md(x.moduleName||'')} |`));}
     if(errors.length){extra.push('','### Erros persistidos do fluxo','', '| Hora | Escopo | Posição | Código/Status | Mensagem |','|---|---|---|---|---|',...errors.map(x=>`| ${md(x.timestamp)} | ${md(x.scope)} | ${md(x.position??'')} | ${md(x.code||x.status||'')} | ${md(x.message||'')} |`));}
     extra.push('','## Possíveis pontos de falha','');
@@ -65,7 +69,15 @@ export class IntegratedRunDiagnostics extends RunDiagnostics {
   }
 
   async emergency(error,status='DIAGNOSTIC_FINALIZE_FAILED'){
-    try{await fs.mkdir(this.runDir,{recursive:true});const payload=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context});await fs.writeFile(`${this.runDir}/emergency-crash.json`,`${JSON.stringify(payload,null,2)}\n`,'utf8');return payload;}catch{return null;}
+    await this.liveness?.stop?.({persist:true});
+    const raw=sanitizeForPersistence({schemaVersion:1,runId:this.runId,command:this.command,startedAt:this.startedAt,timestamp:new Date().toISOString(),status,error:{...safeError(error),stack:redactSensitiveText(String(error?.stack||''))},context:this.context,liveness:this.liveness?.snapshot?.()||null,diagnosticHealth:this.diagnosticHealth()});const payload=this.shareable(raw);
+    const write=async()=>{await fs.mkdir(this.runDir,{recursive:true});await fs.writeFile(path.join(this.runDir,'emergency-crash.json'),`${JSON.stringify(payload,null,2)}\n`,'utf8');};
+    try{if(!this.memoryOnly){await write();return payload;}}
+    catch(writeError){
+      const switched=await this.activateFallback('EMERGENCY_WRITE',writeError,path.join(this.runDir,'emergency-crash.json'));
+      if(switched){try{await write();return payload;}catch(fallbackError){this.recordStorageFailure('EMERGENCY_FALLBACK_WRITE',fallbackError,path.join(this.runDir,'emergency-crash.json'));this.memoryOnly=true;this.logger?.configure?.({eventFile:null});}}
+    }
+    return this.shareable({...payload,diagnosticHealth:this.diagnosticHealth()});
   }
 }
 
