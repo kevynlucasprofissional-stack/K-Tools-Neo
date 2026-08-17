@@ -139,15 +139,16 @@ Executa uma sessão controlada, sem Chrome e sem credenciais, validando evento, 
 - a validação Windows revelou e corrigiu duas premissas de teste, sem necessidade de mudar o produto: uso não portátil de `/dev/null/nope` e expectativa POSIX de SIGTERM grace no Windows;
 - smoke autenticado com XCursos/Chrome humano continua local e não roda na CI.
 
-### Validação final da base V4.3.0
+### Validação da V4.3.0
 
 - matriz Ubuntu + Windows: PASS;
-- 389 testes coletados por lane;
-- Ubuntu: 387 PASS, 0 FAIL, 2 SKIPPED por ffmpeg/ffprobe reais ausentes;
-- Windows: 389 PASS, 0 FAIL;
+- **388 testes coletados por lane**;
+- Ubuntu: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- Windows: **386 PASS, 0 FAIL, 2 SKIPPED**;
+- os skips atuais dependem de ffmpeg/ffprobe reais ausentes nos runners;
 - syntax check: PASS em ambos;
 - Windows PowerShell 5.1 diagnostic smoke: PASS;
-- auditoria final correlacionou report/events/meta/liveness/manifest/errors/config/build/download/ffprobe.
+- auditoria final correlaciona report/events/meta/liveness/manifest/errors/config/build/download/ffprobe.
 
 ### Invariantes
 
