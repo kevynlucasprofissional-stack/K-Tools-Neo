@@ -19,7 +19,7 @@ export class RunDiagnostics {
     this.runId=runId||`${runStamp(new Date(Number(nowFn())))}-${crypto.randomUUID().slice(0,8)}`;
     this.fallbackOutputRoot=path.resolve(String(this.env?.XCURSOS_DIAGNOSTIC_FALLBACK_ROOT||path.join(os.tmpdir(),'XCursosRunner','diagnostic-fallback')));
     this.configureStorage(this.outputRoot);
-    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;
+    this.startedAtMs=Number(nowFn());this.startedAt=new Date(this.startedAtMs).toISOString();this.context={};this.phases=[];this.anomalies=[];this.errors=[];this.artifacts=new Map();this.logger=null;this.started=false;this.finalized=false;this.finalEventRecorded=false;
     this.storageFailures=[];this.primaryStorageAvailable=true;this.fallbackStorageUsed=false;this.memoryOnly=false;
   }
 
@@ -134,7 +134,12 @@ export class RunDiagnostics {
   async finalize({status='UNKNOWN',ok=null,result=null,error=null,exitCode=null,reason=null}={}){
     if(this.finalized)return await this.readReport()||this.finalReport||null;if(!this.started)await this.start({logger:this.logger});
     if(error)await this.captureError(error,{scope:'FINALIZE',fatal:true});
-    const endedAtMs=Number(this.nowFn());const events=this.memoryOnly?[]:await readJsonlSafe(this.eventPath);const artifacts=await this.artifactIndex();
+    const endedAtMs=Number(this.nowFn());
+    if(!this.finalEventRecorded){
+      this.finalEventRecorded=true;
+      await this.logger?.log?.('DIAGNOSTIC','Run diagnostics finalized',{status:String(status||'UNKNOWN'),report:this.reportMarkdownPath},{event:'RUN_FINALIZED'});
+    }
+    const events=this.memoryOnly?[]:await readJsonlSafe(this.eventPath);const artifacts=await this.artifactIndex();
     const eventSummary={count:events.length,byLevel:countBy(events,x=>x.level),byScope:countBy(events,x=>x.scope),byEvent:countBy(events,x=>x.event)};
     const safeResult=sanitizeForPersistence(result);
     const audit=safeResult?.audit||safeResult?.result?.audit||null;const stats=safeResult?.stats||safeResult?.result?.stats||null;
@@ -147,7 +152,6 @@ export class RunDiagnostics {
       files:{events:this.eventPath,metadata:this.metaPath,reportJson:this.reportJsonPath,reportMarkdown:this.reportMarkdownPath},
     });
     this.finalReport=report;await this.persistReport(report,this.renderMarkdown(report));this.finalized=true;
-    await this.logger?.log?.('DIAGNOSTIC','Run diagnostics finalized',{status:report.outcome.status,report:this.reportMarkdownPath},{event:'RUN_FINALIZED'});
     this.refreshReportStorage(report);return report;
   }
 
