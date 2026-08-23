@@ -1,0 +1,38 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# Build
+build/
+dist/
+
+# Environments
+.env
+.env.*
+*.env
+.venv/
+venv/
+env/
+
+# Local authentication / secrets (never distribute)
+cookies.txt
+cookies*.txt
+*cookies*.txt
+*.cookies.txt
+credentials.*
+secrets.*
+*.token
+*.session
+
+# Local upgrade/work folders
+upgrade/
+
+# Runtime diagnostics (generated per execution; do not distribute stale reports)
+events.jsonl
+YT-DLP-TUI-report/
+CRASH_REPORT.md

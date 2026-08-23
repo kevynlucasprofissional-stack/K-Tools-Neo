@@ -1,0 +1,15 @@
+YT-DLP TUI v0.6.5
+
+Adicionado:
+- detectores diagnósticos de comportamento anormal;
+- ANOMALY_PLAYLIST_EMPTY;
+- CONTROL_FILE_MISMATCH;
+- AUDIT_RESULT_INCONSISTENT;
+- integração dos achados no report.json.
+
+Não alterado:
+- download;
+- retry;
+- autenticação;
+- controle;
+- auditoria de mídia.

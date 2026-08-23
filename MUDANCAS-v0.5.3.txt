@@ -1,0 +1,17 @@
+YT-DLP TUI v0.5.3 - Retry resiliente de rede/CDN
+=================================================
+
+- retry centralizado usando somente TRANSIENT_NETWORK e RATE_LIMIT;
+- timeout, ReadTimeout/ConnectTimeout, connection reset, RemoteDisconnected, IncompleteRead e falhas SSL temporarias reconhecidas;
+- HTTP 408/425/500/502/503/504 tratados como transitórios;
+- HTTP 429 usa backoff maior;
+- 403 puro continua UNKNOWN; 403 com contexto de googlevideo/signed URL recebe reextracao limitada;
+- retries internos do yt-dlp reduzidos explicitamente para evitar multiplicacao com retries externos;
+- maximo de 3 tentativas completas por fase;
+- backoff de rede: 3s, 6s; rate limit: 10s, 20s;
+- staging apagado antes de toda reextracao completa;
+- playlists registram retry_wait, retry_count e last_retry_at;
+- Ctrl+C durante espera deixa o item retomavel;
+- downloads simples tambem usam a mesma politica;
+- metadata de playlist e busca usam a mesma politica central;
+- nenhum retry de rede para AUTH_EXPIRED, PERMANENT_UNAVAILABLE, JS_RUNTIME, LOCAL_IO ou FORMAT_CONFIG.

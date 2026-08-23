@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yt-dlp-tui"
+version = "0.6.6"
+description = "Resilient YouTube downloader TUI with resumable playlists"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "NamikazeAsh", email = "satish.ash@northeastern.edu" }]
+requires-python = ">=3.10"
+dependencies = ["yt-dlp[default]==2026.8.19", "imageio-ffmpeg==0.6.0"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+include = ["yt_dlp_tui*"]
+
+[project.scripts]
+yt-dlp-tui = "yt_dlp_tui.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

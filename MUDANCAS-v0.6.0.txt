@@ -1,0 +1,22 @@
+YT-DLP TUI v0.6.0
+=================
+
+Consolidação das melhorias funcionais implementadas nas versões 0.5.x.
+
+Principais pontos consolidados:
+- destino de download escolhido obrigatoriamente em toda execução;
+- autenticação renovável pelo TUI com cache privado em LOCALAPPDATA;
+- cookies não distribuídos com o projeto/build;
+- classificador central de falhas;
+- retry limitado para rede/CDN e rate limit;
+- conteúdo permanentemente indisponível tratado separadamente;
+- controle de playlist com retomada e migração de schema;
+- recuperação de controle JSON corrompido;
+- staging isolado para downloads incompletos;
+- auditoria final de integridade e reparo;
+- Deno + yt-dlp-ejs local, sem EJS remoto em runtime;
+- produto exclusivamente TUI, sem GUI legado;
+- sem mecanismo de atualizacao automatica.
+
+Esta versão não altera novamente a arquitetura: consolida documentação,
+versionamento, empacotamento e validações do comportamento já implementado.

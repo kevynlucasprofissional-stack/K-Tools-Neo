@@ -1,0 +1,93 @@
+YT-DLP TUI v0.6.6
+=================
+
+USO
+---
+1. Execute INICIAR_YT-DLP-TUI.bat.
+2. Em TODA nova run, selecione a pasta onde os downloads serão salvos.
+3. Cole um link do YouTube ou use os comandos da TUI.
+
+REQUISITOS
+----------
+- Python 3.10 ou superior.
+- Deno no PATH (>= 2.3).
+- FFmpeg funcional. A release inclui imageio-ffmpeg como fallback Python e a auditoria
+  completa de playlists nao declara sucesso sem FFmpeg.
+- Dependencias da release: yt-dlp[default]==2026.8.19 e imageio-ffmpeg==0.6.0.
+
+PRIMEIRA SESSAO / COOKIES
+-------------------------
+O programa NAO inclui cookies.
+Quando aparecer "Nenhuma sessão do YouTube foi configurada":
+- pressione ENTER;
+- selecione seu cookies.txt em formato Netscape;
+- o export original sera apenas lido;
+- a copia ativa filtrada ficara em %LOCALAPPDATA%\YT-DLP-TUI\cookies.txt.
+
+O export precisa conter cookie de autenticacao Google/YouTube ainda valido por data.
+Um arquivo invalido nao sobrescreve o cache anterior.
+
+SE A SESSAO EXPIRAR
+-------------------
+- somente o item atual e interrompido;
+- o staging parcial desse item e apagado;
+- o controle fica waiting_auth quando for playlist;
+- pressione ENTER e selecione um novo cookies.txt;
+- o mesmo item reinicia do zero e a tarefa continua.
+
+Renovacoes repetidamente recusadas pelo servidor possuem limite; nao existe loop infinito
+de selecao de cache. O comando "cache" permite trocar a sessao manualmente.
+
+DENO / EJS
+----------
+O EJS vem do yt-dlp-ejs instalado localmente por yt-dlp[default].
+O programa NAO baixa EJS do GitHub em runtime.
+Falha de Deno/EJS nao pede cookies.
+
+REDE / CDN
+----------
+Timeouts, connection reset, HTTP 5xx suportados e HTTP 429 usam retry automatico limitado.
+O TUI faz no maximo 3 tentativas completas por fase. Erros de cookies, EJS, arquivo
+local, formato e indisponibilidade permanente nao entram nesse retry.
+Parciais sao removidos antes de uma nova tentativa completa.
+
+PLAYLIST / RETOMADA
+-------------------
+Cada playlist mantem YT-DLP-TUI-controle.json na pasta da tarefa.
+Itens concluidos sao preservados entre execucoes. Downloads em andamento usam
+.yt-dlp-tui-tmp e sao reiniciados do zero depois de uma interrupcao.
+
+Uma entrada que a extracao flat nao conseguiu resolver fica "unresolved" e mantem a
+tarefa incompleta; ela NAO e falsamente tratada como video removido.
+
+Se o yt-dlp devolver metadata da playlist mas ZERO videos, isso e tratado como falha
+de extracao. A TUI tenta novamente de forma limitada e NUNCA declara sucesso 0/0.
+Se as tentativas falharem, nenhum download e iniciado.
+
+CONTROLE CORROMPIDO
+-------------------
+JSON invalido ou semanticamente inconsistente e preservado como .corrupt.json.
+O progresso e reconstruido a partir da playlist e de arquivos locais que passem na
+verificacao de integridade.
+
+AUDITORIA FINAL
+---------------
+Ao final da playlist, FFmpeg decodifica os videos/áudios disponiveis para procurar
+truncamento/corrupcao. Arquivos ausentes ou reprovados retornam ao mesmo fluxo de
+reparo/retry. Videos inequivocamente removidos/privados ficam unavailable e sao
+reportados separadamente. Se FFmpeg desaparecer, a auditoria fica bloqueada e o
+programa nao declara sucesso por uma verificacao fraca.
+
+SEGURANCA
+---------
+- Nunca compartilhe cookies.txt nem o cache de LOCALAPPDATA.
+- Nenhum cookie/segredo acompanha o ZIP/EXE.
+- O arquivo selecionado no picker nao e sobrescrito.
+- Delecoes, staging e caminhos de controle sao confinados a pasta da tarefa.
+- Symlink/junction de staging nao e seguido para fora da pasta permitida.
+- Nao existe auto-update nem fetch remoto automatico de EJS.
+
+INTERFACE
+---------
+Este projeto e somente TUI. Nao existe GUI legado.
+"rename" e aplicado somente a downloads individuais, nunca a playlist controlada.
