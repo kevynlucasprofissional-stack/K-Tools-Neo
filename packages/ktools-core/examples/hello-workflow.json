@@ -1,0 +1,12 @@
+{
+  "id": "hello-ktools",
+  "nodes": [
+    {"id": "product", "type": "text.literal", "config": {"value": "K-Tools"}},
+    {"id": "edition", "type": "text.literal", "config": {"value": "Neo"}},
+    {"id": "join", "type": "text.concat", "config": {"separator": " "}}
+  ],
+  "edges": [
+    {"sourceNode": "product", "sourcePort": "text", "targetNode": "join", "targetPort": "left"},
+    {"sourceNode": "edition", "sourcePort": "text", "targetNode": "join", "targetPort": "right"}
+  ]
+}

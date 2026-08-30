@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+
+# Local runtime / secrets
+.env
+.env.*
+!.env.example
+cookies.txt
+credentials.json
+secrets.json
+tokens.json
+sessions/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
