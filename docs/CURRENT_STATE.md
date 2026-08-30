@@ -40,12 +40,21 @@ Both failed before any step was exposed by the GitHub API. The later GitHub UI a
 
 Classification: **historical failures were external GitHub Actions account/billing job-start failures, not K-Tools product failures**.
 
-Material environment change now confirmed:
+Material environment change:
 
 - repository changed from private to public;
 - GitHub repository metadata reports `visibility: public`.
 
-A new exact-current-head PR run is therefore justified and is the next acceptance evidence. It must actually reach Checkout, Setup Python, editable install, unit/contract tests and CLI smoke on Windows + Ubuntu.
+Resolving hosted acceptance:
+
+- run `33330660076` on SHA `1ccffb11af25a8d993ead931183380d354746131` concluded `success`;
+- Ubuntu 3.10: success;
+- Ubuntu 3.13: success;
+- Windows 3.10: success;
+- Windows 3.13: success;
+- every matrix path passed Checkout, Setup Python, editable install, unit/contract tests and CLI smoke.
+
+The historical billing blocker is therefore closed.
 
 ## Existing product/subsystems preserved
 
@@ -65,6 +74,8 @@ A new exact-current-head PR run is therefore justified and is the next acceptanc
 
 ## Promotion status
 
-**RETESTING — do not merge PR #1 until the new exact-head CI is green.**
+**READY FOR FINAL EXACT-HEAD CI AND AUDIT.**
 
-If the new jobs reach the product and fail, fix the first evidenced product/workflow boundary and retest. If Windows + Ubuntu are green, synchronize final evidence/memory, run the exact-head audit, rerun CI on that final memory-closure head, and promote only after that final run is green.
+The platform foundation, reference study, canonical memory and multi-agent plan are synchronized. A final CI run on this complete PR head must remain green on Windows + Ubuntu. If it does, the Conductor performs the final diff/mergeability audit and may promote PR #1 to `main`.
+
+After promotion, the next production milestone is the first real capability/Node Pack proof. In parallel, Antigravity may run an isolated xyflow UX spike against accepted fixture contracts while OpenCode owns the runtime/capability implementation stream.
