@@ -119,14 +119,39 @@ Material environment change after this evidence:
 - repository changed from private to public;
 - GitHub repository metadata now reports `visibility: public`.
 
-Claim not yet supported:
+## EV-007 — Hosted Windows/Linux acceptance after environment change
 
-- that the public-repository state is sufficient to let all current hosted jobs execute successfully.
+Run: `33330660076`
+Candidate SHA: `1ccffb11af25a8d993ead931183380d354746131`
+Conclusion: `success`
 
-Next discriminating evidence:
+Observed matrix:
 
-- a new exact-current-head PR run must reach Checkout, Setup Python, editable install, unit/contract tests and CLI smoke on Windows + Ubuntu.
+- Ubuntu / Python 3.10: success;
+- Ubuntu / Python 3.13: success;
+- Windows / Python 3.10: success;
+- Windows / Python 3.13: success.
+
+Observed boundary in every matrix path:
+
+1. Set up job — success;
+2. Checkout — success;
+3. Setup Python — success;
+4. editable install of `packages/ktools-core` — success;
+5. unit and contract tests — success;
+6. CLI smoke — success;
+7. cleanup/complete job — success.
+
+Claims supported:
+
+- GitHub hosted jobs now start after the material environment change;
+- editable installation succeeds on hosted Ubuntu and Windows for Python 3.10 and 3.13;
+- the unit/contract suite succeeds on all four supported-boundary matrix paths;
+- the real CLI smoke succeeds on all four paths;
+- the historical account/billing blocker is resolved for this repository state.
 
 ## Promotion evidence status
 
-`AC-007.1` remains **NOT YET SATISFIED** until the new exact-head CI runs through the product boundary and passes.
+`AC-007.1` is **SATISFIED for candidate SHA `1ccffb11af25a8d993ead931183380d354746131`**.
+
+Because canonical memory and multi-agent documentation are being synchronized after this successful run, one final exact-current-head CI must be green before PR #1 is merged. No product behavior changed after EV-007; the final rerun validates the complete promotion candidate including memory closure.
