@@ -1,0 +1,12 @@
+YT-DLP TUI v0.5.2 - AUTENTICACAO SEGURA E EJS LOCAL
+
+- Nenhum cookies.txt e distribuido com o projeto/build.
+- Primeira execucao solicita o export do usuario quando necessario.
+- AUTH_EXPIRED usa mensagem curta, seletor nativo e retoma o mesmo item.
+- Cancelar a selecao mantem o estado retomavel.
+- Export invalido nao sobrescreve o cache anterior.
+- Cache gerenciado fica em %LOCALAPPDATA%\YT-DLP-TUI\cookies.txt.
+- Fetch remoto de EJS removido.
+- Preflight valida Deno e yt-dlp-ejs local antes de pedir cookies.
+- Incompatibilidade de EJS e tratada como JS_RUNTIME, nunca como AUTH_EXPIRED.
+- Atualizacao automatica continua removida.

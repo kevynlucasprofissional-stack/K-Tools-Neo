@@ -1,0 +1,25 @@
+YT-DLP TUI v0.6.6
+====================
+
+Correções baseadas em teste real no Windows:
+
+1. Barra de progresso
+- O percentual não depende mais somente de _percent_str do yt-dlp, que pode conter códigos ANSI e fazia a TUI cair para 0.0%.
+- A TUI agora prioriza downloaded_bytes/total_bytes, usa contagem de fragmentos como fallback e só então interpreta o texto sanitizado.
+- O controle JSON passa a persistir o percentual real observado.
+
+2. Nomes dos arquivos
+- O template final passou de "%(title)s [%(id)s].%(ext)s" para "%(title)s.%(ext)s".
+- restrictfilenames foi desativado para preservar espaços, acentos e a aparência do título do YouTube.
+- O ID continua no controle JSON, mas deixa de poluir o nome visível do arquivo.
+- Recuperação continua compatível com arquivos legados que possuem [video_id].
+- Arquivos novos podem ser recuperados por título quando o controle precisa ser reconstruído.
+- Títulos duplicados na mesma pasta recebem sufixo numérico somente para impedir sobrescrita.
+
+3. Retry interno do yt-dlp
+- Corrigido o erro real "TypeError: _internal_sleep() got an unexpected keyword argument 'n'" visto durante o download.
+- O callback agora aceita o contrato n=... do yt-dlp e parâmetros extras futuros sem abortar o download.
+
+Validação
+- 183 testes aprovados.
+- compileall aprovado.

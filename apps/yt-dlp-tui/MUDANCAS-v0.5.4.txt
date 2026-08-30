@@ -1,0 +1,9 @@
+YT-DLP TUI v0.5.4 — indisponibilidade e controle resiliente
+
+- PERMANENT_UNAVAILABLE agora marca itens de playlist como available=false/status=unavailable.
+- Vídeos removidos/privados não entram em retry de rede nem solicitam cookies sem evidência de autenticação.
+- Controle atualizado para schema 3, com migração explícita do schema 2.
+- JSON de controle inválido não é mais ignorado silenciosamente: é preservado como .corrupt.json e reconstruído.
+- Reconstrução identifica mídia por video ID e exige verificação de integridade antes de marcar completed.
+- Auditoria exclui itens indisponíveis do conjunto obrigatório e recalcula totais após reparos.
+- Itens que se tornam indisponíveis durante o reparo deixam de ser tratados como arquivo faltante.

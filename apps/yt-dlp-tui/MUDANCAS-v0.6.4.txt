@@ -1,0 +1,1 @@
+Observabilidade: relatório automático, JSON/MD/JSONL e crash report adicionados.

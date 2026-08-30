@@ -1,0 +1,48 @@
+YT-DLP TUI v0.6.2 — CORREÇÃO DE PLAYLIST FALSAMENTE VAZIA
+==========================================================
+
+Problema observado em uso real:
+- yt-dlp conseguiu obter título/ID da playlist, mas retornou entries=[];
+- a v0.6.1 aceitou isso como uma tarefa válida com zero itens;
+- o loop de download executou zero vezes;
+- a auditoria declarou incorretamente "✓ 0/0 vídeos presentes e íntegros".
+
+Correções implementadas incrementalmente:
+1. Invariante de extração:
+   - metadata de playlist com zero entradas não é mais aceita como sucesso;
+   - foi criada EmptyPlaylistExtractionError para representar essa inconsistência local.
+
+2. Recuperação limitada da extração:
+   - tentativa 1 preserva a URL original e usa extract_flat=True;
+   - se vier vazia, tentativa 2 usa o endpoint direto playlist?list=<ID>, ainda flat;
+   - se continuar vazia, tentativa 3 usa o endpoint direto com extract_flat=False e skip_download=True;
+   - orçamento total fixo em 3 tentativas, com espera curta entre elas;
+   - nenhuma mídia é baixada durante essa fase de recuperação de metadata.
+
+3. Falha segura:
+   - se as três leituras continuarem vazias, nenhum controle novo é criado;
+   - nenhum download é iniciado;
+   - a TUI informa de forma curta que não conseguiu obter os vídeos da playlist;
+   - se yt-dlp informar playlist_count/n_entries, a contagem esperada é exibida apenas como detalhe.
+
+4. Segunda barreira na auditoria:
+   - um estado de playlist com items=[] é marcado invalid_empty_playlist;
+   - audit.status vira blocked_empty_playlist;
+   - a auditoria lança erro e nunca pode aprovar 0/0.
+
+5. Compatibilidade com controles antigos afetados pelo bug:
+   - um controle v0.6.1 que tenha status completed/audit passed com items=[] é repopulado quando uma nova extração válida volta a fornecer os itens;
+   - o estado retorna a in_progress e segue o fluxo normal de download/retomada.
+
+6. URL de playlist:
+   - a URL original continua sendo usada na primeira tentativa para minimizar regressões;
+   - somente após um resultado vazio o contexto watch/index é removido e a leitura passa ao endpoint dedicado da playlist.
+
+Cobertura nova:
+- rejeição de entries=[] mesmo com título/ID/playlist_count presentes;
+- auditoria incapaz de aprovar estado sem itens;
+- recuperação quando a primeira extração vem vazia e a segunda funciona;
+- fallback final não-flat limitado;
+- mensagem TUI sem falso 0/0 e sem criação de controle novo;
+- recuperação de controle antigo zero-item;
+- playlist válida continua consumindo apenas uma tentativa.

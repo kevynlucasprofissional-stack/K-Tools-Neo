@@ -1,0 +1,26 @@
+YT-DLP TUI v0.5.0 - RESILIENCIA DE PLAYLIST E CACHE
+===================================================
+
+IMPLEMENTADO
+- Deteccao de cache/cookies expirado ou invalidado pelos erros de autenticacao do YouTube.
+- Pausa automatica no video atual quando o cache quebra.
+- ENTER abre seletor de arquivos do Windows para escolher novo cookies.txt.
+- Novo cache e validado, filtrado para cookies raiz Google/YouTube e carregado sem reiniciar a tarefa.
+- Comando manual "cache" no TUI.
+- Arquivo YT-DLP-TUI-controle.json dentro da pasta de cada playlist.
+- Estados por video: pending, downloading, processing, completed, failed, unavailable e waiting_auth.
+- Registro de tentativas, progresso, bytes, horarios, arquivo final e ultimo erro.
+- Retomada da mesma playlist sem baixar novamente itens ja concluidos.
+- Downloads por video em pasta temporaria isolada.
+- .part/temporarios sao apagados em falha, Ctrl+C ou cache expirado.
+- Video interrompido recomeça do zero, evitando reaproveitar arquivo parcial potencialmente corrompido.
+- Auditoria final de todos os arquivos da playlist com FFmpeg.
+- Arquivo ausente/corrompido e apagado e baixado novamente uma vez.
+- Segunda auditoria apos o reparo automatico.
+- Atualizacao automatica continua completamente removida.
+- Pasta de download continua sendo escolhida em toda nova execucao e nunca e persistida.
+
+SEGURANCA DO CACHE
+- O arquivo selecionado pelo usuario nao e alterado.
+- A copia gerenciada guarda somente cookies de dominio raiz google.com/youtube.com (e dominios tecnicos permitidos), excluindo sessoes de Gmail, Drive, Calendar etc.
+- A copia ativa fica em %LOCALAPPDATA%\YT-DLP-TUI\cookies.txt.

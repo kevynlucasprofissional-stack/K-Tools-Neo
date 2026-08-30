@@ -1,0 +1,29 @@
+YT-DLP TUI v0.6.6 — VALIDAÇÃO
+================================
+
+Problemas corrigidos a partir do teste real no Windows:
+
+1. Barra de progresso presa em 0.0%
+- Causa: o tracker dependia de _percent_str; esse campo pode carregar formatação ANSI e falhava ao converter para float.
+- Correção: percentual calculado primeiro por downloaded_bytes/total_bytes; fallback por fragmentos; por último parsing do texto com remoção de ANSI.
+- Resultado: percentual real é exibido e persistido no controle.
+
+2. Nome final feio/formatado incorretamente
+- Causa: outtmpl usava "%(title)s [%(id)s].%(ext)s" e restrictfilenames=True.
+- Correção: "%(title)s.%(ext)s" e restrictfilenames=False.
+- Resultado esperado em Windows: nome visual igual ao título do YouTube, preservando espaços e acentos, salvo ajustes inevitáveis para caracteres proibidos pelo filesystem.
+- Compatibilidade: arquivos legados com [video_id] continuam recuperáveis; arquivos novos podem ser recuperados por título. Títulos duplicados recebem sufixo numérico para evitar sobrescrita.
+
+3. Erro observado no log: _internal_sleep() got an unexpected keyword argument 'n'
+- Causa: callback de retry interno tinha assinatura incompatível com o contrato usado pelo yt-dlp.
+- Correção: callback aceita n=... e kwargs adicionais defensivamente.
+
+Validações executadas:
+- pytest: 183 passed
+- compileall: OK
+- smoke CLI (--help) com stub isolado de yt_dlp: OK
+- build wheel sem dependências: OK
+- wheel: yt_dlp_tui-0.6.6-py3-none-any.whl
+
+Limitação:
+- Não foi executado um download E2E real do YouTube neste ambiente Linux. O teste final recomendado é repetir a mesma playlist no Windows e confirmar visualmente o progresso e os nomes finais.

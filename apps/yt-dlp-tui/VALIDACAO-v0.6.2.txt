@@ -1,0 +1,98 @@
+YT-DLP TUI v0.6.2 — VALIDAÇÃO DA CORREÇÃO DE PLAYLIST VAZIA
+===========================================================
+
+STATUS
+------
+Correção validada de forma determinística no código e nos testes disponíveis neste ambiente.
+Não foi executado download real contra YouTube com a sessão do usuário; portanto, não é declarado E2E real de rede/Windows.
+
+VERSÃO
+------
+- yt-dlp-tui: 0.6.2
+- Python suportado: >=3.10
+- yt-dlp[default]: ==2026.8.19
+- imageio-ffmpeg: ==0.6.0
+
+CICLO 1 — BLOQUEAR O FALSO SUCESSO 0/0
+---------------------------------------
+Teste criado primeiro e confirmado falhando na v0.6.1 equivalente:
+- metadata com playlist_count=7 e entries=[] era aceita;
+- auditoria de items=[] podia resultar em sucesso.
+
+Correção:
+- EmptyPlaylistExtractionError;
+- rejeição de entries=[];
+- audit.status=blocked_empty_playlist e task status=invalid_empty_playlist.
+
+Reteste:
+- aprovado.
+
+CICLO 2 — RECUPERAR EXTRAÇÃO INTERMITENTE
+------------------------------------------
+Teste criado para o cenário:
+- tentativa 1: título/ID válidos, entries=[];
+- tentativa 2: lista normal com vídeos.
+
+Correção:
+- máximo de 3 tentativas de extração vazia;
+- primeira tentativa mantém URL original;
+- retries usam URL canônica https://www.youtube.com/playlist?list=<ID>;
+- duas primeiras tentativas flat;
+- última tentativa extract_flat=False + skip_download=True.
+
+Reteste:
+- recuperação no segundo ciclo: aprovada;
+- persistência do vazio até o orçamento final: erro seguro aprovado;
+- nenhuma repetição extra em playlist válida: aprovada.
+
+CICLO 3 — UX / AUSÊNCIA DE EFEITOS COLATERAIS
+----------------------------------------------
+Validado:
+- erro persistente mostra "não consegui obter os vídeos da playlist";
+- informa "nenhum download foi iniciado";
+- não imprime falso ✓ 0/0;
+- não cria YT-DLP-TUI-controle.json novo quando a extração falha antes da preparação da tarefa.
+
+CICLO 4 — CONTROLE ANTIGO AFETADO
+----------------------------------
+Cenário simulado:
+- controle schema 3 da v0.6.1;
+- status=completed;
+- audit.status=passed;
+- items=[];
+- extração futura volta a retornar um vídeo.
+
+Resultado:
+- pasta existente é reutilizada;
+- item é inserido no controle;
+- status volta a in_progress;
+- o falso estado vazio não bloqueia recuperação futura.
+
+REGRESSÃO COMPLETA
+------------------
+- python -m pytest -q: 169 passed;
+- compileall: aprovado;
+- build de wheel sem dependências/build isolation: aprovado;
+- wheel: yt_dlp_tui-0.6.2-py3-none-any.whl;
+- instalação do wheel em venv isolada sem dependências: aprovada;
+- versão instalada via metadata: 0.6.2;
+- python -m yt_dlp_tui --help: aprovado com stub temporário apenas para suprir o import de yt_dlp ausente neste host;
+- entrypoint yt-dlp-tui --help: aprovado nas mesmas condições.
+
+VARREDURAS
+----------
+- identidade funcional anterior: zero ocorrências;
+- cookies.txt/arquivos .env/secret/credential/token dentro do source final: zero;
+- remote EJS/auto-update no runtime: não reintroduzidos;
+- caches/build/egg-info são removidos antes do ZIP final.
+
+LIMITAÇÕES NÃO MASCARADAS
+-------------------------
+- Este host não tem yt-dlp real instalado para executar a playlist do usuário.
+- Não houve acesso à sessão/cookies do usuário nesta validação.
+- Não houve execução literal no Windows nem download real do CDN.
+- A correção reproduz deterministicamente a condição observada: metadata de playlist válida + entries=[].
+
+CRITÉRIO ATINGIDO
+-----------------
+A aplicação não possui mais caminho lógico em que uma playlist sem nenhum item extraído possa ser criada/auditada como sucesso 0/0. O caso vazio é recuperado de forma limitada ou falha sem iniciar a tarefa.
