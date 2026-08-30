@@ -3,14 +3,8 @@ name: K-Tools Core CI
 on:
   push:
     branches: [main]
-    paths:
-      - "packages/ktools-core/**"
-      - ".github/workflows/core-ci.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "packages/ktools-core/**"
-      - ".github/workflows/core-ci.yml"
 
 jobs:
   core:

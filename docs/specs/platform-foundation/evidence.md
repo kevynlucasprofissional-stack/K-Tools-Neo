@@ -13,7 +13,7 @@ PYTHONPATH=packages/ktools-core/src python -m unittest discover -s packages/ktoo
 Observed:
 
 ```text
-6 tests
+10 tests
 OK
 ```
 

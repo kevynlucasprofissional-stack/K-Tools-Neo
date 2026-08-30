@@ -97,6 +97,68 @@ class WorkflowEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(WorkflowValidationError, "join.right"):
             engine().validate(workflow)
 
+    def test_rejects_unknown_node_type(self) -> None:
+        workflow = WorkflowDefinition.from_dict(
+            {"id": "unknown", "nodes": [{"id": "x", "type": "missing.node"}], "edges": []}
+        )
+        with self.assertRaisesRegex(WorkflowValidationError, "Unknown node type"):
+            engine().validate(workflow)
+
+    def test_rejects_unknown_port(self) -> None:
+        workflow = WorkflowDefinition.from_dict(
+            {
+                "id": "bad-port",
+                "nodes": [
+                    {"id": "a", "type": "text.literal", "config": {"value": "a"}},
+                    {"id": "b", "type": "text.literal", "config": {"value": "b"}},
+                    {"id": "join", "type": "text.concat"},
+                ],
+                "edges": [
+                    {"sourceNode": "a", "sourcePort": "missing", "targetNode": "join", "targetPort": "left"},
+                    {"sourceNode": "b", "sourcePort": "text", "targetNode": "join", "targetPort": "right"},
+                ],
+            }
+        )
+        with self.assertRaisesRegex(WorkflowValidationError, "Unknown output port"):
+            engine().validate(workflow)
+
+    def test_rejects_duplicate_target_connection(self) -> None:
+        workflow = WorkflowDefinition.from_dict(
+            {
+                "id": "duplicate-target",
+                "nodes": [
+                    {"id": "a", "type": "text.literal", "config": {"value": "a"}},
+                    {"id": "b", "type": "text.literal", "config": {"value": "b"}},
+                    {"id": "c", "type": "text.literal", "config": {"value": "c"}},
+                    {"id": "join", "type": "text.concat"},
+                ],
+                "edges": [
+                    {"sourceNode": "a", "sourcePort": "text", "targetNode": "join", "targetPort": "left"},
+                    {"sourceNode": "b", "sourcePort": "text", "targetNode": "join", "targetPort": "left"},
+                    {"sourceNode": "c", "sourcePort": "text", "targetNode": "join", "targetPort": "right"},
+                ],
+            }
+        )
+        with self.assertRaisesRegex(WorkflowValidationError, "already connected"):
+            engine().validate(workflow)
+
+    def test_wraps_handler_failure_with_node_id(self) -> None:
+        registry = NodeRegistry()
+        registry.register(
+            NodeDefinition(
+                type_id="test.fail",
+                title="Fail",
+                outputs={"text": PortDefinition(DataType.TEXT)},
+            ),
+            lambda _inputs, _config, _context: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
+        workflow = WorkflowDefinition.from_dict(
+            {"id": "failure", "nodes": [{"id": "danger", "type": "test.fail"}], "edges": []}
+        )
+        from ktools_core import WorkflowExecutionError
+        with self.assertRaisesRegex(WorkflowExecutionError, "Node danger failed: boom"):
+            WorkflowEngine(registry).execute(workflow)
+
     def test_optional_input_may_be_unconnected(self) -> None:
         registry = NodeRegistry()
         registry.register(

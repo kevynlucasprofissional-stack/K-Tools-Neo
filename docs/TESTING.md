@@ -18,7 +18,7 @@ Local sandbox evidence for the candidate:
 
 ```text
 PYTHONPATH=packages/ktools-core/src python -m unittest discover -s packages/ktools-core/tests -v
-=> 6 tests, OK
+=> 10 tests, OK
 
 PYTHONPATH=packages/ktools-core/src python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
 => workflowId=hello-ktools; join.text="K-Tools Neo"; exit 0
