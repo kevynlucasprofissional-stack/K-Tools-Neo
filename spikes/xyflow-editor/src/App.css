@@ -1,0 +1,98 @@
+.editor-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+.sidebar {
+  width: 250px;
+  background: #f8f9fa;
+  border-right: 1px solid #ddd;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+}
+
+.toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+}
+
+.inspector-panel {
+  width: 300px;
+  background: #f8f9fa;
+  border-left: 1px solid #ddd;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Custom Node Styles */
+.ktool-node {
+  background: white;
+  border: 2px solid #555;
+  border-radius: 8px;
+  min-width: 150px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  font-size: 12px;
+}
+
+.ktool-node.selected {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.3);
+}
+
+.ktool-node .node-header {
+  padding: 8px;
+  background: #eee;
+  border-bottom: 1px solid #ddd;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ktool-node .node-body {
+  padding: 8px;
+}
+
+.handle-label {
+  font-size: 10px;
+  color: #666;
+}
+
+/* Execution States */
+.ktool-node[data-state="RUNNING"] {
+  border-color: #ffc107;
+}
+.ktool-node[data-state="SUCCESS"] {
+  border-color: #28a745;
+}
+.ktool-node[data-state="ERROR"] {
+  border-color: #dc3545;
+}
+.ktool-node[data-state="CACHED"] {
+  border-color: #17a2b8;
+}
+
+.missing-node {
+  background: #fff3f3;
+  border: 2px dashed #dc3545;
+  border-radius: 8px;
+  min-width: 150px;
+  padding: 12px;
+  color: #dc3545;
+  font-weight: bold;
+}
