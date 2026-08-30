@@ -181,31 +181,36 @@ Any schema distinction introduced in validation must be exercised through execut
 
 ## E-003 — GitHub Actions jobs failed before a recorded step
 
-Status: ROOT CAUSE PROVED / ENVIRONMENT CHANGED / RETEST REQUIRED
-Environment / refs: PR #1; runs `33327645359` and `33327842478`
+Status: RESOLVED / ROOT CAUSE PROVED / REGRESSION BOUNDARY VALIDATED
+Environment / refs: PR #1; historical runs `33327645359`, `33327842478`; resolving run `33330660076`
 
-### Fingerprint
+### Historical fingerprint
 Every matrix job concluded `failure` almost immediately; API returned no job steps; representative job-log retrieval returned `BlobNotFound`.
 
 ### Boundary reached
-GitHub Actions orchestration / job startup. Checkout and K-Tools execution were not evidenced.
-
-### Refutation attempt
-The second run materially changed the workflow from Python 3.11/3.13 to 3.10/3.13, removed path-filter ambiguity and added explicit least-privilege contents permission. The first observable failure did not move.
+GitHub Actions orchestration / job startup. Checkout and K-Tools execution were not evidenced in the historical runs.
 
 ### Platform evidence that resolved the unknown
-The GitHub Actions UI annotations supplied after the blocked cycle state that the jobs were not started because recent account payments had failed or the spending limit needed to be increased, directing the account to Billing & plans.
+The GitHub Actions UI annotation stated that the jobs were not started because recent account payments had failed or the spending limit needed to be increased, directing the account to Billing & plans.
 
-This proves the original red jobs were an account/billing Actions boundary, not a Windows/Linux or `ktools-core` failure.
+This proved the original red jobs were an account/billing Actions boundary, not a Windows/Linux or `ktools-core` failure.
 
 ### Material environment change
-The repository has subsequently been changed from private to public. The GitHub repository API now reports `visibility: public`.
+The repository was changed from private to public; GitHub repository metadata reported `visibility: public`.
 
-### Current classification
-The root cause of the historical no-step failures is proven. Whether the repository-visibility change fully removes the job-start restriction is **not assumed**; the discriminating evidence is a new exact-head PR run that reaches Checkout/Setup/Install/Test.
+### Resolving experiment
+Exact-head run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131`.
 
-### Next action
-Rerun CI on the current PR head. If jobs start, close the historical external blocker and classify any later failure at the first actual failing step. If the same billing annotation remains, the external account condition is not yet resolved and product code must remain untouched.
+Observed:
+
+- Ubuntu 3.10: success;
+- Ubuntu 3.13: success;
+- Windows 3.10: success;
+- Windows 3.13: success;
+- all matrix paths reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
+
+### Classification
+Historical external blocker closed. The workflow and product boundary are now evidenced on hosted Ubuntu/Windows runners.
 
 ### Anti-repeat lesson
-A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Once the platform annotation identifies billing, changing workflow code is not a valid fix. A rerun is justified now only because the environment materially changed.
+A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Once a platform annotation identifies billing, changing workflow/product code is not a valid fix. After an environmental change, rerun the exact acceptance boundary and classify from the first real failing step.
