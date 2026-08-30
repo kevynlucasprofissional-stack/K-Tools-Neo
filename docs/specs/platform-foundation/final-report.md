@@ -1,6 +1,6 @@
 # Platform Foundation — Cycle Report
 
-Status: **BLOCKED AT EXTERNAL CI PROMOTION GATE**
+Status: **READY FOR FINAL EXACT-HEAD CI AND PROMOTION AUDIT**
 
 ## Objective
 
@@ -17,7 +17,9 @@ Create the smallest durable foundation for turning K-Tools Neo into one integrat
 - Python first for the core foundation;
 - imported XCursos/YT-DLP apps remain bounded subsystems and future adapters call them rather than duplicate them;
 - typed ports and Artifact provenance are core contracts;
-- visual editor technology remains deferred to a dedicated spike.
+- `@xyflow/react` is the preferred first canvas dependency, while `ktools-core` remains workflow truth;
+- Run Journal + Artifact persistence are prioritized before broad production use of expensive media workflows;
+- third-party implementations are classified by direct-dependency/selective-donor/clean-room reuse boundary before any code reuse.
 
 ## Implemented
 
@@ -25,7 +27,7 @@ Create the smallest durable foundation for turning K-Tools Neo into one integrat
 - typed workflow/node/edge/port models;
 - node registry;
 - deterministic DAG validation and execution;
-- validation for unknown nodes/ports, duplicate connections, missing required inputs, incompatible types and cycles;
+- validation for unknown nodes/ports, duplicate target connections, missing required inputs, incompatible types and cycles;
 - execution error correlation;
 - optional-input semantics aligned between validation/execution;
 - initial serializable `Artifact` model;
@@ -33,48 +35,108 @@ Create the smallest durable foundation for turning K-Tools Neo into one integrat
 - 10-test unit/contract suite;
 - root Windows/Ubuntu CI definition;
 - root `.gitignore`;
-- canonical engineering docs + Engineering Journal.
+- canonical engineering docs + Engineering Journal;
+- source-based study of n8n, Activepieces, LiteGraph.js, Rete.js, ComfyUI, Node-RED and xyflow;
+- multi-agent development protocol for ChatGPT, OpenCode and Antigravity, with Codex explicitly excluded from this project for now.
 
 ## Evidence
 
-Local source-path validation:
+### Local source-path validation
 
 - 10 tests PASS;
 - CLI smoke PASS, producing `K-Tools Neo`.
 
-GitHub Actions:
+### Historical GitHub Actions failure
 
 - run `33327645359` failed before any recorded step;
 - after material workflow hardening, run `33327842478` repeated the same pre-step fingerprint;
-- representative step list is empty and logs are unavailable as `BlobNotFound`.
+- GitHub UI annotation later proved the reason: account payment/spending-limit state prevented the jobs from starting.
 
-Therefore the evidence does **not** support a claim that K-Tools failed on Windows/Linux. It supports a claim that the GitHub Actions job-start boundary is currently blocked before product execution.
+Therefore those historical red runs were external Actions/account evidence, not K-Tools Windows/Linux failures.
+
+### Material environment change
+
+- repository changed from private to public;
+- GitHub repository metadata confirmed `visibility: public`.
+
+### Hosted acceptance after environment change
+
+Run `33330660076` on SHA `1ccffb11af25a8d993ead931183380d354746131` concluded success.
+
+- Ubuntu / Python 3.10: success;
+- Ubuntu / Python 3.13: success;
+- Windows / Python 3.10: success;
+- Windows / Python 3.13: success.
+
+Every path reached and passed:
+
+- Checkout;
+- Setup Python;
+- editable installation of `ktools-core`;
+- unit/contract tests;
+- CLI smoke.
+
+This satisfies the root CI acceptance criterion for that candidate and closes the historical job-start blocker.
+
+## Research / architecture evidence
+
+`docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md` records the supplied-source analysis and snapshot fingerprints.
+
+Key resulting direction:
+
+- Node-RED: architectural reference for editor/runtime/registry and subflow concepts;
+- Activepieces: reference for Pieces, durable execution and replay/skip patterns;
+- ComfyUI: clean-room reference for expensive-pipeline validation/cache/progress;
+- n8n: clean-room UX/contract reference rather than donor code;
+- Rete.js/LiteGraph.js: targeted concepts, not competing graph ownership;
+- xyflow: preferred MIT frontend canvas dependency.
+
+## Multi-agent acceleration plan
+
+`docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` establishes:
+
+- ChatGPT — Conductor / Chief Architect / Integration Engineer;
+- OpenCode — Runtime / Backend Implementation Lead;
+- Antigravity — Frontend / UX / Product Prototype Lead;
+- Codex — intentionally excluded from K-Tools for now;
+- branch/worktree isolation;
+- path/contract ownership;
+- handoff protocol;
+- staged parallel workstreams.
+
+Immediate post-Foundation parallelism:
+
+1. OpenCode: first real capability/Node Pack milestone;
+2. Antigravity: isolated xyflow interaction spike against accepted fixture contracts;
+3. ChatGPT: Conductor review/integration and specification of durable execution based on the first capability evidence.
 
 ## Regression / integration audit
 
-The platform foundation is additive. The legacy K-Tools GUI, loose utility source files, XCursos Runner internals and YT-DLP TUI internals were intentionally not modified by the foundation implementation.
+The platform foundation remains additive. The legacy K-Tools GUI, loose utility source files, XCursos Runner internals and YT-DLP TUI internals were intentionally not rewritten by this foundation implementation.
+
+The research and multi-agent additions are documentation/decision artifacts and do not create a second workflow runtime.
 
 ## Remaining risks / known gaps
 
 - no real product utility node yet;
 - no persistence/restart/cache;
-- no visual editor;
+- no production visual editor;
 - no XCursos/YT-DLP adapters;
 - no migration of legacy screens;
 - root CI for imported apps remains future work;
-- exact-candidate CI acceptance is externally blocked.
+- desktop-host choice/performance is not yet validated;
+- future Node Pack schema/version migration still needs explicit design before third-party packs are supported.
 
 ## Promotion decision
 
-**Do not merge PR #1.**
+The historical external CI blocker is resolved and hosted acceptance is green on the validated candidate.
 
-The smallest intervention required to resume is to inspect the failed GitHub Actions run in the repository UI, identify/resolve the platform-provided account/repository/runner job-start reason, and rerun PR #1. If the workflow then reaches an install/test step and fails, resume at that first product boundary.
+Before merging PR #1:
 
-## Exact resume point
+1. finish canonical memory closure;
+2. trigger CI on the exact final PR head;
+3. confirm all four matrix jobs are green;
+4. inspect final diff and mergeability;
+5. merge if no material issue remains.
 
-1. resolve GitHub Actions job-start condition;
-2. rerun PR #1;
-3. require green Windows + Ubuntu acceptance;
-4. update `evidence.md`, `tasks.md`, `CURRENT_STATE.md` and this report;
-5. perform final exact-head audit;
-6. only then merge/promote and begin the first real capability-node migration spec.
+After merge, start the first real capability/Node Pack spec from the promoted `main`, while Antigravity may begin its isolated UI spike in parallel under the multi-agent plan.
