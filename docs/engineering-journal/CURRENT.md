@@ -51,6 +51,90 @@ Root CI must explicitly own monorepo validation.
 
 ---
 
+## H-004 — Editor/runtime separation is a stable cross-project pattern
+
+Status: VALIDATED
+Origin: source study of Node-RED, Activepieces, n8n, Rete.js and xyflow
+
+### Claim
+K-Tools should keep workflow semantics/execution independent from the visual canvas.
+
+### Evidence
+The independently designed systems studied repeatedly separate graph/editor concerns from runtime/registry/execution concerns. xyflow itself solves interaction/viewport/handles without attempting to be an application workflow runtime.
+
+### Refutation attempt
+Using a visual-programming framework as both UI and workflow owner could reduce early code, but would duplicate or displace the already-tested `ktools-core` contracts and make CLI/Tools/agent clients depend on a UI framework.
+
+### Classification
+Validated for K-Tools architecture.
+
+### Practical implication
+`@xyflow/react` can become a frontend dependency while `ktools-core` remains authoritative.
+
+### Evidence record
+`docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`
+
+---
+
+## H-005 — xyflow is the lowest-lock-in canvas candidate
+
+Status: VALIDATED FOR UI SPIKE / PRODUCT PROMOTION STILL UNPROVED
+Origin: xyflow source + Activepieces source
+
+### Claim
+`@xyflow/react` is the best first implementation for the K-Tools workflow canvas among the studied projects.
+
+### Confirming evidence
+The xyflow source already provides handles, `isValidConnection`, viewport, selection, reconnection and graph-view utilities under MIT. Activepieces uses the same library throughout its real workflow builder with custom nodes/edges, minimap, context menus and selection behavior.
+
+### Refutation boundary
+No evidence yet proves K-Tools desktop-host packaging, native bridge or large-graph performance in our target environment.
+
+### Classification
+Use in a dedicated UI spike; do not call the editor delivered until that boundary is exercised.
+
+---
+
+## H-006 — Run Journal + Artifact provenance must precede production use of expensive workflows
+
+Status: VALIDATED AS TARGET DIRECTION
+Origin: Activepieces durable execution + ComfyUI cache/progress + K-Tools media domain
+
+### Claim
+Long-running audio/video/PDF workflows need persistent per-node run state and artifact provenance before restart/resume/cache can be trustworthy.
+
+### Evidence
+Activepieces implements replay-and-skip from durable step outputs; ComfyUI uses input signatures/cached node outputs and explicit node progress states. K-Tools workloads can be substantially more expensive than the current deterministic fixture nodes.
+
+### Refutation attempt
+A pure in-memory executor is sufficient for the Foundation milestone and remains intentionally simpler. It becomes inadequate only when real expensive workflows require crash recovery/history/cache.
+
+### Practical implication
+After the first real Node Pack proves capability composition, persistence/Run Journal should precede a broad visual-workflow rollout.
+
+---
+
+## H-007 — Third-party source must be classified by reuse boundary, not by popularity
+
+Status: VALIDATED
+Origin: license/source inspection of all seven study snapshots
+
+### Claim
+Some projects are safe candidates for direct dependency/selective reuse while others should remain clean-room references.
+
+### Classification
+- xyflow: direct dependency candidate (MIT);
+- Activepieces: selective donor code only outside declared Enterprise areas and after per-file/dependency review (MIT area);
+- Node-RED: selective donor code possible under Apache-2.0 obligations;
+- Rete.js/LiteGraph.js: MIT, but adopting their graph ownership is architecturally unnecessary;
+- n8n: conceptual/UX reference under current strategy, not donor code due Sustainable Use restrictions;
+- ComfyUI: conceptual reference under current strategy, not donor code unless GPL compatibility is deliberately accepted.
+
+### Anti-repeat lesson
+Never copy a useful upstream implementation before classifying its license boundary and proving that direct reuse is better than a small contract-owned implementation.
+
+---
+
 ## E-001 — Local editable install could not reach build dependencies
 
 Status: CLASSIFIED / EXTERNAL HARNESS
@@ -95,28 +179,33 @@ Any schema distinction introduced in validation must be exercised through execut
 
 ---
 
-## E-003 — GitHub Actions jobs fail before a recorded step
+## E-003 — GitHub Actions jobs failed before a recorded step
 
-Status: BLOCKED / EXTERNAL
+Status: ROOT CAUSE PROVED / ENVIRONMENT CHANGED / RETEST REQUIRED
 Environment / refs: PR #1; runs `33327645359` and `33327842478`
 
 ### Fingerprint
-Every matrix job concludes `failure` almost immediately; API returns no job steps; representative job-log retrieval returns `BlobNotFound`.
+Every matrix job concluded `failure` almost immediately; API returned no job steps; representative job-log retrieval returned `BlobNotFound`.
 
 ### Boundary reached
-GitHub Actions orchestration / job startup. Checkout and K-Tools execution are not evidenced.
+GitHub Actions orchestration / job startup. Checkout and K-Tools execution were not evidenced.
 
 ### Refutation attempt
 The second run materially changed the workflow from Python 3.11/3.13 to 3.10/3.13, removed path-filter ambiguity and added explicit least-privilege contents permission. The first observable failure did not move.
 
-### Tempting but wrong interpretation
-"The workflow engine fails on Windows and Ubuntu."
+### Platform evidence that resolved the unknown
+The GitHub Actions UI annotations supplied after the blocked cycle state that the jobs were not started because recent account payments had failed or the spending limit needed to be increased, directing the account to Billing & plans.
+
+This proves the original red jobs were an account/billing Actions boundary, not a Windows/Linux or `ktools-core` failure.
+
+### Material environment change
+The repository has subsequently been changed from private to public. The GitHub repository API now reports `visibility: public`.
 
 ### Current classification
-External job-start boundary. Exact runner/account/repository cause is unavailable through the connected API.
+The root cause of the historical no-step failures is proven. Whether the repository-visibility change fully removes the job-start restriction is **not assumed**; the discriminating evidence is a new exact-head PR run that reaches Checkout/Setup/Install/Test.
 
-### Resolution / next evidence
-Inspect the failed run in GitHub Actions UI for the platform-provided reason, resolve that account/repository/runner condition, then rerun the PR. Only after a job reaches checkout/install/test can a product failure be classified.
+### Next action
+Rerun CI on the current PR head. If jobs start, close the historical external blocker and classify any later failure at the first actual failing step. If the same billing annotation remains, the external account condition is not yet resolved and product code must remain untouched.
 
 ### Anti-repeat lesson
-A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Do not rerun the same no-step fingerprint without a material environmental change.
+A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Once the platform annotation identifies billing, changing workflow code is not a valid fix. A rerun is justified now only because the environment materially changed.
