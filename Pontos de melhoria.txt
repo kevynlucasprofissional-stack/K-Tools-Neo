@@ -1,0 +1,13 @@
+Na próxima versão do K-Tools Neo, alguns ajustes e novas funcionalidades precisam ser implementados.
+
+Primeiro, é necessário adicionar uma ferramenta para converter arquivos PNG em `.ico`.
+
+Também é preciso corrigir a ferramenta que transforma várias imagens em PDF. Atualmente, parece que o script está comprimindo as imagens durante a conversão. Por exemplo, quando várias imagens somam cerca de 70 MB, o PDF gerado fica com aproximadamente 3 MB. Isso indica que está ocorrendo compressão, e percebi que a qualidade das imagens também diminui depois da conversão.
+
+O ideal é que a ferramenta de transformar imagens em PDF tenha uma opção para gerar o PDF em qualidade máxima, sem compressão ou perda perceptível de qualidade.
+
+Além disso, seria interessante adicionar uma ferramenta separada para comprimir PDFs usando Python, permitindo reduzir o tamanho dos arquivos quando essa for a intenção do usuário.
+
+Outro ajuste importante seria automatizar a varredura de arquivos. Hoje, em algumas ferramentas, é necessário selecionar a pasta e depois clicar manualmente em “fazer varredura”. O ideal é que, assim que o usuário selecionar uma pasta, o sistema já faça automaticamente a varredura completa e identifique os arquivos válidos para aquela ferramenta, sem exigir um clique adicional.
+
+Colocar o script de dehumer, reduzir ruído e outros no app
