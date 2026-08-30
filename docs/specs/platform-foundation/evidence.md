@@ -96,8 +96,37 @@ Claim supported: changing Python matrix and workflow permissions did not move th
 
 Claim not supported: a defect in `ktools-core`, packaging, tests, Windows compatibility or Linux compatibility.
 
-Anti-repeat conclusion: do not rerun the unchanged workflow merely to seek a different result. Human/account/repository-side inspection of the failed Actions job is the next discriminating source of evidence.
+## EV-006 — GitHub UI proves historical billing/spending root cause
+
+Source: user-provided screenshot of the GitHub Actions run annotations for the four matrix jobs.
+
+Observed platform annotation:
+
+```text
+The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings.
+```
+
+Classification: **PROVED EXTERNAL ACCOUNT/BILLING JOB-START FAILURE**.
+
+Claims supported:
+
+- the historical runs did not start because of GitHub account billing/spending state;
+- historical red jobs are not evidence that K-Tools fails on Windows, Linux, Python 3.10 or Python 3.13;
+- modifying K-Tools product code or the workflow implementation would not have fixed that boundary.
+
+Material environment change after this evidence:
+
+- repository changed from private to public;
+- GitHub repository metadata now reports `visibility: public`.
+
+Claim not yet supported:
+
+- that the public-repository state is sufficient to let all current hosted jobs execute successfully.
+
+Next discriminating evidence:
+
+- a new exact-current-head PR run must reach Checkout, Setup Python, editable install, unit/contract tests and CLI smoke on Windows + Ubuntu.
 
 ## Promotion evidence status
 
-`AC-007.1` is **NOT SATISFIED**. The PR remains unmerged.
+`AC-007.1` remains **NOT YET SATISFIED** until the new exact-head CI runs through the product boundary and passes.
