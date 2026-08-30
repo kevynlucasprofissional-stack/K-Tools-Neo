@@ -43,7 +43,7 @@ Acceptance: AC-005.1
 Result: `python -m ktools_core <workflow.json> --json` executes the example workflow successfully in local harness.
 
 ## TASK-005 — Add and validate root CI
-Status: IN_PROGRESS / RETESTING AFTER MATERIAL ENVIRONMENT CHANGE
+Status: VALIDATED
 
 Requirements: REQ-007
 
@@ -57,39 +57,41 @@ Implemented:
 - editable install, unit/contract and CLI smoke steps;
 - least-privilege `contents: read`.
 
-Historical blocked evidence:
+Historical blocker:
 
-- run `33327645359` / SHA `3fb12310...`: four jobs failed before recorded steps;
-- run `33327842478` / SHA `4fdf578a...`: materially changed CI, same pre-step failure fingerprint;
-- representative job step list was empty and log retrieval was `BlobNotFound`.
+- runs `33327645359` and `33327842478` failed before recorded steps;
+- GitHub UI proved the reason was account payment/spending-limit state;
+- repository was subsequently changed from private to public.
 
-Root cause now proved by GitHub UI annotation:
+Resolution evidence:
 
-- GitHub refused to start the jobs because of account payment/spending-limit state;
-- therefore those red jobs do not evidence a K-Tools product failure.
+- run `33330660076` / SHA `1ccffb11af25a8d993ead931183380d354746131`: success;
+- Ubuntu 3.10 + 3.13: success;
+- Windows 3.10 + 3.13: success;
+- all paths reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
 
-Material environment change:
-
-- repository changed from private to public;
-- repository API confirms `visibility: public`.
-
-Next evidence: new exact-head PR CI must actually reach checkout/install/test and pass on Windows + Ubuntu.
+Result: AC-007.1 satisfied for the tested candidate.
 
 ## TASK-006 — Integration review and promotion decision
-Status: VALIDATED FOR HISTORICAL CANDIDATE / MUST RECHECK FINAL HEAD
+Status: IN_PROGRESS — FINAL EXACT-HEAD VALIDATION
 
 Requirements: all
 
-Historical result:
+Completed review evidence:
 
-- candidate diff was additive; legacy GUI, loose utilities and imported app internals were not modified by the platform foundation;
-- local core tests/CLI were green;
-- historical root CI was externally blocked before product execution;
-- prior promotion decision was correctly **DO NOT MERGE**.
+- platform foundation remains additive relative to baseline;
+- legacy GUI, loose utilities and imported app internals were not rewritten by the foundation;
+- local core tests/CLI are green;
+- hosted Windows/Linux CI is green on the validated candidate;
+- workflow-platform research is versioned and architectural decisions synchronized;
+- multi-agent ownership/protocol is versioned.
 
-Reopened condition:
+Remaining before merge:
 
-Because the CI environment materially changed and architecture research was added to the PR, perform a final exact-head diff/audit after TASK-005 becomes green, then promote only if no material issue is found.
+1. finish memory closure files;
+2. run CI on the exact final PR head;
+3. inspect final diff/PR mergeability;
+4. merge only if the final CI remains green and audit finds no material issue.
 
 ## TASK-007 — Study workflow-platform reference implementations
 Status: VALIDATED
@@ -105,3 +107,22 @@ Result:
 - ADR-006/ADR-007 and Engineering Journal were synchronized.
 
 Evidence: direct inspection of the supplied source archives and licenses; paths/hashes are recorded in the study.
+
+## TASK-008 — Establish multi-agent development operating model
+Status: VALIDATED
+
+Objective: define how ChatGPT, OpenCode and Antigravity can work concurrently without duplicated ownership or uncontrolled architectural drift, while explicitly keeping Codex out of this project's agent pool for now.
+
+Result:
+
+- `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` added;
+- ChatGPT designated Conductor / Chief Architect / Integration Engineer;
+- OpenCode designated Runtime / Backend Implementation Lead;
+- Antigravity designated Frontend / UX / Product Prototype Lead;
+- path/contract ownership map defined;
+- branch/worktree and integration strategy defined;
+- handoff contract and prompt templates defined;
+- staged parallel waves defined from first real Node Pack through durable execution, UI, adapters, subflows and agent-first workflow generation;
+- `AGENTS.md` and `docs/README.md` linked to the protocol.
+
+Evidence: versioned coordination documents on PR #1 branch.
