@@ -30,11 +30,15 @@ Status: OPEN
 
 The first engine runs in memory. Restart/recovery, cache and artifact lifecycle are not implemented.
 
+The workflow-platform source study strengthens the priority of a Run Journal + Artifact persistence before expensive media workflows become a primary visual-editor path. See `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
+
 ## KI-005 — Visual workflow editor is absent
 
 Status: OPEN
 
 No canvas/palette/inspector/run UI exists yet.
+
+Research now identifies `@xyflow/react` as the preferred implementation for the first UI spike, while `ktools-core` remains the workflow/runtime authority. Desktop-host integration and target-environment performance remain unproved.
 
 ## KI-006 — No adapter boundary to imported apps yet
 
@@ -42,22 +46,26 @@ Status: OPEN
 
 XCursos and YouTube remain standalone subsystems until adapter contracts are specified and tested.
 
-## KI-007 — GitHub Actions jobs fail before first recorded step
+## KI-007 — Historical GitHub Actions jobs were blocked by billing/spending state
 
-Status: BLOCKING / EXTERNAL BOUNDARY
+Status: ROOT CAUSE IDENTIFIED / RETESTING
 
-Two materially distinct root-CI attempts created the expected Windows/Ubuntu matrices but every job failed before a checkout/setup/install/test step was exposed. A representative job returns an empty step list and its log endpoint returns `BlobNotFound`.
+Two root-CI attempts created the expected Windows/Ubuntu matrices but every job failed before checkout/setup/install/test.
 
-Impact: the exact-candidate Windows/Ubuntu acceptance criterion cannot currently be proven, so PR #1 must not be promoted.
+The GitHub Actions UI subsequently exposed the missing platform reason: the jobs were not started because recent account payments had failed or the spending limit needed to be increased. This classifies the historical failures as an external account/billing Actions boundary rather than a K-Tools product failure.
 
-What is known:
+Material environment change:
 
-- the workflow file is discovered;
-- matrix jobs are created;
-- the failure occurs before a product step is observable.
+- the repository was changed from private to public;
+- the GitHub repository API now reports `visibility: public`.
 
-What is not known from the connected API:
+Impact now: historical red runs remain invalid evidence for Windows/Linux product behavior. A new exact-head run is required to prove the environment change actually allows hosted jobs to start.
 
-- the account/repository/runner-side reason GitHub refuses or fails to start the job.
+Resolution condition:
 
-Resolution condition: GitHub Actions starts the jobs and the workflow reaches checkout/install/test/CLI steps; then fix any product/workflow failures evidenced at those boundaries and obtain green exact-candidate CI.
+1. a new PR run reaches Checkout/Setup Python/Install;
+2. Windows + Ubuntu unit/contract + CLI smoke complete successfully;
+3. evidence/current-state/tasks are synchronized;
+4. only then may PR #1 be promoted.
+
+If the platform still reports the same billing annotation, remain externally blocked and do not modify product code as a workaround.
