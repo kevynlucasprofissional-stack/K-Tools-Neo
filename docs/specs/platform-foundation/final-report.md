@@ -1,6 +1,6 @@
 # Platform Foundation — Cycle Report
 
-Status: **READY FOR FINAL EXACT-HEAD CI AND PROMOTION AUDIT**
+Status: **RESOLVED / PROMOTED TO MAIN**
 
 ## Objective
 
@@ -68,15 +68,13 @@ Run `33330660076` on SHA `1ccffb11af25a8d993ead931183380d354746131` concluded su
 - Windows / Python 3.10: success;
 - Windows / Python 3.13: success.
 
-Every path reached and passed:
+Every path passed Checkout, Setup Python, editable installation, unit/contract tests and CLI smoke.
 
-- Checkout;
-- Setup Python;
-- editable installation of `ktools-core`;
-- unit/contract tests;
-- CLI smoke.
+### Final exact-head promotion CI
 
-This satisfies the root CI acceptance criterion for that candidate and closes the historical job-start blocker.
+Run `33330801547` on final PR head `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7` concluded success.
+
+All four Windows/Ubuntu × Python 3.10/3.13 jobs passed the full workflow.
 
 ## Research / architecture evidence
 
@@ -112,9 +110,26 @@ Immediate post-Foundation parallelism:
 
 ## Regression / integration audit
 
-The platform foundation remains additive. The legacy K-Tools GUI, loose utility source files, XCursos Runner internals and YT-DLP TUI internals were intentionally not rewritten by this foundation implementation.
+The platform foundation is additive. The legacy K-Tools GUI, loose utility source files, XCursos Runner internals and YT-DLP TUI internals were intentionally not rewritten by this foundation implementation.
 
 The research and multi-agent additions are documentation/decision artifacts and do not create a second workflow runtime.
+
+Final audit before promotion confirmed:
+
+- PR mergeable;
+- branch ahead of and not behind baseline `main`;
+- final exact-head CI green;
+- no material out-of-scope code changes;
+- no competing runtime ownership introduced.
+
+## Promotion
+
+PR #1: `feat(platform): establish typed workflow foundation`
+
+- final PR head: `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7`;
+- merge method: squash;
+- promoted `main` commit: `bf6b5282a3df033a1394b05215a1ed97492a73c1`;
+- merged successfully.
 
 ## Remaining risks / known gaps
 
@@ -127,16 +142,8 @@ The research and multi-agent additions are documentation/decision artifacts and 
 - desktop-host choice/performance is not yet validated;
 - future Node Pack schema/version migration still needs explicit design before third-party packs are supported.
 
-## Promotion decision
+## Final state
 
-The historical external CI blocker is resolved and hosted acceptance is green on the validated candidate.
+**RESOLVED.**
 
-Before merging PR #1:
-
-1. finish canonical memory closure;
-2. trigger CI on the exact final PR head;
-3. confirm all four matrix jobs are green;
-4. inspect final diff and mergeability;
-5. merge if no material issue remains.
-
-After merge, start the first real capability/Node Pack spec from the promoted `main`, while Antigravity may begin its isolated UI spike in parallel under the multi-agent plan.
+The Foundation milestone is promoted. The next production milestone must use a new spec to prove one real K-Tools capability through a single implementation owner usable directly and as a workflow Node Pack. The multi-agent plan may now be activated for parallel delivery under the documented ownership boundaries.

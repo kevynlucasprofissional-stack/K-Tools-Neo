@@ -92,10 +92,6 @@ Observed:
 
 Classification: **same pre-product Actions/runner boundary as EV-004**.
 
-Claim supported: changing Python matrix and workflow permissions did not move the first observable failure boundary.
-
-Claim not supported: a defect in `ktools-core`, packaging, tests, Windows compatibility or Linux compatibility.
-
 ## EV-006 — GitHub UI proves historical billing/spending root cause
 
 Source: user-provided screenshot of the GitHub Actions run annotations for the four matrix jobs.
@@ -108,16 +104,10 @@ The job was not started because recent account payments have failed or your spen
 
 Classification: **PROVED EXTERNAL ACCOUNT/BILLING JOB-START FAILURE**.
 
-Claims supported:
-
-- the historical runs did not start because of GitHub account billing/spending state;
-- historical red jobs are not evidence that K-Tools fails on Windows, Linux, Python 3.10 or Python 3.13;
-- modifying K-Tools product code or the workflow implementation would not have fixed that boundary.
-
 Material environment change after this evidence:
 
 - repository changed from private to public;
-- GitHub repository metadata now reports `visibility: public`.
+- GitHub repository metadata reported `visibility: public`.
 
 ## EV-007 — Hosted Windows/Linux acceptance after environment change
 
@@ -132,26 +122,53 @@ Observed matrix:
 - Windows / Python 3.10: success;
 - Windows / Python 3.13: success.
 
-Observed boundary in every matrix path:
+Every matrix path passed Checkout, Setup Python, editable install, unit/contract tests and CLI smoke.
 
-1. Set up job — success;
-2. Checkout — success;
-3. Setup Python — success;
-4. editable install of `packages/ktools-core` — success;
-5. unit and contract tests — success;
-6. CLI smoke — success;
-7. cleanup/complete job — success.
+## EV-008 — Final exact-head promotion CI
 
-Claims supported:
+Run: `33330801547`
+Candidate SHA: `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7`
+Conclusion: `success`
 
-- GitHub hosted jobs now start after the material environment change;
-- editable installation succeeds on hosted Ubuntu and Windows for Python 3.10 and 3.13;
-- the unit/contract suite succeeds on all four supported-boundary matrix paths;
-- the real CLI smoke succeeds on all four paths;
-- the historical account/billing blocker is resolved for this repository state.
+Observed matrix:
+
+- Windows / Python 3.13: success;
+- Ubuntu / Python 3.10: success;
+- Ubuntu / Python 3.13: success;
+- Windows / Python 3.10: success.
+
+Every job passed:
+
+1. Set up job;
+2. Checkout;
+3. Setup Python;
+4. Install `ktools-core` editable;
+5. Unit and contract tests;
+6. CLI smoke;
+7. cleanup / complete job.
+
+Claim supported: the complete PR head including canonical memory, source study and multi-agent plan preserved the tested core behavior on hosted Windows and Ubuntu.
+
+## EV-009 — Promotion to main
+
+PR: `#1` — `feat(platform): establish typed workflow foundation`
+Final PR head: `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7`
+Merge method: squash
+Promoted `main` commit: `bf6b5282a3df033a1394b05215a1ed97492a73c1`
+Merged: yes
+
+Pre-merge audit:
+
+- PR mergeable;
+- branch ahead of and not behind baseline `main`;
+- final diff additive relative to the baseline;
+- legacy GUI/loose utilities not rewritten;
+- imported XCursos/YT-DLP app internals not modified;
+- no second workflow engine introduced;
+- final exact-head CI green on all four matrix jobs.
 
 ## Promotion evidence status
 
-`AC-007.1` is **SATISFIED for candidate SHA `1ccffb11af25a8d993ead931183380d354746131`**.
+Platform Foundation promotion is **SATISFIED / RESOLVED**.
 
-Because canonical memory and multi-agent documentation are being synchronized after this successful run, one final exact-current-head CI must be green before PR #1 is merged. No product behavior changed after EV-007; the final rerun validates the complete promotion candidate including memory closure.
+The next production claim must be established by a new spec: prove one real K-Tools capability through a single implementation owner usable directly and through a workflow Node Pack.
