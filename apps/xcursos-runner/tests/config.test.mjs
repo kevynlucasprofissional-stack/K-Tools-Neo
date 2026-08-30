@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
+import { AppConfigStore, defaultAppRoot } from '../src/config.mjs';
+async function tmp(){return await fs.mkdtemp(path.join(os.tmpdir(),'xc-v4-cfg-'));}
+test('Windows config uses dedicated LocalAppData app root',()=>{const root=defaultAppRoot({LOCALAPPDATA:'C:/Users/K/AppData/Local'},'win32');assert.match(root,/XCursosRunner$/);});
+test('config persists stable lesson URL, output, dedicated Chrome profile and local CDP settings',async()=>{const root=await tmp();const s=new AppConfigStore({appRoot:root});await s.save({lastLessonUrl:'https://www.xcursos.com/curso/a/aula/b?token=SECRET',outputRoot:'C:/Cursos',cdpPort:9333,chromePath:'C:/Chrome/chrome.exe'});const c=await s.load();assert.equal(c.lastLessonUrl,'https://www.xcursos.com/curso/a/aula/b');assert.equal(c.outputRoot,'C:/Cursos');assert.match(c.profileDir,/chrome-profile$/);assert.equal(c.cdpEndpoint,'http://127.0.0.1:9333');assert.equal(c.chromePath,'C:/Chrome/chrome.exe');});

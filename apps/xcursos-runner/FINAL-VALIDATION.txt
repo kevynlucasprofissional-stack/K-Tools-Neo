@@ -1,0 +1,58 @@
+XCursos Runner V4.2.6
+
+BASELINE
+V4.2.5 main baseline: 264 tests / 262 PASS / 0 FAIL / 2 SKIPPED.
+
+V4.2.6 TAB ISOLATION
+- tab enumeration is passive; observers are not attached to every Chrome page
+- only the selected XCursos work tab is pinned/observed
+- work tab identity is preserved by CDP Target ID when available
+- same-URL duplicate tabs are not chosen arbitrarily
+- unrelated user tabs are never recycled for recovery; only about:blank or a newly-created page is used
+- dedicated Chrome launches with background timer/renderer/occluded-window throttling disabled
+- pinning does not force the tab to the visual foreground
+
+V4.2.6 MODULE TREE
+- arbitrary-depth modulePath[] metadata
+- live sidebar ancestry extraction from active lesson
+- moduleName remains leaf-compatible
+- output layout mirrors course/module/submodule/.../lesson
+- modulePath persists in in-flight state and manifest
+- legacy records without modulePath remain compatible
+- repair preserves existing output path
+- Windows path-length guard shortens deep hierarchy deterministically
+
+LIVE HTML DEVELOPMENT EVIDENCE
+Aula 108 hierarchy observed during development:
+2. Regravação VTSD 2026
+  -> 05. Copywriting
+    -> 5. Vídeo de vendas - VSL
+      -> e_Aula
+
+AUTOMATED VALIDATION
+GitHub Actions / Node 24
+npm install: PASS
+npm run check: PASS
+tests: 273
+pass: 271
+fail: 0
+skipped: 2
+cancelled: 0
+
+SKIPS
+2 real ffmpeg/ffprobe integration tests were skipped because those executables were unavailable in the Linux CI runner. Fake/semantic ffprobe and downloader regressions passed.
+
+SECURITY / POLICY INVARIANTS
+- signed URL queries are not persisted in clear
+- Authorization/Cookie/token redaction remains enabled
+- materials are not video
+- no DRM bypass
+- no Cloudflare/CAPTCHA automation or bypass
+- user state/manifest/valid course files are not deleted during upgrade/recovery
+
+WINDOWS LIVE GATE
+- reinstall/update to V4.2.6
+- restart only the dedicated XCursos Chrome so the new background flags take effect
+- run a range while actively browsing other tabs/windows
+- validate newly downloaded nested lesson paths against the XCursos sidebar hierarchy
+- finish with xcursos audit --json

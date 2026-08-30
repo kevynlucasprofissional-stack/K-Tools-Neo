@@ -1,0 +1,84 @@
+name: XCursos Runner CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Test suite
+        run: npm test
+
+      - name: Windows diagnostics and PowerShell 5.1 smoke
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) {
+            throw "Expected Windows PowerShell 5.1, got $($PSVersionTable.PSVersion)"
+          }
+
+          $scriptText = Get-Content -Raw -LiteralPath '.\download-all.ps1'
+          [void][scriptblock]::Create($scriptText)
+
+          $diagnosticRoot = Join-Path $env:RUNNER_TEMP 'Área Diagnóstico com espaços'
+          New-Item -ItemType Directory -Force -Path $diagnosticRoot | Out-Null
+
+          $raw = (& node .\src\cli.mjs diagnostics-check --output "$diagnosticRoot" --json | Out-String).Trim()
+          if (-not $raw) { throw 'diagnostics-check returned empty stdout' }
+          $result = $raw | ConvertFrom-Json
+          if (-not $result.diagnosticsHealthy) { throw "diagnostics-check unhealthy: $raw" }
+          if ($result.status -ne 'DIAGNOSTICS_CHECK') { throw "Unexpected self-test status: $($result.status)" }
+
+          $reportPath = [string]$result.diagnostics.reportJson
+          $eventsPath = [string]$result.diagnostics.events
+          $metaPath = [string]$result.diagnostics.metadata
+          $livenessPath = [string]$result.diagnostics.liveness
+          foreach ($required in @($reportPath, $eventsPath, $metaPath, $livenessPath)) {
+            if (-not $required -or -not (Test-Path -LiteralPath $required)) {
+              throw "Missing diagnostic artifact: $required"
+            }
+          }
+
+          $report = Get-Content -Raw -LiteralPath $reportPath | ConvertFrom-Json
+          $meta = Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json
+          $liveness = Get-Content -Raw -LiteralPath $livenessPath | ConvertFrom-Json
+          $events = @(Get-Content -LiteralPath $eventsPath | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+          if ($report.runId -ne $result.diagnostics.runId) { throw 'Report/result runId mismatch' }
+          if ($meta.runId -ne $report.runId) { throw 'Metadata/report runId mismatch' }
+          if ($liveness.runId -ne $report.runId) { throw 'Liveness/report runId mismatch' }
+          if ($events.Count -ne [int]$report.eventSummary.count) { throw 'events.jsonl/report count mismatch' }
+          if ($events | Where-Object { $_.runId -ne $report.runId }) { throw 'Timeline contains another runId' }
+          $reportText = Get-Content -Raw -LiteralPath $reportPath
+          if ($reportText -match 'DIAGNOSTIC_SELFTEST_SECRET') { throw 'Self-test secret leaked into shareable report' }
+
+          $transcriptDir = Join-Path $env:LOCALAPPDATA 'XCursosRunner\logs'
+          New-Item -ItemType Directory -Force -Path $transcriptDir | Out-Null
+          $transcriptPath = Join-Path $transcriptDir 'xcursos-all-ci-transcript.log'
+          Start-Transcript -Path $transcriptPath -Force | Out-Null
+          Write-Host 'XCursos transcript smoke marker'
+          Stop-Transcript | Out-Null
+          if (-not (Test-Path -LiteralPath $transcriptPath)) { throw 'PowerShell transcript was not created' }
+          $transcriptText = Get-Content -Raw -LiteralPath $transcriptPath
+          if ($transcriptText -notmatch 'XCursos transcript smoke marker') { throw 'PowerShell transcript marker missing' }

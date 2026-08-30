@@ -1,0 +1,7 @@
+import { sleep } from './utils.mjs';
+export class AutoThrottle {
+  constructor({minDelayMs=0,maxDelayMs=3000,initialDelayMs=null,sleepFn=sleep}={}){this.minDelayMs=Math.max(0,Number(minDelayMs)||0);this.maxDelayMs=Math.max(this.minDelayMs,Number(maxDelayMs)||this.minDelayMs);this.currentDelayMs=Math.min(this.maxDelayMs,Math.max(this.minDelayMs,initialDelayMs==null?this.minDelayMs:Number(initialDelayMs)||0));this.sleepFn=sleepFn;this.successStreak=0;}
+  recordFailure({status=null,retryAfterMs=null}={}){this.successStreak=0;const code=Number(status);let next=Math.max(this.minDelayMs,this.currentDelayMs||Math.max(100,this.minDelayMs));next=Math.max(next, code===429?Math.max(1000,next*2):code===403||code>=500?next*1.75:next*1.4);if(Number.isFinite(Number(retryAfterMs)))next=Math.max(next,Number(retryAfterMs));this.currentDelayMs=Math.min(this.maxDelayMs,Math.round(next));return this.currentDelayMs;}
+  recordSuccess({_latencyMs=null,latencyMs=null}={}){void _latencyMs;void latencyMs;this.successStreak++;if(this.currentDelayMs<=this.minDelayMs){this.currentDelayMs=this.minDelayMs;return this.currentDelayMs;}const factor=this.successStreak>=3?0.5:0.7;const next=Math.round(this.currentDelayMs*factor);const settleThreshold=Math.max(this.minDelayMs+25,Math.ceil(this.minDelayMs*1.25));this.currentDelayMs=next<=settleThreshold?this.minDelayMs:Math.max(this.minDelayMs,next);return this.currentDelayMs;}
+  async wait(){if(this.currentDelayMs>0)await this.sleepFn(this.currentDelayMs);}
+}
