@@ -31,10 +31,12 @@ A local editable-install attempt was not usable as product evidence because the 
 `.github/workflows/core-ci.yml` validates:
 
 - Ubuntu and Windows;
-- Python 3.11 and 3.13;
+- Python 3.10 and 3.13 (minimum supported boundary and current upper validation target);
 - editable package installation;
 - unit/contract suite;
 - CLI smoke.
+
+A CI failure only counts as product evidence after the job reaches the corresponding checkout/install/test/runtime boundary. Pre-step runner/job-start failures are classified separately.
 
 Exact-SHA CI results must be recorded in `specs/platform-foundation/evidence.md` before promotion.
 

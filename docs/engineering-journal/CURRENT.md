@@ -92,3 +92,28 @@ Executor now skips absent optional inputs.
 
 ### Anti-repeat lesson
 Any schema distinction introduced in validation must be exercised through execution, not validated only structurally.
+
+---
+
+## E-003 — GitHub Actions jobs fail before a recorded step
+
+Status: ACTIVE / EXTERNAL-BOUNDARY SUSPECTED
+Environment / ref: PR #1, SHA `3fb12310f531a3754c751116fdc5470ab29ea159`, run `33327645359`
+
+### Fingerprint
+Four matrix jobs conclude `failure` almost immediately; API returns no job steps; job-log retrieval returns `BlobNotFound`.
+
+### Boundary reached
+GitHub Actions orchestration / job startup. Checkout and K-Tools execution are not evidenced.
+
+### Tempting but wrong interpretation
+"The workflow engine fails on Windows and Ubuntu."
+
+### Current classification
+The available evidence does not reach the product. Exact account/runner/infrastructure cause is not exposed by the connected API and remains unknown.
+
+### Next discriminating experiment
+One materially changed CI definition is allowed: align supported Python versions and make permissions explicit. If the same no-step fingerprint repeats, classify as externally blocked and do not retry unchanged.
+
+### Anti-repeat lesson
+A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary.

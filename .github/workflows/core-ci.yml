@@ -1,5 +1,8 @@
 name: K-Tools Core CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -12,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.13"]
+        python-version: ["3.10", "3.13"]
     runs-on: ${{ matrix.os }}
 
     steps:
