@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-core"
+version = "0.1.0"
+description = "Local-first typed workflow runtime for K-Tools Neo"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "K-Tools Neo" }]
+dependencies = []
+
+[project.scripts]
+ktools-workflow = "ktools_core.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
