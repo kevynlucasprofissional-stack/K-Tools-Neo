@@ -1,6 +1,14 @@
 # K-Tools Neo — Agent Work Packets
 
-These files are the **local, versioned execution instructions** for implementation agents. They exist specifically so an agent does not need GitHub Issues, GitHub API access, MCP GitHub, or the `gh` CLI to understand its assignment.
+These files are the **local, versioned execution instructions** for implementation agents. They exist so an agent does not need GitHub Issues, GitHub API access, MCP GitHub or the `gh` CLI to understand its assignment.
+
+## Active Git policy
+
+The project now uses a **main-only workflow**.
+
+Read `docs/multi-agent/MAIN_ONLY_POLICY.md` before executing any packet.
+
+Any older text inside a Work Packet that says to use a dedicated branch, avoid writing to `main`, open a PR, or wait for merge is overridden by the current main-only policy unless the project owner explicitly says otherwise for that task.
 
 ## Current packets
 
@@ -10,9 +18,7 @@ Read and execute:
 
 `docs/multi-agent/work-packets/OC-001-FIRST-REAL-NODE-PACK.md`
 
-Working branch:
-
-`opencode/first-real-node-pack`
+Active Git target: `main`.
 
 Purpose: select and implement the first real reusable K-Tools capability/Node Pack, proving that direct usage and workflow-node usage share one implementation owner.
 
@@ -22,28 +28,24 @@ Read and execute:
 
 `docs/multi-agent/work-packets/AG-001-XYFLOW-EDITOR-SPIKE.md`
 
-Working branch:
+Active Git target: `main`.
 
-`agent-antigravity/xyflow-editor-spike`
-
-Purpose: validate the future React + TypeScript + `@xyflow/react` editor interaction model in an isolated spike without creating a second workflow engine.
+Purpose: continue validating the React + TypeScript + `@xyflow/react` editor interaction model under `spikes/xyflow-editor/` without creating a second workflow engine.
 
 ## How to delegate
-
-After the agent has the repository locally and has fetched the latest refs, the human instruction can be very small.
 
 For OpenCode:
 
 ```text
-Read AGENTS.md and execute docs/multi-agent/work-packets/OC-001-FIRST-REAL-NODE-PACK.md completely. Work only on the branch assigned in that Work Packet. Follow the playbook until a terminal state and do not merge to main.
+Work from the latest main. Read AGENTS.md, docs/multi-agent/MAIN_ONLY_POLICY.md and docs/multi-agent/work-packets/OC-001-FIRST-REAL-NODE-PACK.md, then execute OC-001 completely. Stay inside your backend/runtime ownership, pull --rebase origin main before pushing, run the required tests, and push the validated result directly to main. Do not create a task branch unless I explicitly ask.
 ```
 
 For Antigravity:
 
 ```text
-Read AGENTS.md and execute docs/multi-agent/work-packets/AG-001-XYFLOW-EDITOR-SPIKE.md completely. Work only on the branch assigned in that Work Packet. Follow the playbook until a terminal state and do not merge to main.
+Work from the latest main. Read AGENTS.md, docs/multi-agent/MAIN_ONLY_POLICY.md and docs/multi-agent/work-packets/AG-001-XYFLOW-EDITOR-SPIKE.md, then continue AG-001 completely. Stay inside the frontend/spike ownership, pull --rebase origin main before pushing, run the required tests, and push the validated result directly to main. Do not create a task branch unless I explicitly ask.
 ```
 
 ## Authority
 
-The Work Packet is task-local instruction. Repository-wide authority remains with `AGENTS.md` and the canonical engineering documents under `docs/`. If a Work Packet and a newer canonical architectural decision conflict, the agent must record the conflict and hand it to the Conductor rather than silently choosing a new architecture.
+Repository-wide authority remains with `AGENTS.md`, `docs/multi-agent/MAIN_ONLY_POLICY.md` and the canonical engineering documents under `docs/`. Work Packets define task-local goals and evidence, but historical branch/PR instructions inside them no longer control Git workflow.
