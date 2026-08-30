@@ -20,7 +20,7 @@ Acceptance: AC-002.1, AC-002.2, AC-002.3, AC-004.1
 
 Result: models, registry, type compatibility and Artifact serialization implemented with standard-library runtime only.
 
-Evidence: unit/contract suite.
+Evidence: 10-test local unit/contract suite plus audit regression coverage.
 
 ## TASK-003 — Implement deterministic DAG execution
 Status: VALIDATED
@@ -43,21 +43,36 @@ Acceptance: AC-005.1
 Result: `python -m ktools_core <workflow.json> --json` executes the example workflow successfully in local harness.
 
 ## TASK-005 — Add and validate root CI
-Status: IN_PROGRESS
+Status: BLOCKED
 
 Requirements: REQ-007
 
 Acceptance: AC-007.1
 
-Result: root workflow defined for Windows/Ubuntu × Python 3.11/3.13.
+Implemented:
 
-Minimum evidence: exact candidate SHA successful CI jobs.
+- root GitHub Actions workflow;
+- Windows + Ubuntu matrix;
+- Python 3.10 + 3.13 support-boundary checks;
+- editable install, unit/contract and CLI smoke steps;
+- least-privilege `contents: read`.
+
+Blocked evidence:
+
+- run `33327645359` / SHA `3fb12310...`: four jobs failed before recorded steps;
+- run `33327842478` / SHA `4fdf578a...`: materially changed CI, same pre-step failure fingerprint;
+- representative job step list is empty and log retrieval is `BlobNotFound`.
+
+Next: resolve the external GitHub Actions job-start condition, then rerun this exact acceptance boundary.
 
 ## TASK-006 — Integration review and promotion decision
-Status: TODO
+Status: VALIDATED
 
 Requirements: all
 
-Dependencies: TASK-005
+Result:
 
-Objective: inspect candidate diff, CI and docs for partial implementation, regression risk, ownership duplication or spec drift; update memory and only then promote.
+- candidate diff is additive; legacy GUI, loose utilities and imported app internals are not modified by the platform foundation;
+- local core tests/CLI are green;
+- root CI acceptance is externally blocked before product execution;
+- promotion decision: **DO NOT MERGE until TASK-005 becomes VALIDATED**.

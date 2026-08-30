@@ -69,7 +69,7 @@ Packaging dependency acquisition, before K-Tools package/runtime execution.
 Harness/environment limitation. Direct source tests and CLI smoke subsequently passed.
 
 ### Regression guard
-GitHub CI performs the real editable-install boundary.
+GitHub CI performs the real editable-install boundary once a runner starts.
 
 ---
 
@@ -97,23 +97,26 @@ Any schema distinction introduced in validation must be exercised through execut
 
 ## E-003 — GitHub Actions jobs fail before a recorded step
 
-Status: ACTIVE / EXTERNAL-BOUNDARY SUSPECTED
-Environment / ref: PR #1, SHA `3fb12310f531a3754c751116fdc5470ab29ea159`, run `33327645359`
+Status: BLOCKED / EXTERNAL
+Environment / refs: PR #1; runs `33327645359` and `33327842478`
 
 ### Fingerprint
-Four matrix jobs conclude `failure` almost immediately; API returns no job steps; job-log retrieval returns `BlobNotFound`.
+Every matrix job concludes `failure` almost immediately; API returns no job steps; representative job-log retrieval returns `BlobNotFound`.
 
 ### Boundary reached
 GitHub Actions orchestration / job startup. Checkout and K-Tools execution are not evidenced.
+
+### Refutation attempt
+The second run materially changed the workflow from Python 3.11/3.13 to 3.10/3.13, removed path-filter ambiguity and added explicit least-privilege contents permission. The first observable failure did not move.
 
 ### Tempting but wrong interpretation
 "The workflow engine fails on Windows and Ubuntu."
 
 ### Current classification
-The available evidence does not reach the product. Exact account/runner/infrastructure cause is not exposed by the connected API and remains unknown.
+External job-start boundary. Exact runner/account/repository cause is unavailable through the connected API.
 
-### Next discriminating experiment
-One materially changed CI definition is allowed: align supported Python versions and make permissions explicit. If the same no-step fingerprint repeats, classify as externally blocked and do not retry unchanged.
+### Resolution / next evidence
+Inspect the failed run in GitHub Actions UI for the platform-provided reason, resolve that account/repository/runner condition, then rerun the PR. Only after a job reaches checkout/install/test can a product failure be classified.
 
 ### Anti-repeat lesson
-A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary.
+A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Do not rerun the same no-step fingerprint without a material environmental change.

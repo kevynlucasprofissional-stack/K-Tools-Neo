@@ -4,7 +4,7 @@
 
 Status: OPEN / CLASSIFIED
 
-`apps/xcursos-runner/.github/workflows/*` and `apps/yt-dlp-tui/.github/workflows/*` live below the repository root. GitHub Actions discovers workflows from the repository root `.github/workflows`, so these imported workflow files do not by themselves validate the K-Tools monorepo.
+`apps/xcursos-runner/.github/workflows/*` and `apps/yt-dlp-tui/.github/workflows/*` live below the repository root. Those imported workflow files do not by themselves validate the K-Tools monorepo.
 
 Impact: upstream/subtree test suites can drift after integration unless root CI explicitly invokes them.
 
@@ -41,3 +41,23 @@ No canvas/palette/inspector/run UI exists yet.
 Status: OPEN
 
 XCursos and YouTube remain standalone subsystems until adapter contracts are specified and tested.
+
+## KI-007 — GitHub Actions jobs fail before first recorded step
+
+Status: BLOCKING / EXTERNAL BOUNDARY
+
+Two materially distinct root-CI attempts created the expected Windows/Ubuntu matrices but every job failed before a checkout/setup/install/test step was exposed. A representative job returns an empty step list and its log endpoint returns `BlobNotFound`.
+
+Impact: the exact-candidate Windows/Ubuntu acceptance criterion cannot currently be proven, so PR #1 must not be promoted.
+
+What is known:
+
+- the workflow file is discovered;
+- matrix jobs are created;
+- the failure occurs before a product step is observable.
+
+What is not known from the connected API:
+
+- the account/repository/runner-side reason GitHub refuses or fails to start the job.
+
+Resolution condition: GitHub Actions starts the jobs and the workflow reaches checkout/install/test/CLI steps; then fix any product/workflow failures evidenced at those boundaries and obtain green exact-candidate CI.

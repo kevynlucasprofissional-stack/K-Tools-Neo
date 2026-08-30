@@ -66,22 +66,38 @@ Observed:
 - workflow was discovered and a four-job matrix was created;
 - Windows 3.11, Windows 3.13, Ubuntu 3.11 and Ubuntu 3.13 all concluded `failure`;
 - the jobs exposed no executed steps through the GitHub API;
-- the job log endpoint returned `BlobNotFound` instead of product/build output.
+- representative job log retrieval returned `BlobNotFound` instead of product/build output.
 
 Evidence boundary: GitHub Actions orchestration/job startup. No evidence shows that checkout, Python setup, package installation, tests or CLI smoke executed.
 
-Claim supported: the workflow file is recognized by GitHub and matrix jobs are being scheduled.
+## EV-005 — GitHub Actions run 33327842478 after material CI change
 
-Claim not supported: any K-Tools product/code failure. The first observable failure is before a recorded product step.
+Candidate SHA: `4fdf578aee02051625462df85f1058d6882490d1`.
 
-## EV-005 — Hardened exact-SHA GitHub Actions
+Material changes from EV-004:
 
-Status: PENDING.
-
-Material changes before retry:
-
-- matrix aligned with declared Python support boundary: 3.10 and 3.13;
+- matrix aligned to declared Python support boundary: 3.10 and 3.13;
 - workflow permissions explicitly restricted to `contents: read`;
-- no path filter can hide a candidate-SHA validation run.
+- no path filter can hide candidate-SHA validation.
 
-A second run is justified because the workflow definition materially changed. If the same pre-step fingerprint repeats, classify the runner/job-start boundary as externally blocked and do not repeat unchanged.
+Observed:
+
+- Ubuntu 3.10: `failure`;
+- Ubuntu 3.13: `failure`;
+- Windows 3.10: `failure`;
+- Windows 3.13: `failure`;
+- all four jobs again expose no executed steps;
+- representative job `99301039366` returns an empty step list;
+- representative log retrieval again returns `BlobNotFound`.
+
+Classification: **same pre-product Actions/runner boundary as EV-004**.
+
+Claim supported: changing Python matrix and workflow permissions did not move the first observable failure boundary.
+
+Claim not supported: a defect in `ktools-core`, packaging, tests, Windows compatibility or Linux compatibility.
+
+Anti-repeat conclusion: do not rerun the unchanged workflow merely to seek a different result. Human/account/repository-side inspection of the failed Actions job is the next discriminating source of evidence.
+
+## Promotion evidence status
+
+`AC-007.1` is **NOT SATISFIED**. The PR remains unmerged.
