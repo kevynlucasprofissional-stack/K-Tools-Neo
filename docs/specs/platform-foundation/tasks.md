@@ -43,7 +43,7 @@ Acceptance: AC-005.1
 Result: `python -m ktools_core <workflow.json> --json` executes the example workflow successfully in local harness.
 
 ## TASK-005 — Add and validate root CI
-Status: BLOCKED
+Status: IN_PROGRESS / RETESTING AFTER MATERIAL ENVIRONMENT CHANGE
 
 Requirements: REQ-007
 
@@ -57,22 +57,51 @@ Implemented:
 - editable install, unit/contract and CLI smoke steps;
 - least-privilege `contents: read`.
 
-Blocked evidence:
+Historical blocked evidence:
 
 - run `33327645359` / SHA `3fb12310...`: four jobs failed before recorded steps;
 - run `33327842478` / SHA `4fdf578a...`: materially changed CI, same pre-step failure fingerprint;
-- representative job step list is empty and log retrieval is `BlobNotFound`.
+- representative job step list was empty and log retrieval was `BlobNotFound`.
 
-Next: resolve the external GitHub Actions job-start condition, then rerun this exact acceptance boundary.
+Root cause now proved by GitHub UI annotation:
+
+- GitHub refused to start the jobs because of account payment/spending-limit state;
+- therefore those red jobs do not evidence a K-Tools product failure.
+
+Material environment change:
+
+- repository changed from private to public;
+- repository API confirms `visibility: public`.
+
+Next evidence: new exact-head PR CI must actually reach checkout/install/test and pass on Windows + Ubuntu.
 
 ## TASK-006 — Integration review and promotion decision
-Status: VALIDATED
+Status: VALIDATED FOR HISTORICAL CANDIDATE / MUST RECHECK FINAL HEAD
 
 Requirements: all
 
+Historical result:
+
+- candidate diff was additive; legacy GUI, loose utilities and imported app internals were not modified by the platform foundation;
+- local core tests/CLI were green;
+- historical root CI was externally blocked before product execution;
+- prior promotion decision was correctly **DO NOT MERGE**.
+
+Reopened condition:
+
+Because the CI environment materially changed and architecture research was added to the PR, perform a final exact-head diff/audit after TASK-005 becomes green, then promote only if no material issue is found.
+
+## TASK-007 — Study workflow-platform reference implementations
+Status: VALIDATED
+
+Objective: inspect the supplied n8n, Activepieces, LiteGraph.js, Rete.js, ComfyUI, Node-RED and xyflow source snapshots for architecture, UX, reuse boundaries and licensing implications.
+
 Result:
 
-- candidate diff is additive; legacy GUI, loose utilities and imported app internals are not modified by the platform foundation;
-- local core tests/CLI are green;
-- root CI acceptance is externally blocked before product execution;
-- promotion decision: **DO NOT MERGE until TASK-005 becomes VALIDATED**.
+- source-based study versioned at `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`;
+- source snapshots are fingerprinted with SHA-256;
+- reuse is classified as direct dependency / selective donor / clean-room reference;
+- architecture recommendations cover Node Packs, Run Journal, semantic cache, subworkflows/tools, schema migrations and xyflow canvas integration;
+- ADR-006/ADR-007 and Engineering Journal were synchronized.
+
+Evidence: direct inspection of the supplied source archives and licenses; paths/hashes are recorded in the study.
