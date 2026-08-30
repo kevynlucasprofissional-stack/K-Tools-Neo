@@ -13,7 +13,8 @@ All agents working in this repository must follow the project's quality-first en
 7. `docs/TESTING.md`
 8. the active spec under `docs/specs/`
 9. `docs/engineering-journal/CURRENT.md`
-10. relevant code and tests on the exact current ref
+10. `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` when work is delegated or parallel
+11. relevant code and tests on the exact current ref
 
 ## Core rules
 
@@ -26,3 +27,14 @@ All agents working in this repository must follow the project's quality-first en
 - Use RED → GREEN → REFACTOR when practical and define evidence before implementation.
 - Update canonical docs and the Engineering Journal when architecture, invariants, failures, or evidence boundaries change.
 - Never commit credentials, cookies, tokens, secrets, or sensitive runtime payloads.
+
+## Multi-agent protocol
+
+- ChatGPT is the Conductor / Chief Architect / Integration Engineer unless the project owner explicitly changes that role.
+- OpenCode is the default Runtime / Backend Implementation Lead for delegated K-Tools tasks.
+- Antigravity is the default Frontend / UX / Product Prototype Lead for delegated K-Tools tasks.
+- Codex is intentionally excluded from the K-Tools development pool until the project owner changes that constraint.
+- No implementation agent merges directly to `main`.
+- Parallel work requires disjoint path/contract ownership or an explicit dependency/fixture contract from the Conductor.
+- Every agent handoff must include base/head SHA, task IDs, changed files, tests/evidence, Journal/known-issue impact, risks and exact next action.
+- See `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` for branch strategy, waves, ownership and prompt contracts.
