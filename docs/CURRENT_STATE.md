@@ -14,7 +14,7 @@ Platform-foundation cycle based on `main` at `e6fb80f78f4e4e4f943ea6567320161407
 
 ## Working now in PR #1 candidate
 
-Candidate code/CI ref validated locally and exercised by Actions: `4fdf578aee02051625462df85f1058d6882490d1`.
+The PR branch contains the first platform foundation plus the workflow-platform source study and the multi-agent development protocol.
 
 - `packages/ktools-core/` provides the first UI-independent workflow runtime.
 - Typed node/port contracts exist.
@@ -26,17 +26,26 @@ Candidate code/CI ref validated locally and exercised by Actions: `4fdf578aee020
 - Root `.gitignore` covers Python/Node build output and common local secret/runtime files.
 - Canonical engineering memory exists under `docs/`.
 - Local evidence: 10 unit/contract tests PASS and CLI smoke PASS.
+- `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md` records the supplied-source study and reuse/licensing boundaries.
+- `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` defines ChatGPT as Conductor, OpenCode as Runtime/Backend lead and Antigravity as Frontend/UX lead; Codex is explicitly excluded from this project's agent pool for now.
 
 ## CI boundary status
 
-Two materially distinct GitHub Actions attempts reached the same failure boundary:
+Historical Actions runs:
 
 - run `33327645359` on `3fb12310f531a3754c751116fdc5470ab29ea159`;
 - run `33327842478` on `4fdf578aee02051625462df85f1058d6882490d1` after matrix/permission hardening.
 
-In both cases all matrix jobs concluded `failure` before any step was exposed by the GitHub API; log retrieval returned `BlobNotFound`. There is no evidence that checkout, Python setup, package install, tests or the K-Tools CLI executed.
+Both failed before any step was exposed by the GitHub API. The later GitHub UI annotation proved the platform root cause: the jobs were not started because recent account payments had failed or the spending limit needed to be increased.
 
-Classification: **external GitHub Actions / runner job-start boundary; exact cause unknown from the connected API**.
+Classification: **historical failures were external GitHub Actions account/billing job-start failures, not K-Tools product failures**.
+
+Material environment change now confirmed:
+
+- repository changed from private to public;
+- GitHub repository metadata reports `visibility: public`.
+
+A new exact-current-head PR run is therefore justified and is the next acceptance evidence. It must actually reach Checkout, Setup Python, editable install, unit/contract tests and CLI smoke on Windows + Ubuntu.
 
 ## Existing product/subsystems preserved
 
@@ -47,15 +56,15 @@ Classification: **external GitHub Actions / runner job-start boundary; exact cau
 
 ## Not implemented yet
 
-- Visual workflow editor.
+- Production visual workflow editor.
 - Persistence of workflows/runs/artifacts.
-- Real filesystem/media/PDF nodes.
+- Real filesystem/media/PDF node packs.
 - Adapters for XCursos Runner or YT-DLP TUI.
 - Workflow templates replacing legacy tool screens.
 - Agent/natural-language workflow generation.
 
 ## Promotion status
 
-**BLOCKED — do not merge PR #1 yet.**
+**RETESTING — do not merge PR #1 until the new exact-head CI is green.**
 
-The code candidate is locally validated and the integration diff is reviewable, but `AC-007.1` requires successful exact-candidate CI on Windows and Ubuntu. Promotion resumes after GitHub Actions can start a job and run the workflow steps.
+If the new jobs reach the product and fail, fix the first evidenced product/workflow boundary and retest. If Windows + Ubuntu are green, synchronize final evidence/memory, run the exact-head audit, rerun CI on that final memory-closure head, and promote only after that final run is green.
