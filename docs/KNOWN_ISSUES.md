@@ -48,24 +48,27 @@ XCursos and YouTube remain standalone subsystems until adapter contracts are spe
 
 ## KI-007 — Historical GitHub Actions jobs were blocked by billing/spending state
 
-Status: ROOT CAUSE IDENTIFIED / RETESTING
+Status: RESOLVED
 
-Two root-CI attempts created the expected Windows/Ubuntu matrices but every job failed before checkout/setup/install/test.
+Historical symptom:
 
-The GitHub Actions UI subsequently exposed the missing platform reason: the jobs were not started because recent account payments had failed or the spending limit needed to be increased. This classifies the historical failures as an external account/billing Actions boundary rather than a K-Tools product failure.
+- runs `33327645359` and `33327842478` created the matrix but failed before checkout/setup/install/test;
+- the GitHub UI later exposed the reason: recent account payments had failed or the spending limit needed to be increased.
+
+Classification: external GitHub Actions account/billing job-start failure; not a K-Tools product failure.
 
 Material environment change:
 
-- the repository was changed from private to public;
-- the GitHub repository API now reports `visibility: public`.
+- repository changed from private to public;
+- GitHub repository API confirmed `visibility: public`.
 
-Impact now: historical red runs remain invalid evidence for Windows/Linux product behavior. A new exact-head run is required to prove the environment change actually allows hosted jobs to start.
+Resolution evidence:
 
-Resolution condition:
+- exact-head run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131` completed successfully;
+- Ubuntu 3.10: success;
+- Ubuntu 3.13: success;
+- Windows 3.10: success;
+- Windows 3.13: success;
+- each matrix path reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
 
-1. a new PR run reaches Checkout/Setup Python/Install;
-2. Windows + Ubuntu unit/contract + CLI smoke complete successfully;
-3. evidence/current-state/tasks are synchronized;
-4. only then may PR #1 be promoted.
-
-If the platform still reports the same billing annotation, remain externally blocked and do not modify product code as a workaround.
+Result: the historical job-start blocker is closed. Future CI failures must be classified from their actual first failing step rather than carried forward from the billing incident.
