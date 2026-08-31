@@ -6,13 +6,13 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
-  Node,
-  Edge,
-  NodeChange,
-  EdgeChange,
-  Connection,
   ReactFlowProvider,
   MarkerType,
+  type Node,
+  type Edge,
+  type NodeChange,
+  type EdgeChange,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -58,9 +58,9 @@ function FlowEditor() {
   );
 
   const onConnect = useCallback(
-    (connection: Connection) => {
+    (connection: Connection | Edge) => {
       if (isValidKToolsConnection(connection, nodes)) {
-        setEdges((eds) => addEdge({ ...connection, markerEnd: { type: MarkerType.ArrowClosed } }, eds));
+        setEdges((eds) => addEdge({ ...connection, markerEnd: { type: MarkerType.ArrowClosed } } as Edge | Connection, eds));
       }
     },
     [nodes]
@@ -92,9 +92,7 @@ function FlowEditor() {
 
   const simulateRun = () => {
     // Simple state machine for simulation
-    const runStates = ['RUNNING', 'SUCCESS', 'ERROR'];
-    
-    setNodes((nds) => nds.map((n, i) => {
+    setNodes((nds) => nds.map((n) => {
         if(n.type === 'missing') return { ...n, data: { ...n.data, runState: 'ERROR' }};
         return { ...n, data: { ...n.data, runState: 'RUNNING' } };
     }));
@@ -111,6 +109,24 @@ function FlowEditor() {
       setNodes((nds) => nds.map(n => ({ ...n, data: { ...n.data, runState: 'IDLE' } })));
   }
 
+  const addManyNodes = () => {
+    const newNodes: Node[] = [];
+    for (let i = 0; i < 150; i++) {
+      newNodes.push({
+        id: `perf-node-${Date.now()}-${i}`,
+        type: 'ktool',
+        position: { x: Math.random() * 2000, y: Math.random() * 2000 },
+        data: {
+          label: `Synthetic ${i}`,
+          inputs: [{ id: 'in', type: 'file', label: 'In' }],
+          outputs: [{ id: 'out', type: 'file', label: 'Out' }],
+          runState: 'IDLE'
+        }
+      });
+    }
+    setNodes((nds) => [...nds, ...newNodes]);
+  };
+
   return (
     <div className="editor-layout">
       <div className="sidebar">
@@ -120,6 +136,7 @@ function FlowEditor() {
         <div className="toolbar">
             <button onClick={simulateRun}>Simulate Run</button>
             <button onClick={clearRunState}>Clear State</button>
+            <button onClick={addManyNodes}>Add 150 Nodes</button>
         </div>
         <ReactFlow
           nodes={nodes}
@@ -130,14 +147,13 @@ function FlowEditor() {
           nodeTypes={nodeTypes}
           isValidConnection={(conn) => isValidKToolsConnection(conn, nodes)}
           fitView
-          keyboardEnabled={true}
         >
           <Background />
           <Controls />
         </ReactFlow>
       </div>
       <div className="inspector-panel">
-        <Inspector selectedNode={selectedNode} onNodeUpdate={onNodeUpdate} />
+        <Inspector key={selectedNode?.id || 'empty'} selectedNode={selectedNode} onNodeUpdate={onNodeUpdate} />
       </div>
     </div>
   );

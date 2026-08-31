@@ -15,7 +15,7 @@ export function KToolNode({ data }: { data: any }) {
                 position={Position.Left}
                 id={input.id}
                 style={{ top: '50%' }}
-                isValidConnection={(c) => true} // Handled globally by onConnect / isValidConnection
+                isValidConnection={() => true} // Handled globally by onConnect / isValidConnection
               />
               <span className="handle-label" style={{ paddingLeft: '12px' }}>{input.label}</span>
             </div>
@@ -30,7 +30,7 @@ export function KToolNode({ data }: { data: any }) {
                 position={Position.Right}
                 id={output.id}
                 style={{ top: '50%' }}
-                isValidConnection={(c) => true}
+                isValidConnection={() => true}
               />
             </div>
           ))}
