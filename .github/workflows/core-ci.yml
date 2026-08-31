@@ -1,4 +1,4 @@
-name: K-Tools Core CI
+name: K-Tools CI
 
 permissions:
   contents: read
@@ -35,3 +35,32 @@ jobs:
 
       - name: CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
+
+  xyflow-spike:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spikes/xyflow-editor
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: spikes/xyflow-editor/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Deterministic tests
+        run: npm exec vitest -- run
