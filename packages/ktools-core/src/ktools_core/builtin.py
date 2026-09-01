@@ -3,7 +3,7 @@ from __future__ import annotations
 from numbers import Real
 from typing import Any
 
-from .models import DataType, NodeDefinition, PortDefinition
+from .models import CachePolicy, DataType, NodeDefinition, PortDefinition
 from .registry import NodeExecutionContext, NodeRegistry
 
 
@@ -14,6 +14,8 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
             title="Texto",
             category="Text",
             outputs={"text": PortDefinition(DataType.TEXT)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
         ),
         _text_literal,
     )
@@ -27,6 +29,8 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
                 "right": PortDefinition(DataType.TEXT),
             },
             outputs={"text": PortDefinition(DataType.TEXT)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
         ),
         _text_concat,
     )
@@ -36,6 +40,8 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
             title="Número",
             category="Core",
             outputs={"number": PortDefinition(DataType.NUMBER)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
         ),
         _number_literal,
     )
@@ -46,6 +52,8 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
             category="Core",
             inputs={"value": PortDefinition(DataType.ANY)},
             outputs={"value": PortDefinition(DataType.ANY)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
         ),
         _identity,
     )
