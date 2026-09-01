@@ -100,6 +100,25 @@ def main(argv: list[str] | None = None) -> int:
             if bundle is not None:
                 print(f"DIAGNOSTICS: {bundle}")
             return 3
+        except KeyboardInterrupt as exc:
+            if diagnostics is not None:
+                diagnostics.capture_exception(
+                    exc,
+                    "Execution interrupted by user",
+                    category="cli.interruption",
+                )
+                run_id, workflow_id = _latest_correlation(diagnostics)
+                journal_events = () if journal is None or run_id is None else journal.get_events(run_id)
+                bundle = diagnostics.finalize(
+                    status="INTERRUPTED",
+                    run_id=run_id,
+                    workflow_id=workflow_id,
+                    journal_events=journal_events,
+                )
+            print("INTERRUPTED: execution cancelled by user")
+            if bundle is not None:
+                print(f"DIAGNOSTICS: {bundle}")
+            return 130
         except Exception as exc:
             if diagnostics is not None:
                 diagnostics.capture_exception(exc, "CLI failed before workflow completion", category="cli.unexpected")
