@@ -10,13 +10,19 @@ import zipfile
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from ktools_core import RunStatus, SQLiteRunJournal
+from ktools_core import NodeRunStatus, RunStatus, SQLiteRunJournal
 from ktools_json import cli
 
 RECORDS = {"dataset": "oc001", "records": [{"id": i} for i in range(5)]}
 
 
-def write_workflow(path: Path, output_dir: str, *, mode: str = "parts") -> Path:
+def write_workflow(
+    path: Path,
+    output_dir: str,
+    *,
+    mode: str = "parts",
+    overwrite: bool = False,
+) -> Path:
     workflow = {
         "id": "cli-oc001",
         "nodes": [
@@ -24,7 +30,13 @@ def write_workflow(path: Path, output_dir: str, *, mode: str = "parts") -> Path:
             {
                 "id": "splitter",
                 "type": "json.split",
-                "config": {"mode": mode, "parts": 2, "output_dir": output_dir, "prefix": "r"},
+                "config": {
+                    "mode": mode,
+                    "parts": 2,
+                    "output_dir": output_dir,
+                    "prefix": "r",
+                    "overwrite": overwrite,
+                },
             },
         ],
         "edges": [
@@ -101,8 +113,77 @@ class CliTests(unittest.TestCase):
             self.assertEqual(detail.run.status, RunStatus.SUCCEEDED)
             splitter = next(node for node in detail.nodes if node.node_id == "splitter")
             self.assertEqual(splitter.outputs["summary"]["partCount"], 2)
-        report = json.loads((Path(payload["diagnosticBundle"]).parent / "report.json").read_text(encoding="utf-8"))
+        report = json.loads(
+            (Path(payload["diagnosticBundle"]).parent / "report.json").read_text(encoding="utf-8")
+        )
         self.assertTrue(report["journalEvents"])
+
+    def test_real_node_pack_cache_reuses_literal_but_splitter_executes_again(self) -> None:
+        workflow = write_workflow(
+            self.root / "cached.json",
+            str(self.out),
+            overwrite=True,
+        )
+        journal_path = self.root / "cache-runs.sqlite3"
+        cache_path = self.root / "node-cache.sqlite3"
+        payloads: list[dict] = []
+
+        for _ in range(2):
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                code = cli.main(
+                    [
+                        str(workflow),
+                        "--json",
+                        "--journal",
+                        str(journal_path),
+                        "--cache",
+                        str(cache_path),
+                        "--diagnostics-dir",
+                        str(self.diag),
+                    ]
+                )
+            self.assertEqual(code, 0)
+            payloads.append(json.loads(buffer.getvalue()))
+
+        self.assertEqual(payloads[1]["cache"], str(cache_path))
+        with SQLiteRunJournal(journal_path) as journal:
+            detail = journal.get_run_detail(payloads[1]["runId"])
+            self.assertIsNotNone(detail)
+            assert detail is not None
+            statuses = {node.node_id: node.status for node in detail.nodes}
+            self.assertIs(statuses["source"], NodeRunStatus.CACHED)
+            self.assertIs(statuses["splitter"], NodeRunStatus.SUCCEEDED)
+
+        # The second splitter execution really republishes the same deterministic files.
+        self.assertEqual(len(list(self.out.glob("*.json"))), 2)
+        self.assertEqual(payloads[0]["nodeOutputs"]["splitter"], payloads[1]["nodeOutputs"]["splitter"])
+
+        report_path = Path(payloads[1]["diagnosticBundle"]).parent / "report.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        decisions = [
+            event
+            for event in report["decisions"]
+            if event.get("category") == "workflow.cache"
+        ]
+        source_reasons = {
+            event["context"].get("reason")
+            for event in decisions
+            if event.get("nodeId") == "source"
+        }
+        splitter_reasons = {
+            event["context"].get("reason")
+            for event in decisions
+            if event.get("nodeId") == "splitter"
+        }
+        self.assertIn("validated-cache-hit", source_reasons)
+        self.assertIn("node-policy-never", splitter_reasons)
+
+        report_md = (Path(payloads[1]["diagnosticBundle"]).parent / "report.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Cached node output reused", report_md)
+        self.assertIn("Cache bypassed", report_md)
 
     def test_cli_validation_failure_exit_code_and_bundle(self) -> None:
         workflow = self.root / "bad.json"
@@ -136,7 +217,9 @@ class CliTests(unittest.TestCase):
             code = cli.main([str(workflow), "--diagnostics-dir", str(self.diag)])
         self.assertEqual(code, 3)
         output = buffer.getvalue()
-        bundle = Path(next(line for line in output.splitlines() if line.startswith("DIAGNOSTICS: ")).split(": ", 1)[1])
+        bundle = Path(
+            next(line for line in output.splitlines() if line.startswith("DIAGNOSTICS: ")).split(": ", 1)[1]
+        )
         report = json.loads((bundle.parent / "report.json").read_text(encoding="utf-8"))
         self.assertEqual(report["session"]["status"], "FAILED")
         self.assertEqual(report["session"]["workflowId"], "cli-oc001")
