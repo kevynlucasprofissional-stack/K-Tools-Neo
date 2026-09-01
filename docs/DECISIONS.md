@@ -139,7 +139,7 @@ This is deliberately **not** a claim of full event sourcing. K-Tools does not ye
 
 Reason: this gives future UI/history/recovery logic stable ordered facts while keeping common history queries simple.
 
-Implementation rule: M3 cache/artifact/recovery state must extend these run/node identities rather than introduce a disconnected execution-history model.
+Implementation rule: later cache/artifact/recovery state must extend these run/node identities rather than introduce a disconnected execution-history model.
 
 ## ADR-012 — Interrupted execution is distinct from Failed and reconciliation is explicit in V1
 
@@ -163,6 +163,60 @@ Do not persist arbitrary `repr()`, dataclass internals, object attributes or gen
 
 Reason: runtime observability should not unexpectedly reflect opaque object internals/secrets into durable local history, and persistence must remain deterministic enough for later cache/signature work.
 
+## ADR-014 — Diagnostics is a first-class cross-cutting platform contract
+
+Status: **ACCEPTED / IMPLEMENTED FOR V1**
+
+Diagnostics must be built before broad cache/recovery, media, browser and imported-app integration work rather than retrofitted after failures become complex.
+
+`WorkflowEngine` therefore accepts an optional `DiagnosticsSession` independently of `RunJournal`.
+
+The separation is intentional:
+
+```text
+                WorkflowEngine
+                 ↙          ↘
+        RunJournal       DiagnosticsSession
+     lifecycle truth     forensic/support evidence
+```
+
+Run Journal owns durable execution-state facts. Diagnostics owns richer support evidence such as operational logs, decisions, metrics, batches, anomalies, tracebacks, subprocess stdout/stderr references and a shareable support bundle.
+
+Diagnostics must not mutate or redefine journal state.
+
+Implementation rule: significant future runtime/subprocess/integration capabilities after M3 include diagnostic integration in Definition of Done.
+
+## ADR-015 — Share-safe diagnostics are the default; diagnostic reports do not claim root cause
+
+Status: **ACCEPTED / SECURITY AND SUPPORT INVARIANT**
+
+A support bundle is intended to be shareable with a developer or AI assistant, so collection must be useful without becoming an indiscriminate secret dump.
+
+Required default behavior:
+
+- recognized credential/token/password/cookie/authorization patterns are redacted;
+- environment variables are not snapshotted wholesale;
+- unknown Python objects are not serialized through arbitrary `repr()` or reflection;
+- large structured strings are bounded;
+- raw child-process output is redacted before inclusion in the shareable bundle;
+- operational decisions may record concise reason/evidence, but private chain-of-thought is never captured.
+
+The generated `diagnosticHotspots` list is derived from recorded warnings/errors/anomalies. It is explicitly **not** an automatic root-cause diagnosis.
+
+Reason: a diagnostic system that leaks credentials or fabricates certainty creates a larger failure than the bug it is intended to diagnose.
+
+## ADR-016 — Abnormal diagnostic-session recovery requires staleness evidence
+
+Status: **ACCEPTED FOR V1**
+
+A diagnostics directory with an event stream but no final report can result from a crash, forced termination or machine shutdown, but absence of a report alone does not prove that the owner process is dead.
+
+`recover_abandoned_sessions()` therefore does not recover fresh sessions by default. It requires a minimum staleness age; an age of zero is allowed only when the caller independently knows no live process owns the session.
+
+Recovered sessions become `ABANDONED_OR_INTERRUPTED`, preserve the last durable event, and are packaged without inferring the root cause.
+
+This is intentionally conservative until a future process/session lease model can establish ownership more strongly.
+
 ## Research and audit records
 
 Source-based workflow-platform comparative study:
@@ -180,3 +234,7 @@ Audited first official Node Pack:
 Durable Execution V1 evidence:
 
 `docs/specs/durable-execution-v1/evidence.md`
+
+Diagnostics + Support Bundle V1 evidence:
+
+`docs/specs/diagnostics-support-bundle-v1/evidence.md`
