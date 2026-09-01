@@ -18,7 +18,7 @@ Reason: enables CLI tests, headless automation, deterministic validation and fut
 
 ## ADR-003 — Python is the first core runtime language
 
-Status: ACCEPTED FOR FOUNDATION
+Status: ACCEPTED FOR CURRENT PLATFORM
 
 The first `ktools-core` implementation is Python 3.10+.
 
@@ -42,17 +42,17 @@ Connections are validated by declared data types before execution. File-like res
 
 ## ADR-006 — xyflow is the preferred visual-canvas implementation, not the workflow engine
 
-Status: RESEARCH-VALIDATED / IMPLEMENTATION-GATED
+Status: **SPIKE-VALIDATED / PRODUCTION-CONTRACT GATED**
 
-The first real visual-editor spike should use `@xyflow/react` as the canvas interaction layer.
+`@xyflow/react` remains the preferred graph interaction layer.
 
-Reason: source review confirmed that xyflow cleanly owns viewport, node/edge interaction, handles, connection validation hooks and graph-view utilities without requiring it to own K-Tools execution semantics. The studied Activepieces source also uses `@xyflow/react` throughout its production-oriented workflow builder, reducing adoption risk for this product class. The snapshot is MIT-licensed.
+Reason: source research and the audited `spikes/xyflow-editor/` implementation proved that xyflow can own viewport, node/edge interaction, handles, controlled graph state, palette/canvas/inspector composition and typed-connection preflight without requiring it to own K-Tools execution semantics.
 
-Boundary: `ktools-core` remains the authority for workflow semantics, type validation, persistence and execution. The frontend may provide immediate connection feedback but must revalidate through core contracts.
+Boundary: `ktools-core` remains the authority for workflow semantics, type validation, persistence and execution. The frontend may provide immediate feedback but must consume/revalidate shared runtime contracts.
 
-Still open: the desktop host (for example Tauri/Electron), packaging, native bridge and K-Tools-specific performance must be proven by a dedicated UI/desktop spike before the visual editor is promoted as delivered product architecture.
+The spike did **not** yet prove production large-graph performance, lossless MissingNode serialization round-trip, complete reconnection behavior, accessibility compliance or the desktop host.
 
-Reopen if: the spike demonstrates material performance, packaging or customization constraints that xyflow cannot satisfy.
+Reopen if: the later production-editor contract exposes material performance, packaging or customization constraints that xyflow cannot satisfy.
 
 ## ADR-007 — Node Packs are the extension boundary; workflows may become reusable nodes/tools
 
@@ -66,8 +66,54 @@ Reason: Node-RED's registry/subflow model, Activepieces Pieces, ComfyUI custom-n
 
 Implementation rule: start with official/static Node Packs and only add dynamic/community plugin installation after there is an explicit compatibility and security model.
 
-## Research record
+## ADR-008 — Direct invocation and workflow nodes share one capability owner
 
-The source-based comparative study that supports ADR-006/ADR-007 is versioned at:
+Status: **PROVED / ACCEPTED**
+
+A reusable capability must not have separate business-logic implementations for direct Tool/API use and workflow use.
+
+The first production proof is `packages/ktools-json/`:
+
+```text
+Direct API (`ktools_json.api.split_json`)
+                 \
+                  -> `writer.split_and_write`
+                         -> `capability.split_json_document`
+                  /
+Workflow node (`json.split`)
+```
+
+The direct and workflow routes share transformation/file-publication owners and produce byte-identical part files under equivalent input/config in integration tests.
+
+Reason: this pattern is the mechanism that allows traditional simple tools, workflows and future agent composition to remain one product instead of three implementations drifting apart.
+
+Implementation rule: future Node Packs should preserve the same shape. UI components and workflow adapters are callers/adapters, not capability owners.
+
+## ADR-009 — Durable execution is the next platform boundary before production editor or broad media migration
+
+Status: ACCEPTED AS SEQUENCING DECISION
+
+After proving a real Node Pack, the next platform milestone is Run Journal + durable run/node persistence before broad production editor work and before expensive media pipelines become first-class workflows.
+
+Reason:
+
+- the editor needs real run/node event contracts rather than simulated frontend state;
+- expensive media work needs observable interruption/failure history before resume/cache can be trusted;
+- Artifact provenance requires a durable run/node identity boundary;
+- recovery/cache should build on recorded execution state rather than create a second parallel state model.
+
+Scope rule: Durable Execution V1 establishes journal/persistence/history first. Full resume and semantic cache remain later milestones unless implementation evidence shows a safe trivial extension.
+
+## Research and audit records
+
+Source-based workflow-platform comparative study:
 
 `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`
+
+Audited xyflow spike:
+
+`docs/multi-agent/handoffs/AG-001-AUDIT.md`
+
+Audited first official Node Pack:
+
+`docs/multi-agent/handoffs/OC-001-AUDIT.md`
