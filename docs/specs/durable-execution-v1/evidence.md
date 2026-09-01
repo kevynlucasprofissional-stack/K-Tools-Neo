@@ -1,12 +1,16 @@
 # Evidence — Durable Execution V1
 
-Status: **CODE ACCEPTANCE PROVED; FINAL MEMORY-CLOSURE HEAD PENDING**
+Status: **RESOLVED / HOSTED ACCEPTANCE PROVED**
 
 ## Candidate identity
 
-Durable execution implementation spans the M2 commits beginning after spec/task creation and is fully represented by code candidate:
+Durable execution implementation is fully represented by code candidate:
 
 `74325c1445c4622383d5da061184ca2d91fde70b`
+
+The subsequent harness hardening candidate is:
+
+`4f1af103dff105807981f595be24cc7bf384f08c`
 
 Key implementation surfaces:
 
@@ -20,7 +24,7 @@ Key implementation surfaces:
 - `packages/ktools-json/src/ktools_json/cli.py`;
 - `packages/ktools-json/tests/test_cli.py`.
 
-## Hosted acceptance run
+## Hosted code acceptance
 
 GitHub Actions run: `33552906228`
 Head SHA: `74325c1445c4622383d5da061184ca2d91fde70b`
@@ -46,13 +50,29 @@ Representative Ubuntu/Python 3.13 job proved:
 
 The same named boundaries passed on both Windows Python lanes and the other Ubuntu lane.
 
+## Harness hardening acceptance
+
+The code-acceptance run showed GitHub runner warnings because the older `actions/checkout@v4` and `actions/setup-python@v5` action runtimes targeted deprecated Node 20 internally.
+
+After checking current official GitHub Action documentation, the root workflow was moved to the v7 generation for:
+
+- `actions/checkout`;
+- `actions/setup-python`;
+- `actions/setup-node`.
+
+GitHub Actions run: `33553179743`
+Head SHA: `4f1af103dff105807981f595be24cc7bf384f08c`
+Conclusion: **success**
+
+All five jobs again completed successfully, proving the harness update did not change the accepted product result.
+
 ## Core lifecycle evidence
 
-The new tests prove:
+The tests prove:
 
 ### Success
 
-`MemoryRunJournal` observes the expected ordered lifecycle:
+`MemoryRunJournal` observes the ordered lifecycle:
 
 ```text
 RUN_STARTED
@@ -77,11 +97,11 @@ while the public `WorkflowExecutionError` still identifies the failed node.
 
 ### Output-contract failure
 
-A node returning unknown/invalid output shape also becomes durable `NODE_FAILED` + `RUN_FAILED` rather than escaping journal observability.
+A node returning an invalid output contract also becomes durable `NODE_FAILED` + `RUN_FAILED` rather than escaping run observability.
 
 ### Backward compatibility
 
-`WorkflowEngine(registry)` with no journal remains valid and executes the original Foundation workflow.
+`WorkflowEngine(registry)` with no journal remains valid and executes the original Foundation workflow. Persistence is injected, not mandatory.
 
 ## SQLite durability evidence
 
@@ -96,8 +116,8 @@ Tests prove:
 - failures persist run/node error information;
 - events are returned in durable SQLite sequence order;
 - recent run listing and run detail lookup work;
-- a manually persisted incomplete RUNNING run/node can be explicitly reconciled to `INTERRUPTED`;
-- a second reconciliation is idempotent for already-terminal records.
+- a manually persisted incomplete `RUNNING` run/node can be explicitly reconciled to `INTERRUPTED`;
+- a second reconciliation does not mutate already-terminal records.
 
 ## JSON-safe metadata boundary
 
@@ -110,9 +130,9 @@ Tests prove explicit support for:
 - dates/timestamps;
 - finite and non-finite float normalization;
 - deterministic set normalization;
-- bytes represented as size/type metadata rather than persisted content.
+- bytes represented as bounded size/type metadata rather than persisted content.
 
-An opaque custom object's `repr()` containing a fake token is **not** persisted. Unknown objects fall back to type-only non-serializable metadata.
+An opaque custom object's `repr()` containing a fake token is **not** persisted. Unknown objects fall back to qualified-type-only non-serializable metadata.
 
 ## Real official Node Pack evidence
 
@@ -131,8 +151,8 @@ It proves:
 - the run becomes `SUCCEEDED`;
 - both nodes have durable `SUCCEEDED` records;
 - `json.split` persisted output metadata includes summary and part records;
-- closing and reopening the DB preserves the run/node detail;
-- the two emitted JSON files parse and reconstruct the original ordered records.
+- closing and reopening the DB preserves run/node detail;
+- emitted JSON files parse and reconstruct the original ordered records.
 
 `test_real_json_failure_is_durable_and_bound_to_splitter` proves an invalid real `json.split` mode results in:
 
@@ -150,15 +170,13 @@ Both core and JSON CLIs support optional:
 --journal <sqlite-db>
 ```
 
-Tests prove the CLI-created database can be reopened and queried for the emitted run ID.
-
-This is not merely an internal persistence API; headless K-Tools execution can already opt into durable history.
+Tests prove a CLI-created database can be reopened and queried for the emitted run ID. Durable history is therefore accessible at a real headless product boundary, not only through internal classes.
 
 ## Interruption evidence boundary
 
 M2 proves **detection/reconciliation**, not resume.
 
-`reconcile_incomplete_runs()` is intentionally explicit instead of automatically firing on database open because another process could still own a RUNNING record.
+`reconcile_incomplete_runs()` is intentionally explicit instead of automatically firing on database open because another process could still legitimately own a `RUNNING` record.
 
 No claim is made yet for:
 
@@ -169,16 +187,8 @@ No claim is made yet for:
 - multi-process ownership leases;
 - remote/distributed execution.
 
-These belong to later milestones.
+Those are later milestones and must build on this run/journal identity model rather than bypass it.
 
-## Harness hardening after code acceptance
+## Carry-forward to final memory closure
 
-The hosted run produced deprecation warnings because older GitHub Action majors targeted Node 20 internally. After checking current official GitHub Action documentation, the root workflow was moved to the current v7 generation for checkout/setup-python/setup-node. That harness-only update must receive its own green hosted run before final M2 closure.
-
-## Final closure requirement
-
-Before changing status to RESOLVED:
-
-1. the Actions-v7 head must complete green;
-2. canonical Current State / Roadmap / Journal / Tasks must reflect M2 truth;
-3. a final documentation-closure head must retain green hosted CI.
+Commits after `4f1af103...` in this closure phase modify documentation/engineering memory only. Under the project's carry-forward policy, the product/harness evidence remains applicable because the tested implementation, test suites and workflow are unchanged. The final `main` head is still allowed to run hosted CI as an additional regression confirmation, but M2 product acceptance does not depend on pretending documentation changes altered the exercised runtime boundary.
