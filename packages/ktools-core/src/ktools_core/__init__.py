@@ -1,4 +1,14 @@
 from .builtin import register_builtin_nodes
+from .diagnostics import (
+    DiagnosticEvent,
+    DiagnosticKind,
+    DiagnosticSeverity,
+    DiagnosticsSession,
+    SubprocessResult,
+    redact_command,
+    redact_text,
+    redact_value,
+)
 from .engine import WorkflowEngine, WorkflowExecutionError, WorkflowResult, WorkflowValidationError
 from .journal import (
     MemoryRunJournal,
@@ -27,6 +37,10 @@ from .sqlite_journal import NodeRunRecord, RunDetail, RunRecord, SQLiteRunJourna
 __all__ = [
     "Artifact",
     "DataType",
+    "DiagnosticEvent",
+    "DiagnosticKind",
+    "DiagnosticSeverity",
+    "DiagnosticsSession",
     "MemoryRunJournal",
     "NodeDefinition",
     "NodeExecutionContext",
@@ -42,6 +56,7 @@ __all__ = [
     "RunRecord",
     "RunStatus",
     "SQLiteRunJournal",
+    "SubprocessResult",
     "WorkflowDefinition",
     "WorkflowEdge",
     "WorkflowEngine",
@@ -50,6 +65,9 @@ __all__ = [
     "WorkflowResult",
     "WorkflowValidationError",
     "is_type_compatible",
+    "redact_command",
+    "redact_text",
+    "redact_value",
     "register_builtin_nodes",
     "to_json_safe",
     "utc_now_iso",
