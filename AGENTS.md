@@ -1,6 +1,15 @@
 # AGENTS.md — K-Tools Neo
 
-All agents working in this repository must follow the project's quality-first engineering protocol.
+All work in this repository follows the project's quality-first engineering protocol.
+
+## Active execution mode
+
+The project owner has activated **ChatGPT Solo Development Mode**.
+
+- ChatGPT currently owns Conductor / Chief Architect / Implementation Engineer / Integration Engineer responsibilities.
+- OpenCode, Antigravity and Codex are paused as active writers unless the project owner explicitly re-enables/delegates them.
+- Prior audited contributions remain part of repository history and evidence.
+- Read `docs/SOLO_DEVELOPMENT_MODE.md` for the current operating contract and reusable prompts.
 
 ## Read-before-work order
 
@@ -8,46 +17,55 @@ All agents working in this repository must follow the project's quality-first en
 2. `docs/CONSTITUTION.md`
 3. `docs/CONSTRAINTS.md`
 4. `docs/CURRENT_STATE.md`
-5. `docs/DECISIONS.md`
-6. `docs/KNOWN_ISSUES.md`
-7. `docs/TESTING.md`
-8. `docs/multi-agent/MAIN_ONLY_POLICY.md`
-9. the active spec under `docs/specs/`
-10. `docs/engineering-journal/CURRENT.md`
-11. `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` when work is delegated or parallel
-12. relevant code and tests on the exact current `main`
+5. `docs/ROADMAP.md`
+6. `docs/DECISIONS.md`
+7. `docs/KNOWN_ISSUES.md`
+8. `docs/TESTING.md`
+9. `docs/SOLO_DEVELOPMENT_MODE.md`
+10. `docs/multi-agent/MAIN_ONLY_POLICY.md`
+11. the active spec under `docs/specs/`
+12. `docs/engineering-journal/CURRENT.md`
+13. relevant code and tests on the exact current `main`
+14. multi-agent docs only when parallel delegation is explicitly re-enabled
 
 ## Core rules
 
 - Treat code/runtime/tests on the exact current `main` as evidence of current state; docs preserve intent and memory, not magic.
-- Do not add new product behavior to the legacy monolith when it can instead become a reusable node capability.
-- A capability used by a traditional tool screen and by a workflow must have one implementation owner, not duplicated business logic.
+- Revalidate current `main` and relevant hosted CI before material architectural/integration decisions.
+- Follow the first unresolved milestone in `docs/ROADMAP.md` whose prerequisites are satisfied, unless repository evidence justifies a documented reorder.
+- Do not add new product behavior to the legacy monolith when it can instead become a reusable capability/Node Pack.
+- A capability used by a direct Tool/API and by a workflow must have one implementation owner, not duplicated business logic.
 - Keep the workflow runtime independent from the visual editor.
 - Preserve imported upstream applications under `apps/`; integrate them through adapters unless evidence proves a deeper fork is required.
-- Before a material write, fetch/pull `main`, record the exact SHA and ensure the task still fits current state.
-- Use RED → GREEN → REFACTOR when practical and define evidence before implementation.
-- Update canonical docs and the Engineering Journal when architecture, invariants, failures or evidence boundaries change.
+- Use evidence → RED → GREEN → REFACTOR → regressions → hosted/native validation → memory closure when practical.
+- Do not weaken tests/gates to make a candidate green; investigate the first meaningful failing boundary.
+- Distinguish mocked/unit evidence from native/integration/cross-platform evidence.
+- Update canonical docs and the Engineering Journal when architecture, invariants, failures, evidence boundaries or roadmap state change materially.
 - Never commit credentials, cookies, tokens, secrets or sensitive runtime payloads.
+- Do not stop for routine approval while an unblocked accepted milestone still has executable work. Stop only at a real terminal state, owner-dependent decision, destructive approval boundary or external limitation.
 
-## Main-only collaboration policy
+## Main-only Git policy
 
 The project owner has chosen a simplified **single-main workflow**.
 
-- `main` is the only active development/integration line unless the project owner explicitly requests otherwise.
+- `main` is the only normal development/integration line unless the project owner explicitly requests otherwise.
 - Do not create task branches, draft branches, integration branches or PR-only staging as the default workflow.
-- OpenCode and Antigravity may commit/push their assigned, non-overlapping work directly to `main`.
-- Separate local clones/worktrees are still allowed for process isolation, but they should track `main`, not create separate long-lived histories.
-- Before every push: `git fetch origin`, `git pull --rebase origin main`, rerun the relevant tests, then push only if the owned paths remain conflict-free.
-- If another agent changed the same file/contract, do not guess through the conflict. Stop that overlapping edit, re-read current `main`, and coordinate ownership through the Conductor.
-- Existing Work Packets or historical docs that say "work on branch X", "open a PR", or "do not write to main" are overridden by `docs/multi-agent/MAIN_ONLY_POLICY.md` and this section.
-- Temporary branches are allowed only when the project owner explicitly asks for one or when a destructive recovery operation requires isolation.
+- Temporary branches are allowed only for destructive recovery/isolation or when explicitly requested.
+- Never force-push over human work.
+- If concurrent writes are plausible, re-read/fetch current head before each material write.
+- Keep commits coherent and leave `main` understandable at each accepted checkpoint.
+- GitHub Actions is a required hosted evidence boundary for subsystems currently covered by CI.
 
-## Multi-agent roles
+## Product architecture invariants
 
-- ChatGPT is the Conductor / Chief Architect / Integration Engineer unless the project owner explicitly changes that role.
-- OpenCode is the default Runtime / Backend Implementation Lead.
-- Antigravity is the default Frontend / UX / Product Prototype Lead.
-- Codex is intentionally excluded from the K-Tools development pool until the project owner changes that constraint.
-- Parallel work requires disjoint path/contract ownership. Parallel agents must not edit the same contract at the same time.
-- Every handoff must include starting SHA, resulting `main` SHA, task IDs, changed files, tests/evidence, Journal/known-issue impact, risks and exact next action.
-- See `docs/multi-agent/MAIN_ONLY_POLICY.md` and `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md` for the operating model.
+- `ktools-core` is the workflow/runtime authority.
+- Node Packs are the extension boundary for reusable capability families.
+- Direct use and workflow use share capability owners.
+- `@xyflow/react` is the leading editor interaction layer, not the workflow engine.
+- Future UI execution state comes from runtime/Run Journal contracts, not a frontend state machine pretending to be the engine.
+- Unknown/missing Node Packs must be preservable in workflow serialization rather than silently deleting data.
+- Artifact provenance, durable execution and recovery precede broad expensive-media automation.
+
+## Historical multi-agent material
+
+`docs/multi-agent/` remains useful history, research and handoff evidence. Its role/branch instructions do not override the current Solo Mode or main-only policy unless the project owner explicitly reactivates parallel agents.
