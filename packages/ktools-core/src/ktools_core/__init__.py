@@ -1,3 +1,11 @@
+from .artifact_registry import (
+    ArtifactRecord,
+    ArtifactRecordValidation,
+    ArtifactRegistry,
+    ArtifactRegistryError,
+    SQLiteArtifactRegistry,
+    validate_artifact_record,
+)
 from .builtin import register_builtin_nodes
 from .cache_identity import (
     ArtifactChangedDuringObservation,
@@ -63,6 +71,10 @@ from .sqlite_journal import NodeRunRecord, RunDetail, RunRecord, SQLiteRunJourna
 __all__ = [
     "Artifact",
     "ArtifactChangedDuringObservation",
+    "ArtifactRecord",
+    "ArtifactRecordValidation",
+    "ArtifactRegistry",
+    "ArtifactRegistryError",
     "ArtifactSnapshot",
     "ArtifactSnapshotError",
     "ArtifactValidationResult",
@@ -94,6 +106,7 @@ __all__ = [
     "RunJournal",
     "RunRecord",
     "RunStatus",
+    "SQLiteArtifactRegistry",
     "SQLiteNodeCache",
     "SQLiteRunJournal",
     "SubprocessResult",
@@ -118,6 +131,7 @@ __all__ = [
     "snapshot_artifact",
     "to_json_safe",
     "utc_now_iso",
+    "validate_artifact_record",
     "validate_artifact_snapshot",
     "validate_cache_entry",
 ]
