@@ -22,6 +22,18 @@ class DataType(str, Enum):
     EVENT = "event"
 
 
+class CachePolicy(str, Enum):
+    """Whether a node may be skipped through semantic cache reuse.
+
+    NEVER is intentionally the default. A node becomes PURE only when the
+    capability owner explicitly claims deterministic outputs for equivalent
+    semantic inputs/config and no externally required side effects.
+    """
+
+    NEVER = "never"
+    PURE = "pure"
+
+
 _FILE_SUBTYPES = {DataType.AUDIO, DataType.VIDEO, DataType.IMAGE, DataType.PDF}
 
 
@@ -46,6 +58,8 @@ class NodeDefinition:
     inputs: Mapping[str, PortDefinition] = field(default_factory=dict)
     outputs: Mapping[str, PortDefinition] = field(default_factory=dict)
     category: str = "Core"
+    version: str = "1"
+    cache_policy: CachePolicy = CachePolicy.NEVER
 
 
 @dataclass(frozen=True)
