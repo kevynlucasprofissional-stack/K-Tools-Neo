@@ -1,12 +1,18 @@
 # Current State — K-Tools Neo
 
-Foundation promotion checkpoint: `bf6b5282a3df033a1394b05215a1ed97492a73c1`
-Foundation PR: #1 — `feat(platform): establish typed workflow foundation`
-Foundation final candidate head: `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7`
+## Current development truth
 
-## Current production state
+`main` is the single active development and integration truth under `docs/multi-agent/MAIN_ONLY_POLICY.md`.
 
-The first K-Tools Neo platform foundation is **PROMOTED TO `main`**.
+Latest audited frontend-spike closure checkpoint before this state update:
+
+- Antigravity implementation: `3ecb39416f14d5561c269f783bb73d99b80458e2`;
+- CI expansion: `ec01acd4225fe79813d131b6ce1489e2c9570d93`;
+- AG-001 audit record: `docs/multi-agent/handoffs/AG-001-AUDIT.md`.
+
+## Platform Foundation — promoted
+
+The first K-Tools Neo platform foundation is already promoted and remains the runtime base.
 
 Working now:
 
@@ -16,91 +22,119 @@ Working now:
 - deterministic DAG execution exists;
 - initial `Artifact` model exists with identity/provenance fields and JSON round-trip;
 - headless JSON workflow CLI exists;
-- root CI validates Ubuntu/Windows × Python 3.10/3.13;
-- root `.gitignore` covers Python/Node build output and common local secret/runtime files;
-- canonical engineering memory exists under `docs/`;
-- workflow-platform source research exists at `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`;
-- multi-agent operating model exists at `docs/multi-agent/MULTI_AGENT_DEVELOPMENT_PLAN.md`;
-- concrete OpenCode/Antigravity next-wave packets exist at `docs/multi-agent/NEXT_WAVE_ASSIGNMENTS.md` after this post-merge closure is promoted.
+- the legacy GUI and loose utilities remain available as behavior inventory for incremental migration;
+- `apps/xcursos-runner/` and `apps/yt-dlp-tui/` remain imported subsystems whose internals are not owned by the platform runtime.
 
-## Foundation evidence
+Foundation evidence includes the original 10 unit/contract tests, CLI smoke, and green Windows/Ubuntu Python 3.10/3.13 GitHub Actions runs.
 
-Local evidence:
+## CI now validates two product layers
 
-- 10 unit/contract tests PASS;
-- CLI smoke PASS, producing `K-Tools Neo`.
+The root workflow is now `K-Tools CI`.
 
-Hosted acceptance after the repository became public:
+It validates:
 
-- run `33330660076` on SHA `1ccffb11af25a8d993ead931183380d354746131`: success;
-- final exact-head run `33330801547` on SHA `91fe5cfb45fe7ef44dd7e564238a4ce77ed84bf7`: success.
+### Runtime/core matrix
 
-Final matrix evidence:
+- Ubuntu / Python 3.10;
+- Ubuntu / Python 3.13;
+- Windows / Python 3.10;
+- Windows / Python 3.13;
+- editable install;
+- unit/contract tests;
+- CLI smoke.
 
-- Ubuntu / Python 3.10: success;
-- Ubuntu / Python 3.13: success;
-- Windows / Python 3.10: success;
-- Windows / Python 3.13: success;
-- Checkout, Setup Python, editable install, unit/contract tests and CLI smoke all passed.
+### xyflow spike
 
-Historical red Actions runs were proved to be an external account payment/spending-limit job-start condition, not a K-Tools product failure.
+Ubuntu / Node.js 22 runs:
 
-## Existing product/subsystems preserved
+- `npm ci`;
+- `npm run build`;
+- `npm run lint`;
+- `npm exec vitest -- run`.
 
-- `K Tools Neo - Versão Estável 2.py` remains the legacy integrated GUI/current behavior inventory;
-- loose Python utilities remain available for incremental migration;
-- `apps/xcursos-runner/` remains an imported Node.js subsystem;
-- `apps/yt-dlp-tui/` remains an imported Python subsystem;
-- imported app internals were not rewritten by the Foundation.
+Run `33351023146` passed all of the above.
 
-## Not implemented yet
+## AG-001 — xyflow editor interaction spike
 
-- first real K-Tools capability/Node Pack proof;
-- workflow/run/artifact persistence and Run Journal;
-- restart/recovery and semantic cache;
-- production visual workflow editor;
-- desktop-host selection/validation;
-- adapters for XCursos Runner or YT-DLP TUI;
-- workflow templates replacing legacy tool screens;
-- agent/natural-language workflow generation.
+Terminal state: **CLOSED / SPIKE COMPLETE WITH EVIDENCE BOUNDARIES**.
+
+The repository contains `spikes/xyflow-editor/` using React + TypeScript + `@xyflow/react`.
+
+The spike directly supports these design directions:
+
+- xyflow remains the leading canvas interaction dependency;
+- workflow/runtime truth remains in `ktools-core`, not React;
+- palette + canvas + inspector is the leading editor composition hypothesis;
+- nodes should stay compact while detailed settings move to an inspector;
+- missing/unavailable node types should be represented by a placeholder rather than silently destroyed;
+- frontend connection/type feedback should consume a shared/backend-owned compatibility contract later;
+- execution states should be supplied by future runtime/Run Journal events rather than produced by UI execution logic.
+
+The Conductor audit deliberately does **not** promote these as proven production facts yet:
+
+- 150–300 node performance guarantees;
+- lossless missing-node serialization round-trip;
+- complete edge-reconnection behavior;
+- browser-level accessibility compliance;
+- real CACHED lifecycle semantics.
+
+See `docs/multi-agent/handoffs/AG-001-AUDIT.md` for the exact evidence boundary and reuse classification.
+
+## OC-001 — first real capability / Node Pack
+
+Status: **ACTIVE — OpenCode currently working**.
+
+Core acceptance claim:
+
+> one existing useful K-Tools capability has one implementation owner and is demonstrably reusable through both a direct invocation path and a workflow node.
+
+OpenCode owns the backend/runtime implementation stream for this task. It must rebase/pull against current `main` before publishing because AG-001 closure and CI changes landed while OC-001 was in progress.
 
 ## Architecture direction now accepted
 
 - one capability / one implementation owner;
 - direct Tool usage and Workflow usage share capability implementations;
 - `ktools-core` remains workflow/runtime authority;
-- `@xyflow/react` is the preferred first canvas dependency for a dedicated UI spike;
+- `@xyflow/react` is accepted as the leading graph interaction layer for a later production-editor spec;
+- xyflow objects are presentation/editor state, not canonical workflow truth;
+- a mapping/domain layer must separate K-Tools contracts from xyflow-specific shapes;
 - Run Journal + Artifact persistence should precede broad production use of expensive media workflows;
-- third-party source reuse must be classified by licensing and ownership boundary before copying code.
+- third-party source reuse must remain license/ownership-aware.
 
 ## Multi-agent operating state
 
-ChatGPT: Conductor / Chief Architect / Integration Engineer.
+- ChatGPT: Conductor / Chief Architect / Integration Engineer;
+- OpenCode: Runtime / Backend Implementation Lead;
+- Antigravity: Frontend / UX / Product Prototype Lead;
+- Codex: intentionally excluded from the K-Tools pool for now.
 
-OpenCode: Runtime / Backend Implementation Lead.
+The repository uses **main-only development**. Parallel work is permitted only with disjoint file/contract ownership. Before a direct-to-main push, every agent must fetch/rebase current `main`, inspect intervening changes, rerun relevant tests and never force-push over concurrent work.
 
-Antigravity: Frontend / UX / Product Prototype Lead.
+## Not implemented yet
 
-Codex: intentionally excluded from the K-Tools agent pool for now.
+- first real capability/Node Pack proof (OC-001 still active);
+- workflow/run/artifact persistence and Run Journal;
+- restart/recovery and semantic cache;
+- production visual workflow editor;
+- real backend→frontend node catalog/schema contract;
+- lossless missing-node workflow serialization;
+- desktop-host selection/validation;
+- XCursos Runner and YT-DLP TUI adapters;
+- workflow templates replacing legacy tool screens;
+- agent/natural-language workflow generation.
 
-Immediate parallel wave after this post-merge memory closure:
+## Next integration decision
 
-1. OpenCode — OC-001: first real capability / Node Pack proof;
-2. Antigravity — AG-001: isolated xyflow editor interaction spike using fixtures;
-3. ChatGPT — C-001: active spec, contract arbitration, review and integration.
+Do **not** start polishing the xyflow spike into a production desktop editor yet.
 
-OpenCode and Antigravity must work in isolated branches/worktrees with disjoint ownership. Neither merges directly to `main`.
+The next Conductor gate is OC-001. After OpenCode publishes its result, audit whether the first real capability proves the one-owner architecture. Then use the combined backend evidence + AG-001 UX evidence to specify:
 
-## Next production milestone
-
-Create a new spec whose core acceptance claim is:
-
-> one existing useful K-Tools capability has one implementation owner and is demonstrably reusable through both a direct path and a workflow node.
-
-The first capability choice must come from repository evidence and candidate ranking, not convenience alone. The validated result then informs the Run Journal / persistence milestone and the later production editor contract.
+1. durable execution / Run Journal / Artifact persistence;
+2. the backend contract consumed by a future production editor;
+3. a later production-editor spec built on xyflow without reusing spike shortcuts as runtime truth.
 
 ## Foundation terminal state
 
 **RESOLVED / PROMOTED.**
 
-The Foundation spec is closed. Future work must not keep extending the Foundation spec as a catch-all; use new specs for new product milestones.
+Future product milestones use their own specs/evidence instead of extending the Foundation spec as a catch-all.

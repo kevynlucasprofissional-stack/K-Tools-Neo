@@ -1,4 +1,4 @@
-name: K-Tools Core CI
+name: K-Tools CI
 
 permissions:
   contents: read
@@ -49,3 +49,33 @@ jobs:
       - name: Verify JSON node pack smoke artifacts
         run: python -c "import os,json; d='oc001-split-out'; assert [f for f in os.listdir(d) if f.endswith('.json')], 'no parts written'; assert json.load(open(os.path.join(d,'records_parte_01_de_02.json'))), 'part invalid'"
         working-directory: ${{ runner.temp }}
+
+  xyflow-spike:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spikes/xyflow-editor
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: spikes/xyflow-editor/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Deterministic tests
+        run: npm exec vitest -- run
+
