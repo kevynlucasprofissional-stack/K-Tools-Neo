@@ -7,9 +7,14 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 from uuid import uuid4
 
-from .cache_identity import ArtifactSnapshot, ArtifactSnapshotError, snapshot_artifact, validate_artifact_snapshot
-from .journal import utc_now_iso
-from .models import Artifact
+from .cache_identity import (
+    ArtifactSnapshot,
+    ArtifactSnapshotError,
+    snapshot_artifact,
+    validate_artifact_snapshot,
+)
+from .journal import to_json_safe, utc_now_iso
+from .models import Artifact, DataType
 
 
 class ArtifactRegistryError(RuntimeError):
@@ -37,13 +42,21 @@ class ArtifactRecordValidation:
     current_sha256: str | None = None
 
 
-def _walk_artifacts(value: Any, path: str = "$" ) -> list[tuple[str, Artifact]]:
+def _child_mapping_path(path: str, key: Any) -> str:
+    key_text = str(key)
+    if key_text.isidentifier():
+        return f"{path}.{key_text}"
+    escaped = key_text.replace("'", "\\'")
+    return f"{path}['{escaped}']"
+
+
+def _walk_artifacts(value: Any, path: str = "$") -> list[tuple[str, Artifact]]:
     found: list[tuple[str, Artifact]] = []
     if isinstance(value, Artifact):
         found.append((path, value))
     elif isinstance(value, Mapping):
         for key, item in value.items():
-            found.extend(_walk_artifacts(item, f"{path}.{key}"))
+            found.extend(_walk_artifacts(item, _child_mapping_path(path, key)))
     elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
             found.extend(_walk_artifacts(item, f"{path}[{index}]"))
@@ -77,8 +90,9 @@ class SQLiteArtifactRegistry:
     """Persistent Artifact occurrences tied to run/node/output provenance.
 
     The registry owns metadata observations only; it never deletes or mutates the
-    user's files. Strong file validity is stored when available, while unsupported
-    Artifact kinds remain queryable with an explicit snapshot_error.
+    user's files. Strong file validity is stored when available. Unsupported
+    Artifact kinds remain queryable with an explicit snapshot_error instead of a
+    false claim of validity.
     """
 
     def __init__(self, database: str | Path) -> None:
@@ -156,23 +170,25 @@ class SQLiteArtifactRegistry:
                     snapshot = snapshot_artifact(artifact)
                 except (ArtifactSnapshotError, OSError) as exc:
                     snapshot_error = f"{type(exc).__name__}: {exc}"
-                record = ArtifactRecord(
-                    observation_id=f"artifact_observation_{uuid4().hex}",
-                    artifact=artifact,
-                    run_id=run_id,
-                    node_id=node_id,
-                    output_port=str(output_port),
-                    value_path=value_path,
-                    source=source_label,
-                    observed_at=utc_now_iso(),
-                    snapshot=snapshot,
-                    snapshot_error=snapshot_error,
+                records.append(
+                    ArtifactRecord(
+                        observation_id=f"artifact_observation_{uuid4().hex}",
+                        artifact=artifact,
+                        run_id=run_id,
+                        node_id=node_id,
+                        output_port=str(output_port),
+                        value_path=value_path,
+                        source=source_label,
+                        observed_at=utc_now_iso(),
+                        snapshot=snapshot,
+                        snapshot_error=snapshot_error,
+                    )
                 )
-                records.append(record)
 
         try:
             with self._connection:
                 for record in records:
+                    metadata = to_json_safe(dict(record.artifact.metadata))
                     self._connection.execute(
                         """
                         INSERT INTO artifact_observations(
@@ -189,7 +205,7 @@ class SQLiteArtifactRegistry:
                             record.artifact.uri,
                             record.artifact.produced_by,
                             record.artifact.mime_type,
-                            self._dump(dict(record.artifact.metadata)),
+                            self._dump(metadata),
                             record.run_id,
                             record.node_id,
                             record.output_port,
@@ -236,10 +252,12 @@ class SQLiteArtifactRegistry:
 def _row_to_record(row: sqlite3.Row) -> ArtifactRecord:
     try:
         metadata = json.loads(str(row["metadata_json"]))
-        raw_snapshot = None if row["snapshot_json"] is None else json.loads(str(row["snapshot_json"]))
+        raw_snapshot = (
+            None if row["snapshot_json"] is None else json.loads(str(row["snapshot_json"]))
+        )
         artifact = Artifact(
             id=str(row["artifact_id"]),
-            type=__import__("ktools_core.models", fromlist=["DataType"]).DataType(str(row["artifact_type"])),
+            type=DataType(str(row["artifact_type"])),
             uri=str(row["uri"]),
             produced_by=None if row["produced_by"] is None else str(row["produced_by"]),
             mime_type=None if row["mime_type"] is None else str(row["mime_type"]),
