@@ -1,6 +1,6 @@
 # Evidence — Diagnostics + Support Bundle V1
 
-Status: **IMPLEMENTATION COMPLETE / FINAL EXACT-HEAD HOSTED CLOSURE PENDING**
+Status: **ACCEPTED / RESOLVED — FINAL MEMORY HEAD RETAINS CI GATE**
 
 ## Scope proved by repository tests
 
@@ -48,21 +48,11 @@ This does not claim perfect recognition of every secret format. Future adapters 
 
 ## Subprocess / PowerShell evidence
 
-The common subprocess diagnostic boundary records:
-
-- start/completion;
-- redacted command identity;
-- cwd when supplied;
-- duration;
-- return code;
-- stdout/stderr file paths and sizes;
-- non-zero exit as an error observation;
-- timeout exception;
-- launch failure exception.
+The common subprocess diagnostic boundary records start/completion, redacted command identity, cwd, duration, return code, stdout/stderr files, non-zero exit, timeout and launch failure.
 
 Raw captured text is redacted before becoming shareable support-bundle content.
 
-A platform-conditional test executes `pwsh` or `powershell` when available and proves both stdout and stderr capture. Lanes without PowerShell skip that native-specific assertion rather than pretending the boundary was executed.
+The hosted Ubuntu 24.04 / Python 3.13 lane had `pwsh` available; the real PowerShell capture test executed rather than skipping and passed, proving both stdout and stderr capture on that native boundary.
 
 ## Standard logging evidence
 
@@ -86,21 +76,7 @@ Normal finalization creates:
 
 `session.json` starts as `RUNNING` and is terminalized on normal finalization.
 
-The human report has regression assertions for:
-
-- environment;
-- diagnostic hotspots / possible failure points;
-- executed nodes / steps;
-- stages;
-- batches / lots;
-- system decisions;
-- metrics / quality observations;
-- anomalies / inconsistent results;
-- subprocess / PowerShell / external runtime events;
-- errors / failures;
-- result / outputs;
-- Run Journal lifecycle;
-- raw logs.
+The human report has regression assertions for environment, diagnostic hotspots, executed nodes/steps, stages, batches/lots, system decisions, metrics/quality observations, anomalies/inconsistent results, subprocess/PowerShell events, errors/failures, results/outputs, Run Journal lifecycle and raw logs.
 
 The machine report retains the complete structured reconstruction and event stream.
 
@@ -121,6 +97,8 @@ Real `ktools-json` tests prove:
 - Run Journal events are attached when SQLite journaling is also enabled;
 - workflow validation failure produces a failure report/bundle;
 - invalid real `json.split` configuration produces a FAILED bundle containing splitter-correlated error evidence.
+
+The hosted core and JSON CLI smokes themselves emitted `diagnosticBundle` paths, proving automatic diagnostics at the real command boundary rather than tests calling only internal APIs.
 
 ## Interruption / crash evidence
 
@@ -148,14 +126,33 @@ It does not perform automatic root-cause diagnosis and does not capture private 
 
 ## Hosted acceptance
 
-Final exact-head hosted Windows/Linux evidence is intentionally pending while canonical M3 memory is synchronized.
+Accepted hosted run:
 
-Before M3 is promoted to RESOLVED, record here:
+- candidate/main SHA: `9c14e073ec5f770ce9d03d031c4ca1820bcd6ce2`;
+- GitHub Actions run: `33556969496`;
+- conclusion: **all five jobs success**.
 
-- final candidate/main SHA;
-- GitHub Actions run ID;
-- Ubuntu Python 3.10/3.13 results;
-- Windows Python 3.10/3.13 results;
-- xyflow-spike result;
-- representative core/JSON test counts;
-- PowerShell test execution/skip evidence by lane where visible.
+Successful jobs:
+
+- Ubuntu / Python 3.10;
+- Ubuntu / Python 3.13;
+- Windows / Python 3.10;
+- Windows / Python 3.13;
+- xyflow-spike / Ubuntu / Node.js 22.
+
+Representative Ubuntu/Python 3.13 evidence:
+
+- editable `ktools-core` install — success;
+- editable `ktools-json` install — success;
+- **33 core tests — OK**;
+- **59 JSON Node Pack tests — OK**;
+- PowerShell stdout/stderr test — **executed and OK**;
+- core CLI smoke — success and emitted automatic `diagnosticBundle`;
+- JSON workflow CLI smoke — success and emitted automatic `diagnosticBundle`;
+- generated JSON artifact verification — success.
+
+The other three Python matrix lanes reached and passed the same named install/test/CLI/artifact boundaries.
+
+## Final closure rule
+
+The subsequent milestone-memory commits are documentation-only relative to the accepted implementation/test tree. The repository still requires the final memory-closure HEAD to pass the same root CI before M4 implementation begins; that final run is recorded in `docs/CURRENT_STATE.md` once complete.
