@@ -153,19 +153,22 @@ class DiagnosticsSessionTests(unittest.TestCase):
         text = (session.root / "diagnostics.jsonl").read_text(encoding="utf-8")
         self.assertNotIn("LOGGERSECRET", text)
 
-    def test_abandoned_session_is_recovered_to_shareable_bundle(self) -> None:
+    def test_abandoned_session_is_recovered_only_when_ownership_is_assumed_absent(self) -> None:
         session = DiagnosticsSession(self.root, session_id="diag-abandoned", component="tests")
         session.log("Started batch", batch_id="batch-1")
         session.anomaly("Worker stopped responding")
-        # Simulate abrupt death by intentionally not calling finalize().
-        recovered = recover_abandoned_sessions(self.root)
+        # Fresh sessions are not recovered by the safe default because another
+        # live process could still own them.
+        self.assertEqual(recover_abandoned_sessions(self.root), ())
+        # This test explicitly simulates known process death, so age 0 is safe.
+        recovered = recover_abandoned_sessions(self.root, minimum_age_seconds=0)
         self.assertEqual(len(recovered), 1)
         bundle = recovered[0]
         self.assertTrue(bundle.exists())
         report = json.loads((session.root / "report.json").read_text(encoding="utf-8"))
         self.assertTrue(report["recoveredAbandonedSession"])
         self.assertEqual(report["session"]["status"], "ABANDONED_OR_INTERRUPTED")
-        self.assertEqual(recover_abandoned_sessions(self.root), ())
+        self.assertEqual(recover_abandoned_sessions(self.root, minimum_age_seconds=0), ())
 
     @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "PowerShell unavailable")
     def test_powershell_output_can_be_captured_when_available(self) -> None:
