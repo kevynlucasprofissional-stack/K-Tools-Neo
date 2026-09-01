@@ -10,7 +10,7 @@ import time
 import traceback
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -64,11 +64,7 @@ def redact_text(value: str, *, max_length: int | None = _MAX_CONTEXT_STRING) -> 
 
 
 def redact_value(value: Any, *, key: str | None = None) -> Any:
-    """Normalize diagnostic data for safe sharing.
-
-    Known secret-like keys are replaced completely. Unknown objects are handled by
-    the conservative core ``to_json_safe`` converter before recursive redaction.
-    """
+    """Normalize diagnostic data for safe sharing."""
     if key is not None and _SECRET_KEY_RE.search(key):
         return "<redacted>"
 
@@ -182,21 +178,48 @@ class DiagnosticsSession:
         self.root.mkdir(parents=True, exist_ok=False)
         self.raw_dir.mkdir(parents=True, exist_ok=True)
         self.events_path = self.root / "diagnostics.jsonl"
+        self.session_path = self.root / "session.json"
         self.started_at = _utc_now()
         self._started_monotonic = time.monotonic()
         self._events: list[DiagnosticEvent] = []
         self._finalized = False
         self._terminal_status: str | None = None
+        self._write_session_state(status="RUNNING")
         self.log(
             "Diagnostics session started",
             kind=DiagnosticKind.LIFECYCLE,
             category="diagnostics.session",
-            context={"sessionId": self.session_id},
+            context={"sessionId": self.session_id, "processId": os.getpid()},
         )
 
     @property
     def events(self) -> tuple[DiagnosticEvent, ...]:
         return tuple(self._events)
+
+    def _write_session_state(
+        self,
+        *,
+        status: str,
+        run_id: str | None = None,
+        workflow_id: str | None = None,
+        ended_at: str | None = None,
+    ) -> None:
+        state = {
+            "schemaVersion": 1,
+            "sessionId": self.session_id,
+            "status": status,
+            "startedAt": self.started_at,
+            "endedAt": ended_at,
+            "runId": run_id,
+            "workflowId": workflow_id,
+            "processId": os.getpid(),
+            "component": self.component,
+            "productVersion": self.product_version,
+        }
+        self.session_path.write_text(
+            json.dumps(redact_value(state), ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False),
+            encoding="utf-8",
+        )
 
     def record(
         self,
@@ -436,6 +459,12 @@ class DiagnosticsSession:
             encoding="utf-8",
         )
         report_md.write_text(self._render_markdown(report), encoding="utf-8")
+        self._write_session_state(
+            status=status,
+            run_id=run_id,
+            workflow_id=workflow_id,
+            ended_at=ended_at,
+        )
         bundle = self.root / "support-bundle.zip"
         with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(self.root.rglob("*")):
@@ -474,8 +503,17 @@ class DiagnosticsSession:
                 "message": event["message"],
                 "severity": event["severity"],
                 "nodeId": event.get("nodeId"),
+                "stage": event.get("stage"),
+                "batchId": event.get("batchId"),
             }
             for event in noteworthy[-20:]
+        ]
+        nodes = [event for event in events if event.get("nodeId") is not None]
+        stages = [event for event in events if event.get("stage") is not None]
+        raw_files = [
+            path.relative_to(self.root).as_posix()
+            for path in sorted(self.raw_dir.rglob("*"))
+            if path.is_file()
         ]
         return {
             "schemaVersion": 1,
@@ -495,20 +533,29 @@ class DiagnosticsSession:
                 "platform": platform.platform(),
                 "machine": platform.machine(),
                 "processId": os.getpid(),
+                "currentWorkingDirectory": str(Path.cwd()),
             },
             "summary": {
                 "eventCount": len(events),
                 "severityCounts": severity_counts,
                 "kindCounts": kind_counts,
                 "noteworthyCount": len(noteworthy),
+                "nodeEventCount": len(nodes),
+                "stageEventCount": len(stages),
+                "batchEventCount": sum(1 for event in events if event["kind"] == "BATCH"),
+                "subprocessEventCount": sum(1 for event in events if event["kind"] == "SUBPROCESS"),
+                "journalEventCount": len(journal_events),
             },
             "result": redact_value(dict(result_summary or {})),
+            "nodeTimeline": nodes,
+            "stages": stages,
             "decisions": [event for event in events if event["kind"] == "DECISION"],
             "batches": [event for event in events if event["kind"] == "BATCH"],
             "metrics": [event for event in events if event["kind"] == "METRIC"],
             "anomalies": [event for event in events if event["kind"] == "ANOMALY"],
             "errors": [event for event in events if event["severity"] in {"ERROR", "CRITICAL"}],
             "subprocesses": [event for event in events if event["kind"] == "SUBPROCESS"],
+            "rawLogFiles": raw_files,
             "diagnosticHotspots": hotspots,
             "journalEvents": journal_events,
             "events": events,
@@ -518,6 +565,7 @@ class DiagnosticsSession:
     def _render_markdown(report: Mapping[str, Any]) -> str:
         session = report["session"]
         summary = report["summary"]
+        environment = report.get("environment") or {}
         lines = [
             "# K-Tools Neo — Diagnostic Report",
             "",
@@ -529,49 +577,154 @@ class DiagnosticsSession:
             f"- Ended: {session['endedAt']}",
             f"- Duration: {session['durationSeconds']:.3f}s",
             "",
+            "## Environment",
+            "",
+            f"- Product version: `{environment.get('productVersion') or 'unknown'}`",
+            f"- Python: `{environment.get('python')}` ({environment.get('pythonImplementation')})",
+            f"- Platform: `{environment.get('platform')}`",
+            f"- Machine: `{environment.get('machine')}`",
+            f"- Process ID: `{environment.get('processId')}`",
+            f"- Working directory: `{environment.get('currentWorkingDirectory')}`",
+            "",
             "## Summary",
             "",
             f"- Diagnostic events: {summary['eventCount']}",
+            f"- Node-correlated events: {summary.get('nodeEventCount', 0)}",
+            f"- Stage-correlated events: {summary.get('stageEventCount', 0)}",
+            f"- Batch events: {summary.get('batchEventCount', 0)}",
+            f"- Subprocess events: {summary.get('subprocessEventCount', 0)}",
+            f"- Run Journal events: {summary.get('journalEventCount', 0)}",
             f"- Noteworthy warning/error/anomaly events: {summary['noteworthyCount']}",
             f"- Severity counts: `{json.dumps(summary['severityCounts'], sort_keys=True)}`",
             f"- Kind counts: `{json.dumps(summary['kindCounts'], sort_keys=True)}`",
             "",
         ]
+
+        def add_event_section(title: str, events: Sequence[Mapping[str, Any]], empty: str) -> None:
+            lines.extend([f"## {title}", ""])
+            if not events:
+                lines.append(empty)
+                lines.append("")
+                return
+            for event in events:
+                correlation = []
+                if event.get("nodeId"):
+                    correlation.append(f"node={event['nodeId']}")
+                if event.get("stage"):
+                    correlation.append(f"stage={event['stage']}")
+                if event.get("batchId"):
+                    correlation.append(f"batch={event['batchId']}")
+                suffix = f" ({', '.join(correlation)})" if correlation else ""
+                context = event.get("context") or {}
+                context_text = f" — `{json.dumps(context, ensure_ascii=False, sort_keys=True)}`" if context else ""
+                lines.append(
+                    f"- {event.get('occurredAt')} — **{event.get('severity')}** {event.get('message')}{suffix}{context_text}"
+                )
+            lines.append("")
+
         hotspots = report.get("diagnosticHotspots") or []
-        lines.extend(["## Diagnostic hotspots", ""])
+        lines.extend(["## Diagnostic hotspots / possible failure points", ""])
         if not hotspots:
             lines.append("No warning/error/anomaly hotspots were recorded.")
         else:
             for item in hotspots:
-                node = f" node={item['nodeId']}" if item.get("nodeId") else ""
+                correlation = []
+                for key, label in (("nodeId", "node"), ("stage", "stage"), ("batchId", "batch")):
+                    if item.get(key):
+                        correlation.append(f"{label}={item[key]}")
+                suffix = f" ({', '.join(correlation)})" if correlation else ""
                 lines.append(
-                    f"- **{item['severity']}** `{item['component']}/{item['category']}`{node}: {item['message']}"
+                    f"- **{item['severity']}** `{item['component']}/{item['category']}`{suffix}: {item['message']}"
                 )
-        lines.extend(["", "## Decisions", ""])
-        decisions = report.get("decisions") or []
-        if not decisions:
-            lines.append("No explicit decision events were recorded.")
-        else:
-            for event in decisions:
-                lines.append(f"- {event['occurredAt']} — {event['message']} — `{json.dumps(event['context'], ensure_ascii=False, sort_keys=True)}`")
-        lines.extend(["", "## Errors", ""])
+        lines.extend([
+            "",
+            "> These are recorded warning/error/anomaly observations, not automatic root-cause conclusions.",
+            "",
+        ])
+
+        add_event_section(
+            "Executed nodes / steps",
+            report.get("nodeTimeline") or [],
+            "No node-correlated diagnostic events were recorded.",
+        )
+        add_event_section(
+            "Stages",
+            report.get("stages") or [],
+            "No explicit stage events were recorded.",
+        )
+        add_event_section(
+            "Batches / lots",
+            report.get("batches") or [],
+            "No explicit batch events were recorded.",
+        )
+        add_event_section(
+            "System decisions",
+            report.get("decisions") or [],
+            "No explicit decision events were recorded.",
+        )
+        add_event_section(
+            "Metrics / quality observations",
+            report.get("metrics") or [],
+            "No explicit metric events were recorded.",
+        )
+        add_event_section(
+            "Anomalies / inconsistent results",
+            report.get("anomalies") or [],
+            "No anomaly events were recorded.",
+        )
+        add_event_section(
+            "Subprocess / PowerShell / external runtime events",
+            report.get("subprocesses") or [],
+            "No subprocess events were recorded.",
+        )
+
+        lines.extend(["## Errors / failures", ""])
         errors = report.get("errors") or []
         if not errors:
             lines.append("No ERROR/CRITICAL diagnostic events were recorded.")
         else:
             for event in errors:
-                lines.append(f"- **{event['severity']}** {event['message']}")
+                node = f" node={event['nodeId']}" if event.get("nodeId") else ""
+                lines.append(f"- **{event['severity']}**{node}: {event['message']}")
                 if event.get("exception"):
-                    lines.append(f"  - Exception: `{event['exception'].get('type')}` — {event['exception'].get('message')}")
+                    lines.append(
+                        f"  - Exception: `{event['exception'].get('type')}` — {event['exception'].get('message')}"
+                    )
+        lines.append("")
+
+        lines.extend(["## Result / outputs", ""])
+        result = report.get("result") or {}
+        if result:
+            lines.extend(["```json", json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True), "```", ""])
+        else:
+            lines.extend(["No explicit result summary was recorded.", ""])
+
+        lines.extend(["## Run Journal lifecycle", ""])
+        journal_events = report.get("journalEvents") or []
+        if not journal_events:
+            lines.append("No Run Journal events were attached to this report.")
+        else:
+            for event in journal_events:
+                node = f" node={event.get('nodeId')}" if event.get("nodeId") else ""
+                lines.append(f"- {event.get('occurredAt')} — `{event.get('eventType')}`{node}")
+        lines.append("")
+
+        lines.extend(["## Raw logs", ""])
+        raw_files = report.get("rawLogFiles") or []
+        if not raw_files:
+            lines.append("No raw child-process logs were captured.")
+        else:
+            for raw_file in raw_files:
+                lines.append(f"- `{raw_file}`")
         lines.extend([
             "",
             "## Files in this support bundle",
             "",
+            "- `session.json`: session terminal/incomplete state metadata",
+            "- `report.md`: human-readable execution reconstruction",
             "- `report.json`: complete machine-readable reconstruction",
             "- `diagnostics.jsonl`: ordered structured diagnostic stream",
             "- `raw/`: captured child-process stdout/stderr when present",
-            "",
-            "> Diagnostic hotspots are observations from recorded evidence, not automatic root-cause conclusions.",
             "",
         ])
         return "\n".join(lines)
