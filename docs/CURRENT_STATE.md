@@ -2,139 +2,160 @@
 
 ## Current development truth
 
-`main` is the single active development and integration truth under `docs/multi-agent/MAIN_ONLY_POLICY.md`.
+`main` is the single active development and integration truth.
 
-Latest audited frontend-spike closure checkpoint before this state update:
+Active execution mode: **ChatGPT Solo Development Mode** under `docs/SOLO_DEVELOPMENT_MODE.md`.
 
-- Antigravity implementation: `3ecb39416f14d5561c269f783bb73d99b80458e2`;
-- CI expansion: `ec01acd4225fe79813d131b6ce1489e2c9570d93`;
-- AG-001 audit record: `docs/multi-agent/handoffs/AG-001-AUDIT.md`.
+OpenCode, Antigravity and Codex are paused as active writers unless the project owner explicitly re-enables them. Prior audited work remains part of product history/evidence.
 
-## Platform Foundation — promoted
+Canonical sequencing guide: `docs/ROADMAP.md`.
 
-The first K-Tools Neo platform foundation is already promoted and remains the runtime base.
+## Platform Foundation — resolved
 
-Working now:
+The platform foundation is promoted and remains the runtime base.
 
-- `packages/ktools-core/` provides a UI-independent workflow runtime;
-- typed node/port contracts exist;
-- graph validation rejects unknown nodes/ports, duplicate target-input connections, missing required inputs, incompatible types and cycles;
-- deterministic DAG execution exists;
-- initial `Artifact` model exists with identity/provenance fields and JSON round-trip;
-- headless JSON workflow CLI exists;
-- the legacy GUI and loose utilities remain available as behavior inventory for incremental migration;
-- `apps/xcursos-runner/` and `apps/yt-dlp-tui/` remain imported subsystems whose internals are not owned by the platform runtime.
+Working:
 
-Foundation evidence includes the original 10 unit/contract tests, CLI smoke, and green Windows/Ubuntu Python 3.10/3.13 GitHub Actions runs.
+- `packages/ktools-core/` provides a UI-independent Python workflow runtime;
+- typed node/port contracts;
+- graph validation for node/port existence, required inputs, duplicate target-input connections, type compatibility and cycles;
+- deterministic DAG execution;
+- initial `Artifact` model;
+- headless JSON workflow CLI;
+- hosted Windows/Linux Python CI;
+- legacy GUI and loose utilities preserved as behavior inventory;
+- `apps/xcursos-runner/` and `apps/yt-dlp-tui/` preserved as bounded imported subsystems.
 
-## CI now validates two product layers
+## M1 / OC-001 — first official Node Pack — RESOLVED
 
-The root workflow is now `K-Tools CI`.
+The first real product capability has crossed the platform boundary.
 
-It validates:
+`packages/ktools-json/` is now the first official Node Pack and owns JSON document splitting extracted from existing legacy K-Tools behavior.
 
-### Runtime/core matrix
+Verified architecture:
+
+```text
+Direct API (`ktools_json.api.split_json`)
+                 \
+                  -> `writer.split_and_write`
+                         -> `capability.split_json_document`
+                  /
+Workflow node (`json.split`)
+```
+
+The direct route and workflow route therefore share the same transformation and file-publication owners rather than duplicating business logic.
+
+The pack provides classified failures, deterministic output naming, overwrite collision protection, per-file atomic publication, post-write JSON validation, typed JSON ports and artifact-shaped output metadata.
+
+Hosted evidence:
+
+- implementation commit: `a41aa8beaef0d22269f9ac387c972438986902f8`;
+- integrated main checkpoint: `c9cdffdc6b6502b07f3546db7e3e3fafe3407068`;
+- GitHub Actions run `33551124229`: **success**;
+- Ubuntu/Windows × Python 3.10/3.13 successfully installed `ktools-core` + `ktools-json`, ran both test suites, core CLI smoke, JSON workflow smoke and smoke-artifact verification;
+- the xyflow spike job remained green.
+
+Conductor audit: `docs/multi-agent/handoffs/OC-001-AUDIT.md`.
+
+## AG-001 — xyflow interaction spike — CLOSED
+
+`spikes/xyflow-editor/` proved React + TypeScript + `@xyflow/react` as a credible graph-interaction layer while preserving `ktools-core` as runtime authority.
+
+Accepted design directions:
+
+- palette/library + central canvas + inspector;
+- compact nodes, detailed configuration outside the node body;
+- typed connection preflight in UI backed later by shared runtime contracts;
+- explicit MissingNode placeholder concept;
+- execution-state visualization fed later by Run Journal/runtime events;
+- xyflow is interaction/editor state, not workflow truth.
+
+Not yet proven as production claims:
+
+- large-graph performance target;
+- lossless MissingNode load/edit/save/reload round-trip;
+- complete edge reconnection contract;
+- browser-level accessibility compliance;
+- real cached lifecycle semantics.
+
+Audit: `docs/multi-agent/handoffs/AG-001-AUDIT.md`.
+
+## CI coverage now
+
+Root workflow: `K-Tools CI`.
+
+### Core + first Node Pack matrix
 
 - Ubuntu / Python 3.10;
 - Ubuntu / Python 3.13;
 - Windows / Python 3.10;
 - Windows / Python 3.13;
-- editable install;
-- unit/contract tests;
-- CLI smoke.
+- editable install of `ktools-core`;
+- editable install of `ktools-json`;
+- core unit/contract tests;
+- JSON pack unit/contract/integration tests;
+- core CLI smoke;
+- JSON workflow smoke;
+- JSON smoke artifact verification.
 
 ### xyflow spike
 
-Ubuntu / Node.js 22 runs:
+Ubuntu / Node.js 22:
 
 - `npm ci`;
-- `npm run build`;
-- `npm run lint`;
-- `npm exec vitest -- run`.
+- build;
+- lint;
+- deterministic Vitest suite.
 
-Run `33351023146` passed all of the above.
+## Active roadmap milestone — M2 Durable Execution V1
 
-## AG-001 — xyflow editor interaction spike
+Status: **ACTIVE TARGET**.
 
-Terminal state: **CLOSED / SPIKE COMPLETE WITH EVIDENCE BOUNDARIES**.
+The next product boundary is not another visual screen. It is a durable execution model that allows K-Tools to know what happened during a real run.
 
-The repository contains `spikes/xyflow-editor/` using React + TypeScript + `@xyflow/react`.
+Target acceptance is defined in `docs/ROADMAP.md` and will receive its own spec under `docs/specs/durable-execution-v1/`.
 
-The spike directly supports these design directions:
+Core expected outcomes:
 
-- xyflow remains the leading canvas interaction dependency;
-- workflow/runtime truth remains in `ktools-core`, not React;
-- palette + canvas + inspector is the leading editor composition hypothesis;
-- nodes should stay compact while detailed settings move to an inspector;
-- missing/unavailable node types should be represented by a placeholder rather than silently destroyed;
-- frontend connection/type feedback should consume a shared/backend-owned compatibility contract later;
-- execution states should be supplied by future runtime/Run Journal events rather than produced by UI execution logic.
+- explicit run/node lifecycle states;
+- Run Journal event model;
+- SQLite persistence;
+- durable run/node records;
+- JSON-safe output metadata;
+- run history/detail query API;
+- interruption observability;
+- clean event contract suitable for future UI consumption;
+- instrumentation remains optional so pure/in-memory engine use stays possible.
 
-The Conductor audit deliberately does **not** promote these as proven production facts yet:
+Full automatic resume and semantic cache are intentionally deferred until the persistence/journal model is proven.
 
-- 150–300 node performance guarantees;
-- lossless missing-node serialization round-trip;
-- complete edge-reconnection behavior;
-- browser-level accessibility compliance;
-- real CACHED lifecycle semantics.
-
-See `docs/multi-agent/handoffs/AG-001-AUDIT.md` for the exact evidence boundary and reuse classification.
-
-## OC-001 — first real capability / Node Pack
-
-Status: **ACTIVE — OpenCode currently working**.
-
-Core acceptance claim:
-
-> one existing useful K-Tools capability has one implementation owner and is demonstrably reusable through both a direct invocation path and a workflow node.
-
-OpenCode owns the backend/runtime implementation stream for this task. It must rebase/pull against current `main` before publishing because AG-001 closure and CI changes landed while OC-001 was in progress.
-
-## Architecture direction now accepted
+## Architecture direction accepted
 
 - one capability / one implementation owner;
-- direct Tool usage and Workflow usage share capability implementations;
+- direct Tool/API usage and Workflow usage share capability implementations;
+- Node Packs are the reusable extension boundary;
 - `ktools-core` remains workflow/runtime authority;
-- `@xyflow/react` is accepted as the leading graph interaction layer for a later production-editor spec;
-- xyflow objects are presentation/editor state, not canonical workflow truth;
-- a mapping/domain layer must separate K-Tools contracts from xyflow-specific shapes;
-- Run Journal + Artifact persistence should precede broad production use of expensive media workflows;
-- third-party source reuse must remain license/ownership-aware.
-
-## Multi-agent operating state
-
-- ChatGPT: Conductor / Chief Architect / Integration Engineer;
-- OpenCode: Runtime / Backend Implementation Lead;
-- Antigravity: Frontend / UX / Product Prototype Lead;
-- Codex: intentionally excluded from the K-Tools pool for now.
-
-The repository uses **main-only development**. Parallel work is permitted only with disjoint file/contract ownership. Before a direct-to-main push, every agent must fetch/rebase current `main`, inspect intervening changes, rerun relevant tests and never force-push over concurrent work.
+- `@xyflow/react` is the leading graph interaction layer, not an engine;
+- runtime contracts must separate K-Tools semantics from xyflow-specific shapes;
+- Run Journal + Artifact persistence precede broad expensive-media automation;
+- imported apps are adapted before invasive rewrites;
+- third-party reuse remains license/ownership-aware.
 
 ## Not implemented yet
 
-- first real capability/Node Pack proof (OC-001 still active);
-- workflow/run/artifact persistence and Run Journal;
-- restart/recovery and semantic cache;
-- production visual workflow editor;
-- real backend→frontend node catalog/schema contract;
-- lossless missing-node workflow serialization;
-- desktop-host selection/validation;
+- Durable Execution V1 / Run Journal / SQLite;
+- durable Artifact lifecycle;
+- restart/resume and semantic cache;
+- official Files/Text/Image/PDF/Media Node Packs beyond JSON;
+- shared FFmpeg/FFprobe capability boundary;
 - XCursos Runner and YT-DLP TUI adapters;
-- workflow templates replacing legacy tool screens;
+- backend→frontend catalog/config/event contract;
+- production visual workflow editor;
+- lossless MissingNode serialization round-trip;
+- ready-made Tools projected from workflows;
+- desktop-host selection/packaging;
 - agent/natural-language workflow generation.
 
-## Next integration decision
+## Next exact action
 
-Do **not** start polishing the xyflow spike into a production desktop editor yet.
-
-The next Conductor gate is OC-001. After OpenCode publishes its result, audit whether the first real capability proves the one-owner architecture. Then use the combined backend evidence + AG-001 UX evidence to specify:
-
-1. durable execution / Run Journal / Artifact persistence;
-2. the backend contract consumed by a future production editor;
-3. a later production-editor spec built on xyflow without reusing spike shortcuts as runtime truth.
-
-## Foundation terminal state
-
-**RESOLVED / PROMOTED.**
-
-Future product milestones use their own specs/evidence instead of extending the Foundation spec as a catch-all.
+Create and execute the M2 spec (`docs/specs/durable-execution-v1/`), instrument `WorkflowEngine` through an optional journal/persistence boundary, prove it with success + failure using real `ktools-json` workflow execution, then close the milestone with hosted CI evidence before moving to M3.
