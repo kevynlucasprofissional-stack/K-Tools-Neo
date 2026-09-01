@@ -47,7 +47,7 @@ Delivered:
 
 Evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
-## M3 — Diagnostics, Structured Logging + Support Bundle — RESOLVED
+## M3 — Diagnostics, Structured Logging + Support Bundle — RESOLVED / PROMOTED
 
 The project now has a first-class diagnostic/support layer before cache/recovery, media, browser and imported-app integration work.
 
@@ -140,7 +140,7 @@ Accepted implementation/test candidate:
 
 `9c14e073ec5f770ce9d03d031c4ca1820bcd6ce2`
 
-GitHub Actions run:
+Primary implementation acceptance run:
 
 `33556969496`
 
@@ -161,7 +161,13 @@ Representative Ubuntu/Python 3.13 lane:
 - real JSON workflow diagnostic smoke — OK;
 - generated JSON artifact verification — OK.
 
-The current closure commits after that SHA are canonical documentation/memory updates over the same accepted implementation/test tree. A final root CI run on the latest `main` remains the last guard before M4 code is allowed to advance.
+Final memory/documentation closure checkpoint:
+
+- SHA: `5e1e46714aaefe0827c96a415d7d58d57790a187`;
+- GitHub Actions run: `33557338124`;
+- result: **all five jobs success**.
+
+M3 therefore has no remaining implementation or evidence gate.
 
 ## Architecture direction now
 
@@ -175,7 +181,7 @@ The current closure commits after that SHA are canonical documentation/memory up
 
 ## Active roadmap milestone — M4 Artifact Lifecycle + Recovery + Semantic Cache
 
-Status: **ACTIVE TARGET — IMPLEMENTATION MAY START AFTER FINAL M3 MEMORY-HEAD CI IS GREEN**.
+Status: **ACTIVE TARGET / CLEARED TO IMPLEMENT**.
 
 M4 must answer with executable evidence:
 
@@ -195,4 +201,4 @@ After M4: official local Node Packs, imported application adapters, runtime/UI c
 
 ## Next exact action
 
-Wait for the final documentation/memory HEAD root CI. If green, create the dedicated M4 Artifact Lifecycle + Recovery + Semantic Cache spec and begin with persistent Artifact validity/provenance plus cache-signature acceptance tests before implementing automatic reuse.
+Create the dedicated M4 Artifact Lifecycle + Recovery + Semantic Cache spec and begin with persistent Artifact validity/provenance plus deterministic cache-signature acceptance tests before implementing automatic reuse.
