@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ktools_core import DiagnosticsSession, RunJournal, SQLiteRunJournal
+from ktools_core import DiagnosticsSession, NodeCache, RunJournal, SQLiteNodeCache, SQLiteRunJournal
 from ktools_core.builtin import register_builtin_nodes
 from ktools_core.engine import WorkflowEngine, WorkflowExecutionError, WorkflowValidationError
 from ktools_core.models import Artifact, WorkflowDefinition
@@ -29,11 +29,12 @@ def _jsonable(value: Any) -> Any:
 def build_engine(
     journal: RunJournal | None = None,
     diagnostics: DiagnosticsSession | None = None,
+    cache: NodeCache | None = None,
 ) -> WorkflowEngine:
     registry = NodeRegistry()
     register_builtin_nodes(registry)
     register_nodes(registry)
-    return WorkflowEngine(registry, journal=journal, diagnostics=diagnostics)
+    return WorkflowEngine(registry, journal=journal, diagnostics=diagnostics, cache=cache)
 
 
 def _latest_correlation(diagnostics: DiagnosticsSession | None) -> tuple[str | None, str | None]:
@@ -53,6 +54,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", dest="json_output")
     parser.add_argument("--journal", type=Path, metavar="SQLITE_DB")
     parser.add_argument(
+        "--cache",
+        type=Path,
+        metavar="SQLITE_DB",
+        help="Enable persistent semantic node cache using a SQLite database",
+    )
+    parser.add_argument(
         "--diagnostics-dir",
         type=Path,
         default=Path.cwd() / "ktools-diagnostics",
@@ -65,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         args.diagnostics_dir, component="ktools-json.cli", product_version="0.1.0"
     )
     journal = SQLiteRunJournal(args.journal) if args.journal is not None else None
+    cache = SQLiteNodeCache(args.cache) if args.cache is not None else None
     result = None
     bundle: Path | None = None
 
@@ -78,7 +86,11 @@ def main(argv: list[str] | None = None) -> int:
                     category="cli.input",
                     context={"workflowFile": str(args.workflow), "workflowId": workflow.id},
                 )
-            result = build_engine(journal=journal, diagnostics=diagnostics).execute(workflow)
+            result = build_engine(
+                journal=journal,
+                diagnostics=diagnostics,
+                cache=cache,
+            ).execute(workflow)
         except WorkflowValidationError as exc:
             if diagnostics is not None:
                 diagnostics.capture_exception(exc, "Workflow validation failed", category="cli.validation")
@@ -136,6 +148,8 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.journal is not None:
             payload["journal"] = str(args.journal)
+        if args.cache is not None:
+            payload["cache"] = str(args.cache)
         if diagnostics is not None:
             journal_events = () if journal is None else journal.get_events(result.run_id)
             bundle = diagnostics.finalize(
@@ -157,3 +171,5 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if journal is not None:
             journal.close()
+        if cache is not None:
+            cache.close()
