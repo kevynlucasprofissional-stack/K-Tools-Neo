@@ -7,7 +7,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ktools_core import DiagnosticsSession, NodeCache, RunJournal, SQLiteNodeCache, SQLiteRunJournal
+from ktools_core import (
+    ArtifactRegistry,
+    DiagnosticsSession,
+    NodeCache,
+    RunJournal,
+    SQLiteArtifactRegistry,
+    SQLiteNodeCache,
+    SQLiteRunJournal,
+)
 from ktools_core.builtin import register_builtin_nodes
 from ktools_core.engine import WorkflowEngine, WorkflowExecutionError, WorkflowValidationError
 from ktools_core.models import Artifact, WorkflowDefinition
@@ -30,11 +38,18 @@ def build_engine(
     journal: RunJournal | None = None,
     diagnostics: DiagnosticsSession | None = None,
     cache: NodeCache | None = None,
+    artifact_registry: ArtifactRegistry | None = None,
 ) -> WorkflowEngine:
     registry = NodeRegistry()
     register_builtin_nodes(registry)
     register_nodes(registry)
-    return WorkflowEngine(registry, journal=journal, diagnostics=diagnostics, cache=cache)
+    return WorkflowEngine(
+        registry,
+        journal=journal,
+        diagnostics=diagnostics,
+        cache=cache,
+        artifact_registry=artifact_registry,
+    )
 
 
 def _latest_correlation(diagnostics: DiagnosticsSession | None) -> tuple[str | None, str | None]:
@@ -60,6 +75,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Enable persistent semantic node cache using a SQLite database",
     )
     parser.add_argument(
+        "--artifact-registry",
+        type=Path,
+        metavar="SQLITE_DB",
+        help="Persist Artifact provenance/validity observations using SQLite",
+    )
+    parser.add_argument(
         "--diagnostics-dir",
         type=Path,
         default=Path.cwd() / "ktools-diagnostics",
@@ -73,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     journal = SQLiteRunJournal(args.journal) if args.journal is not None else None
     cache = SQLiteNodeCache(args.cache) if args.cache is not None else None
+    artifact_registry = (
+        SQLiteArtifactRegistry(args.artifact_registry)
+        if args.artifact_registry is not None
+        else None
+    )
     result = None
     bundle: Path | None = None
 
@@ -90,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
                 journal=journal,
                 diagnostics=diagnostics,
                 cache=cache,
+                artifact_registry=artifact_registry,
             ).execute(workflow)
         except WorkflowValidationError as exc:
             if diagnostics is not None:
@@ -106,7 +133,10 @@ def main(argv: list[str] | None = None) -> int:
                 run_id, workflow_id = _latest_correlation(diagnostics)
                 journal_events = () if journal is None or run_id is None else journal.get_events(run_id)
                 bundle = diagnostics.finalize(
-                    status="FAILED", run_id=run_id, workflow_id=workflow_id, journal_events=journal_events
+                    status="FAILED",
+                    run_id=run_id,
+                    workflow_id=workflow_id,
+                    journal_events=journal_events,
                 )
             print(f"EXECUTION_ERROR: {exc}")
             if bundle is not None:
@@ -150,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
             payload["journal"] = str(args.journal)
         if args.cache is not None:
             payload["cache"] = str(args.cache)
+        if args.artifact_registry is not None:
+            payload["artifactRegistry"] = str(args.artifact_registry)
         if diagnostics is not None:
             journal_events = () if journal is None else journal.get_events(result.run_id)
             bundle = diagnostics.finalize(
@@ -173,3 +205,5 @@ def main(argv: list[str] | None = None) -> int:
             journal.close()
         if cache is not None:
             cache.close()
+        if artifact_registry is not None:
+            artifact_registry.close()
