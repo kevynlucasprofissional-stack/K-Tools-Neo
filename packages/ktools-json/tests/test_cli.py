@@ -9,6 +9,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
+from ktools_core import RunStatus, SQLiteRunJournal
 from ktools_json import cli
 
 RECORDS = {"dataset": "oc001", "records": [{"id": i} for i in range(5)]}
@@ -60,6 +61,31 @@ class CliTests(unittest.TestCase):
         self.assertEqual(splitter["summary"]["partCount"], 2)
         self.assertEqual(len(splitter["parts"]), 2)
         self.assertEqual(len(list(self.out.iterdir())), 2)
+
+    def test_cli_can_persist_real_json_workflow_journal(self) -> None:
+        workflow = write_workflow(self.root / "durable.json", str(self.out))
+        journal_path = self.root / "runs.sqlite3"
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            code = cli.main(
+                [
+                    str(workflow),
+                    "--json",
+                    "--journal",
+                    str(journal_path),
+                ]
+            )
+
+        self.assertEqual(code, 0)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(payload["journal"], str(journal_path))
+        with SQLiteRunJournal(journal_path) as journal:
+            detail = journal.get_run_detail(payload["runId"])
+            self.assertIsNotNone(detail)
+            assert detail is not None
+            self.assertEqual(detail.run.status, RunStatus.SUCCEEDED)
+            splitter = next(node for node in detail.nodes if node.node_id == "splitter")
+            self.assertEqual(splitter.outputs["summary"]["partCount"], 2)
 
     def test_cli_validation_failure_exit_code(self) -> None:
         workflow = self.root / "bad.json"
