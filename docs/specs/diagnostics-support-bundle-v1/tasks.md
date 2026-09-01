@@ -28,7 +28,7 @@ Status legend: `[ ]` pending, `[~]` active, `[x]` complete, `[!]` blocked.
 - [x] timeout representation;
 - [x] launch-failure representation;
 - [x] raw output redaction;
-- [x] conditional PowerShell stdout/stderr smoke.
+- [x] real PowerShell stdout/stderr hosted smoke.
 
 ## DG-004 — Python logging bridge
 
@@ -72,11 +72,12 @@ Status legend: `[ ]` pending, `[~]` active, `[x]` complete, `[!]` blocked.
 
 ## DG-008 — Hosted evidence / closure
 
-- [~] exact-head Windows/Linux hosted CI;
-- [ ] record final run ID/test counts in evidence;
+- [x] Windows/Linux hosted CI across Python 3.10/3.13;
+- [x] record run `33556969496` and test counts in evidence;
 - [x] update roadmap sequencing;
 - [x] record architecture decisions;
-- [ ] update Testing policy;
-- [ ] update Engineering Journal;
-- [ ] update Current State after final green run;
-- [ ] promote M4 only after final evidence is green.
+- [x] update Testing policy;
+- [x] update Engineering Journal;
+- [~] final Current State / Roadmap promotion and documentation-head CI;
+
+Implementation acceptance is complete. The only remaining closure gate is that the final memory-only HEAD retains the same green root CI before M4 code starts.
