@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -50,10 +50,10 @@ def _qualified_type_name(value: Any) -> str:
 def to_json_safe(value: Any) -> Any:
     """Convert runtime metadata to deterministic, JSON-safe structures.
 
-    This converter is intentionally conservative. Unknown objects are represented
-    by type metadata only instead of ``repr(value)`` so journaling does not
-    accidentally persist credentials, opaque object internals or unstable memory
-    addresses.
+    The converter has a deliberately small allow-list. Unknown objects are
+    represented by type metadata only instead of inspecting attributes,
+    dataclass fields or ``repr(value)``. This avoids journaling opaque object
+    internals or credentials merely because a node returned a custom object.
     """
     if value is None or isinstance(value, (str, bool, int)):
         return value
@@ -72,6 +72,8 @@ def to_json_safe(value: Any) -> Any:
     if isinstance(value, Enum):
         return to_json_safe(value.value)
 
+    # Artifact is an explicit K-Tools persistence contract and is therefore
+    # allowed to expose its documented serialization.
     if isinstance(value, Artifact):
         return to_json_safe(value.to_dict())
 
@@ -108,17 +110,6 @@ def to_json_safe(value: Any) -> Any:
                 separators=(",", ":"),
             ),
         )
-
-    if is_dataclass(value) and not isinstance(value, type):
-        return to_json_safe(asdict(value))
-
-    to_dict = getattr(value, "to_dict", None)
-    if callable(to_dict):
-        try:
-            return to_json_safe(to_dict())
-        except Exception:
-            # A metadata helper must not execute arbitrary fallback inspection.
-            pass
 
     return {
         "__type__": _qualified_type_name(value),
