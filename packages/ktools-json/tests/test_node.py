@@ -7,11 +7,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ktools_core import DataType, NodeRegistry
+from ktools_core import CachePolicy, DataType, NodeRegistry
 
 from ktools_json import JsonSplitError, register_nodes
 from ktools_json import capability, node
-from ktools_json.node import NODE_TYPE_ID, _json_split_handler
+from ktools_json.node import LITERAL_TYPE_ID, NODE_TYPE_ID, _json_split_handler
 
 RECORDS = {"records": [{"id": i} for i in range(5)]}
 
@@ -38,6 +38,14 @@ class NodeContractTests(unittest.TestCase):
         self.assertTrue(definition.inputs["json_data"].required)
         self.assertEqual(definition.outputs["parts"].type, DataType.JSON)
         self.assertEqual(definition.outputs["summary"].type, DataType.JSON)
+
+    def test_cache_policies_are_explicit_and_preserve_split_side_effects(self) -> None:
+        split = self.registry.definition(NODE_TYPE_ID)
+        literal = self.registry.definition(LITERAL_TYPE_ID)
+        self.assertEqual(split.version, "1")
+        self.assertIs(split.cache_policy, CachePolicy.NEVER)
+        self.assertEqual(literal.version, "1")
+        self.assertIs(literal.cache_policy, CachePolicy.PURE)
 
     def test_handler_produces_parts_and_summary(self) -> None:
         outputs = self.registry.execute(
