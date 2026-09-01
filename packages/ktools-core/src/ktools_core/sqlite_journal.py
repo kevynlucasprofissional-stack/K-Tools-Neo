@@ -207,6 +207,28 @@ class SQLiteRunJournal:
             )
             return
 
+        if event_type is RunEventType.NODE_CACHED:
+            if event.node_id is None or event.node_type is None:
+                raise ValueError("NODE_CACHED requires node_id and node_type")
+            self._connection.execute(
+                """
+                INSERT INTO node_runs(
+                    run_id, node_id, node_type, status, started_at,
+                    ended_at, error_type, error_message, outputs_json
+                ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?)
+                """,
+                (
+                    event.run_id,
+                    event.node_id,
+                    event.node_type,
+                    NodeRunStatus.CACHED.value,
+                    event.occurred_at,
+                    event.occurred_at,
+                    self._json_dump(payload.get("outputs")),
+                ),
+            )
+            return
+
         if event_type is RunEventType.NODE_SUCCEEDED:
             self._update_node_terminal(
                 event,
@@ -386,12 +408,6 @@ class SQLiteRunJournal:
         self,
         reason: str = "Previous process/session ended without a terminal event",
     ) -> tuple[str, ...]:
-        """Explicitly mark persisted RUNNING runs/nodes as INTERRUPTED.
-
-        Reconciliation is intentionally opt-in in V1. Automatically doing this
-        in ``__init__`` could incorrectly mark a run owned by another live
-        process as interrupted.
-        """
         rows = self._connection.execute(
             """
             SELECT run_id, workflow_id
