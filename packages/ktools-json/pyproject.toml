@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-json"
+version = "0.1.0"
+description = "Official JSON node pack - first real K-Tools capability proof (OC-001)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "K-Tools Neo" }]
+dependencies = ["ktools-core>=0.1.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

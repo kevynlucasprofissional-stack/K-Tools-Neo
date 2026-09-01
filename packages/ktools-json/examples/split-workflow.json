@@ -1,0 +1,29 @@
+{
+  "id": "oc001-json-split",
+  "nodes": [
+    {
+      "id": "source",
+      "type": "json.literal",
+      "config": {
+        "value": {
+          "dataset": "oc001-example",
+          "records": [
+            {"id": 1, "label": "um"},
+            {"id": 2, "label": "dois"},
+            {"id": 3, "label": "tres"},
+            {"id": 4, "label": "quatro"},
+            {"id": 5, "label": "cinco"}
+          ]
+        }
+      }
+    },
+    {
+      "id": "splitter",
+      "type": "json.split",
+      "config": {"mode": "parts", "parts": 2, "output_dir": "oc001-split-out", "prefix": "records"}
+    }
+  ],
+  "edges": [
+    {"sourceNode": "source", "sourcePort": "json", "targetNode": "splitter", "targetPort": "json_data"}
+  ]
+}

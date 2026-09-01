@@ -30,8 +30,22 @@ jobs:
       - name: Install ktools-core
         run: python -m pip install -e ./packages/ktools-core
 
+      - name: Install ktools-json (first official node pack)
+        run: python -m pip install -e ./packages/ktools-json
+
       - name: Unit and contract tests
         run: python -m unittest discover -s packages/ktools-core/tests -v
 
+      - name: JSON node pack unit/contract tests
+        run: python -m unittest discover -s packages/ktools-json/tests -v
+
       - name: CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
+
+      - name: JSON node pack workflow smoke
+        run: python -m ktools_json "${{ github.workspace }}/packages/ktools-json/examples/split-workflow.json" --json
+        working-directory: ${{ runner.temp }}
+
+      - name: Verify JSON node pack smoke artifacts
+        run: python -c "import os,json; d='oc001-split-out'; assert [f for f in os.listdir(d) if f.endswith('.json')], 'no parts written'; assert json.load(open(os.path.join(d,'records_parte_01_de_02.json'))), 'part invalid'"
+        working-directory: ${{ runner.temp }}
