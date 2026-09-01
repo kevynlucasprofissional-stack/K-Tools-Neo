@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from ktools_core.cache_store import (
+    CacheError,
     CacheSerializationUnsupported,
     SQLiteNodeCache,
     validate_cache_entry,
@@ -50,6 +51,29 @@ class SQLiteNodeCacheTests(unittest.TestCase):
             self.assertIsNotNone(used)
             assert used is not None
             self.assertIsNotNone(used.last_used_at)
+
+    def test_user_json_cannot_collide_with_internal_cache_envelopes(self) -> None:
+        payload = {
+            "__ktoolsCacheEnvelope__": "artifact",
+            "value": {
+                "id": "this-is-user-json-not-an-artifact",
+                "type": "file",
+            },
+        }
+        with SQLiteNodeCache(self.database) as cache:
+            cache.put(
+                signature="marker-collision",
+                node_type="test.json",
+                node_version="1",
+                origin_run_id="run",
+                origin_node_id="node",
+                outputs={"payload": payload},
+            )
+            entry = cache.get("marker-collision")
+            self.assertIsNotNone(entry)
+            assert entry is not None
+            self.assertEqual(entry.outputs["payload"], payload)
+            self.assertNotIsInstance(entry.outputs["payload"], Artifact)
 
     def test_file_artifact_output_is_rehydrated_and_strongly_revalidated(self) -> None:
         output = self.root / "result.bin"
@@ -130,6 +154,12 @@ class SQLiteNodeCacheTests(unittest.TestCase):
                     origin_node_id="node",
                     outputs={"value": self.root / "file.bin"},
                 )
+
+    def test_sqlite_runtime_error_is_wrapped_as_cache_error(self) -> None:
+        cache = SQLiteNodeCache(self.database)
+        cache.close()
+        with self.assertRaises(CacheError):
+            cache.get("anything")
 
     def test_invalidate_removes_entry(self) -> None:
         with SQLiteNodeCache(self.database) as cache:
