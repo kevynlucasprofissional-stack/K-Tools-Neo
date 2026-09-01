@@ -1,4 +1,28 @@
 from .builtin import register_builtin_nodes
+from .cache_identity import (
+    ArtifactChangedDuringObservation,
+    ArtifactSnapshot,
+    ArtifactSnapshotError,
+    ArtifactValidationResult,
+    CacheSignatureUnsupported,
+    UnsupportedArtifactError,
+    build_cache_signature,
+    canonical_cache_payload,
+    snapshot_artifact,
+    validate_artifact_snapshot,
+)
+from .cache_store import (
+    CacheCorruptionError,
+    CacheEntry,
+    CacheEntryValidation,
+    CacheError,
+    CacheSerializationUnsupported,
+    NodeCache,
+    SQLiteNodeCache,
+    decode_cached_outputs,
+    encode_cached_outputs,
+    validate_cache_entry,
+)
 from .diagnostic_support import DiagnosticLogHandler, recover_abandoned_sessions
 from .diagnostics import (
     DiagnosticEvent,
@@ -24,6 +48,7 @@ from .journal import (
 )
 from .models import (
     Artifact,
+    CachePolicy,
     DataType,
     NodeDefinition,
     PortDefinition,
@@ -37,6 +62,17 @@ from .sqlite_journal import NodeRunRecord, RunDetail, RunRecord, SQLiteRunJourna
 
 __all__ = [
     "Artifact",
+    "ArtifactChangedDuringObservation",
+    "ArtifactSnapshot",
+    "ArtifactSnapshotError",
+    "ArtifactValidationResult",
+    "CacheCorruptionError",
+    "CacheEntry",
+    "CacheEntryValidation",
+    "CacheError",
+    "CachePolicy",
+    "CacheSerializationUnsupported",
+    "CacheSignatureUnsupported",
     "DataType",
     "DiagnosticEvent",
     "DiagnosticKind",
@@ -44,6 +80,7 @@ __all__ = [
     "DiagnosticSeverity",
     "DiagnosticsSession",
     "MemoryRunJournal",
+    "NodeCache",
     "NodeDefinition",
     "NodeExecutionContext",
     "NodeRegistry",
@@ -57,8 +94,10 @@ __all__ = [
     "RunJournal",
     "RunRecord",
     "RunStatus",
+    "SQLiteNodeCache",
     "SQLiteRunJournal",
     "SubprocessResult",
+    "UnsupportedArtifactError",
     "WorkflowDefinition",
     "WorkflowEdge",
     "WorkflowEngine",
@@ -66,12 +105,19 @@ __all__ = [
     "WorkflowNode",
     "WorkflowResult",
     "WorkflowValidationError",
+    "build_cache_signature",
+    "canonical_cache_payload",
+    "decode_cached_outputs",
+    "encode_cached_outputs",
     "is_type_compatible",
     "recover_abandoned_sessions",
     "redact_command",
     "redact_text",
     "redact_value",
     "register_builtin_nodes",
+    "snapshot_artifact",
     "to_json_safe",
     "utc_now_iso",
+    "validate_artifact_snapshot",
+    "validate_cache_entry",
 ]
