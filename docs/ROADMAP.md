@@ -4,7 +4,7 @@ Status: **ACTIVE / CANONICAL SEQUENCING GUIDE**
 Owner: project owner + ChatGPT while Solo Development Mode is active
 Execution truth: current `main`, tests and hosted CI
 
-This roadmap defines the preferred product sequence. It is not a promise that every item must be implemented exactly as written: repository evidence may reorder or split milestones. Any material reorder must be recorded in `docs/DECISIONS.md` or the active spec.
+This roadmap defines preferred product sequencing. Repository evidence may split or reorder work; material changes must be recorded in `docs/DECISIONS.md` or the active spec.
 
 ## Product destination
 
@@ -53,60 +53,62 @@ Delivered:
 
 Audit: `docs/multi-agent/handoffs/OC-001-AUDIT.md`.
 
-Architectural result: ADR-001/ADR-007 are now supported by real product code, not only synthetic Foundation nodes.
-
 ---
 
 ## M2 — Durable Execution V1
 
-Status: **NEXT / ACTIVE TARGET**
+Status: **RESOLVED**
 
-Goal: make a workflow run inspectable and persist its lifecycle so the product can later support history, recovery, cache and a real editor.
+Delivered:
 
-Required capabilities:
+- optional `RunJournal` injection into `WorkflowEngine`;
+- ordered run/node lifecycle events;
+- `MemoryRunJournal` for ephemeral consumers/tests;
+- stdlib SQLite persistence through `SQLiteRunJournal`;
+- durable run/node projections plus ordered event history;
+- success/failure/error/output metadata;
+- conservative JSON-safe metadata normalization;
+- explicit `RUNNING -> INTERRUPTED` reconciliation after an incomplete process/session;
+- run-history/detail/event query API;
+- `--journal <sqlite-db>` on core and JSON Node Pack CLIs;
+- real `json.literal -> json.split` durable success/failure evidence;
+- Windows/Linux hosted regression.
 
-1. explicit run states: `PENDING`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED` where supported;
-2. explicit node-run states with start/end/error information;
-3. append-only logical Run Journal event model;
-4. SQLite persistence using Python stdlib first unless evidence requires another dependency;
-5. durable workflow-run and node-run records;
-6. persistence of output metadata in a JSON-safe form;
-7. query/read API for run history and individual run details;
-8. engine instrumentation without making persistence mandatory for pure/in-memory execution;
-9. interruption semantics: a process that dies during `RUNNING` must be distinguishable from a clean failure on next inspection;
-10. event/data contract designed to become the future frontend run-status source.
+Accepted V1 states are `RUNNING`, `SUCCEEDED`, `FAILED`, `INTERRUPTED`. Cancellation is deliberately deferred until a real cancellation boundary exists.
 
-Non-goals for the first V1 unless evidence makes them trivial:
+Evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
-- full automatic resume;
-- semantic cache;
-- distributed execution;
-- remote workers;
-- background daemon/service;
-- production UI.
-
-Acceptance must include `ktools-json` as a real workload plus failure-path tests.
+Important non-claim: M2 does **not** automatically resume interrupted work or provide semantic cache.
 
 ---
 
 ## M3 — Artifact Lifecycle + Recovery + Semantic Cache
 
-Status: **PLANNED**
+Status: **NEXT / ACTIVE TARGET**
 
 Build on M2 rather than inventing parallel state.
 
-Targets:
+Primary questions to prove:
+
+1. What makes a file-backed output a durable, reusable `Artifact` after process restart?
+2. Which inputs/config/node identity/version form a safe semantic execution signature?
+3. How are external file changes/disappearance detected before cache reuse?
+4. Which outputs may be skipped/reused and which side-effect nodes must always execute?
+5. What is the exact event/state distinction among normal success, cache reuse and later recovery?
+6. What session/ownership boundary is needed before automatically resuming an incomplete run?
+
+Target capabilities:
 
 - persistent `Artifact` records with provenance (`run`, `node`, output port, URI, metadata);
 - local file existence/integrity observations where applicable;
-- workflow/node signature model for cache keys;
+- stable workflow/node signature model for cache keys;
 - selective reuse of valid prior outputs;
-- invalidation rules when inputs/config/node version change;
-- safe restart/recovery semantics;
-- explicit distinction between `CACHED`, `SKIPPED`, `SUCCEEDED` and `RECOVERED` if evidence supports those states;
+- invalidation when inputs/config/node version or artifact validity changes;
+- safe restart/recovery semantics built on M2 run/node identities;
+- explicit `CACHED` / `RECOVERED` semantics only if evidence supports them;
 - cleanup/retention policy for temporary/intermediate artifacts.
 
-Use expensive media workflows later to prove that cache/recovery actually saves meaningful work.
+M3 should begin with deterministic JSON/file workloads. Expensive media workflows are a later proof that caching provides meaningful practical savings.
 
 ---
 
@@ -115,8 +117,6 @@ Use expensive media workflows later to prove that cache/recovery actually saves 
 Status: **PLANNED / ITERATIVE**
 
 Migrate real legacy functionality behind one-owner capability packages. Prefer coherent domain packs over one-off files.
-
-Suggested order, subject to repository evidence:
 
 ### Files / folders
 
@@ -164,15 +164,14 @@ Expose mature applications as K-Tools capabilities without destroying their inte
 - destination/options;
 - process/run correlation;
 - progress/result/artifact translation;
-- auth-expired and unavailable classifications preserved.
+- preserve auth-expired/unavailable classifications.
 
 ### XCursos Runner adapter
 
 - course/run input;
-- browser/session boundary preserved;
-- diagnostics correlation preserved;
-- output artifacts exposed to K-Tools;
-- no duplicate downloader/navigation engine in `ktools-core`.
+- preserve browser/session and diagnostics boundaries;
+- expose output artifacts to K-Tools;
+- do not duplicate downloader/navigation internals in `ktools-core`.
 
 Adapters come before invasive forks.
 
@@ -194,7 +193,7 @@ Before production editor work, publish stable machine-readable contracts for:
 - artifact summaries;
 - execution commands and cancellation boundary where supported.
 
-The API may initially be in-process/JSON serialization. Transport (local HTTP/IPC/etc.) should be chosen based on desktop-host evidence, not assumed early.
+Transport (in-process/local HTTP/IPC/etc.) should be selected from desktop-host evidence, not assumed early.
 
 ---
 
@@ -233,7 +232,7 @@ Required:
 
 Status: **PLANNED**
 
-Prove the full product thesis:
+Prove the complete product thesis:
 
 > a workflow/capability can be projected as a simple Tool without duplicate business logic.
 
@@ -244,7 +243,7 @@ Targets:
 - “Save workflow as Tool” or equivalent manifest;
 - categories/search/favorites;
 - examples such as Mega Podcast, YouTube→Audio, Images→PDF and JSON Split;
-- history and artifacts accessible from simple Tool runs too.
+- history/artifacts accessible from simple Tool runs too.
 
 ---
 
@@ -262,7 +261,7 @@ Evaluate candidates such as Tauri/Electron against:
 - filesystem dialogs and drag/drop;
 - update model;
 - startup time / RAM;
-- code signing and installer ergonomics;
+- code signing/installer ergonomics;
 - LAN/local API implications if desired later.
 
 The goal is one K-Tools Neo product, not a browser tab plus unrelated CLIs.
@@ -277,10 +276,9 @@ Only after node contracts, validation, persistence and observability are stable:
 
 - machine-readable node catalog for agents;
 - natural-language → workflow draft;
-- explain graph;
-- validate/repair graph;
+- explain/validate/repair graph;
 - inspect available capabilities;
-- generated workflows pass the exact same validator as human-authored workflows;
+- generated workflows pass the same validator as human-authored workflows;
 - edits remain inspectable/reversible;
 - agent actions never bypass safety/overwrite/auth boundaries owned by capabilities.
 
@@ -295,12 +293,12 @@ Across all milestones:
 - keep Windows/Linux core CI green;
 - add native/runtime evidence at the boundary actually claimed;
 - keep dependencies/license inventory clean;
-- remove duplicate legacy ownership as capabilities are migrated;
+- remove duplicate legacy ownership as capabilities migrate;
 - performance/profile expensive workflows;
 - structured diagnostics;
 - migration/version strategy for workflow files and Node Packs;
 - security review for paths, subprocesses, secrets/cookies and community plugins;
-- documentation and onboarding;
+- documentation/onboarding;
 - release/installer smoke on clean Windows environments.
 
 A visually complete UI is not “top” if runtime state, recovery, error boundaries or tests are weak. K-Tools is quality-first: usability and engineering integrity advance together.
@@ -309,6 +307,6 @@ A visually complete UI is not “top” if runtime state, recovery, error bounda
 
 ## Execution rule
 
-The active implementer should normally take the **first unresolved milestone whose prerequisites are satisfied**, create/update an explicit spec, work through evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure, then move to the next milestone.
+The active implementer normally takes the **first unresolved milestone whose prerequisites are satisfied**, creates/updates an explicit spec, works through evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure, then advances to the next milestone while capacity remains.
 
 Do not keep extending an old spec as a catch-all. Each major milestone gets its own spec/evidence area under `docs/specs/`.
