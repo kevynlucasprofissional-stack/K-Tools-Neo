@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from ktools_core import RunStatus, SQLiteRunJournal
+from ktools_core import NodeRunStatus, RunStatus, SQLiteRunJournal
 from ktools_core.cli import main
 
 
@@ -67,6 +67,59 @@ class WorkflowCliTests(unittest.TestCase):
                 assert run is not None
                 self.assertEqual(run.status, RunStatus.SUCCEEDED)
                 self.assertEqual(run.workflow_id, "cli-journal")
+
+    def test_cli_cache_survives_separate_invocations_and_projects_cached_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workflow_path = root / "workflow.json"
+            cache_path = root / "cache.sqlite3"
+            journal_path = root / "runs.sqlite3"
+            workflow_path.write_text(
+                json.dumps(
+                    {
+                        "id": "cli-cache",
+                        "nodes": [
+                            {
+                                "id": "hello",
+                                "type": "text.literal",
+                                "config": {"value": "cached"},
+                            }
+                        ],
+                        "edges": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payloads = []
+            for _ in range(2):
+                stdout = StringIO()
+                with redirect_stdout(stdout):
+                    code = main(
+                        [
+                            str(workflow_path),
+                            "--json",
+                            "--journal",
+                            str(journal_path),
+                            "--cache",
+                            str(cache_path),
+                            "--no-diagnostics",
+                        ]
+                    )
+                self.assertEqual(code, 0)
+                payloads.append(json.loads(stdout.getvalue()))
+
+            self.assertEqual(payloads[0]["cache"], str(cache_path))
+            self.assertEqual(payloads[1]["cache"], str(cache_path))
+            self.assertNotEqual(payloads[0]["runId"], payloads[1]["runId"])
+            self.assertEqual(payloads[1]["nodeOutputs"]["hello"]["text"], "cached")
+
+            with SQLiteRunJournal(journal_path) as journal:
+                detail = journal.get_run_detail(payloads[1]["runId"])
+                self.assertIsNotNone(detail)
+                assert detail is not None
+                self.assertEqual(len(detail.nodes), 1)
+                self.assertIs(detail.nodes[0].status, NodeRunStatus.CACHED)
 
     def test_no_diagnostics_remains_available_for_minimal_consumers(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
