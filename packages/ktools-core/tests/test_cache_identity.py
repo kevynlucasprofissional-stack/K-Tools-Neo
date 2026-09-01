@@ -64,8 +64,6 @@ class ArtifactSnapshotTests(unittest.TestCase):
         snapshot = snapshot_artifact(self._artifact(path))
 
         path.write_bytes(b"BBBB")
-        # Restore the exact snapshot mtime so quick size/mtime checks cannot
-        # detect the change; strong SHA-256 validation still must reject it.
         os.utime(path, ns=(snapshot.mtime_ns, snapshot.mtime_ns))
         self.assertEqual(path.stat().st_size, snapshot.size_bytes)
         self.assertEqual(path.stat().st_mtime_ns, snapshot.mtime_ns)
@@ -165,16 +163,13 @@ class CacheSignatureTests(unittest.TestCase):
             produced_by="run_two/node_b",
         )
 
-        self.assertEqual(
-            self._signature(inputs={"file": first}),
-            self._signature(inputs={"file": second}),
-        )
+        before_first = self._signature(inputs={"file": first})
+        before_second = self._signature(inputs={"file": second})
+        self.assertEqual(before_first, before_second)
 
         path.write_bytes(b"different-content")
-        self.assertNotEqual(
-            self._signature(inputs={"file": first}),
-            self._signature(inputs={"file": second}),
-        )
+        after_change = self._signature(inputs={"file": second})
+        self.assertNotEqual(before_first, after_change)
 
     def test_never_policy_and_opaque_values_fail_closed(self) -> None:
         with self.assertRaises(CacheSignatureUnsupported):
