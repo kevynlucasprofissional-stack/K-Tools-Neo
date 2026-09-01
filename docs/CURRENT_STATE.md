@@ -37,85 +37,61 @@ K-Tools has an optional injected Run Journal and stdlib SQLite persistence for o
 
 Delivered:
 
-- `RUN_STARTED`, node start/success/failure, run success/failure;
-- explicit interrupted reconciliation;
-- durable run/node projections;
+- run/node lifecycle events and query projections;
+- explicit interruption reconciliation;
 - error/output metadata;
-- JSON-safe conservative serialization;
+- conservative JSON-safe serialization;
 - run history/detail/event query API;
 - `--journal <sqlite-db>` on core and JSON CLIs;
 - real `json.literal -> json.split` success/failure evidence.
 
-Hosted evidence includes run `33552906228` and post-hardening run `33553179743`, both green across Windows/Linux Python lanes plus the xyflow job.
-
 Evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
-## Roadmap reorder — diagnostics now precede recovery/cache
+## M3 — Diagnostics, Structured Logging + Support Bundle — RESOLVED
 
-The project owner explicitly requested a complete diagnostic/logging system able to reconstruct unexpected executions, including terminal/subprocess output, failures, inconsistent results, low-quality model observations, decisions, batches and end-of-run reports.
+The project now has a first-class diagnostic/support layer before cache/recovery, media, browser and imported-app integration work.
 
-Because future cache/recovery, FFmpeg, browser and downloader work would otherwise need diagnostics retrofitted later, the roadmap now makes **Diagnostics + Support Bundle the M3 prerequisite**.
+Spec/evidence/final report: `docs/specs/diagnostics-support-bundle-v1/`.
 
-Artifact lifecycle/recovery/cache moved to M4.
+### Structured diagnostics
 
-## M3 — Diagnostics, Structured Logging + Support Bundle — ACTIVE
+`ktools-core` now provides:
 
-Spec: `docs/specs/diagnostics-support-bundle-v1/spec.md`.
+- DEBUG / INFO / WARNING / ERROR / CRITICAL severities;
+- LOG / DECISION / METRIC / BATCH / ANOMALY / EXCEPTION / SUBPROCESS / LIFECYCLE event kinds;
+- run/workflow/node/stage/batch correlation;
+- explicit decision reasons, metrics, batch observations and anomalies;
+- exception type/message/traceback capture;
+- `DiagnosticLogHandler` bridge for stdlib Python logging.
 
-Implementation currently on `main` includes:
+### Safe sharing
 
-### Structured diagnostic events
+Support material uses a conservative safe-sharing boundary:
 
-`packages/ktools-core/src/ktools_core/diagnostics.py` provides:
+- common token/API-key/password/secret/cookie/Authorization patterns are redacted recursively;
+- secret-like command arguments and URL query values are redacted;
+- arbitrary unknown-object `repr()`/reflection is avoided;
+- structured strings are bounded;
+- environment variables are not snapshotted wholesale;
+- captured subprocess stdout/stderr is redacted before becoming shareable.
 
-- `DiagnosticSeverity`: DEBUG / INFO / WARNING / ERROR / CRITICAL;
-- event kinds for logs, decisions, metrics, batches, anomalies, exceptions, subprocesses and lifecycle;
-- workflow/run/node/stage/batch correlation fields;
-- safe structured context;
-- traceback capture;
-- helpers for explicit decisions, metrics, batches and anomalies.
+Seeded-secret regression tests exercise these boundaries.
 
-### Safe sharing / redaction
+### Subprocess / PowerShell diagnostics
 
-Diagnostic serialization now:
+`DiagnosticsSession.run_subprocess(...)` records command identity, cwd, start/end, duration, return code, stdout/stderr files, non-zero exit, timeout and launch failure.
 
-- reuses the conservative core JSON-safe boundary;
-- redacts recognized token/API-key/password/secret/cookie/authorization patterns;
-- redacts secret-like command arguments;
-- avoids arbitrary unknown-object `repr()` capture;
-- bounds structured strings;
-- does not snapshot environment variables wholesale.
+Hosted acceptance executed a real PowerShell (`pwsh`) stdout/stderr test successfully.
 
-Security regression tests seed fake secrets and require them to be absent from reports/event streams/raw captured output.
+This becomes the expected future common boundary for FFmpeg/FFprobe and other subprocess-heavy capabilities.
 
-### Subprocess / PowerShell boundary
+### Automatic diagnostic report / support bundle
 
-`DiagnosticsSession.run_subprocess(...)` records:
-
-- redacted command identity;
-- cwd where supplied;
-- start/completion;
-- duration;
-- return code;
-- stdout/stderr files;
-- non-zero exit;
-- timeout;
-- launch failure.
-
-A platform-conditional test exercises PowerShell (`pwsh`/`powershell`) when present.
-
-This boundary is intended to become the common future entry point for FFmpeg/FFprobe and other subprocess-heavy capabilities.
-
-### Standard Python logging
-
-`DiagnosticLogHandler` bridges stdlib `logging` messages and logged exceptions into the same Diagnostics Session without serializing the arbitrary full LogRecord dictionary.
-
-### Automatic support bundle
-
-A finalized Diagnostics Session creates:
+A normal first-party CLI execution creates automatically:
 
 ```text
 <diagnostics-root>/<session-id>/
+  session.json
   diagnostics.jsonl
   report.json
   report.md
@@ -123,47 +99,100 @@ A finalized Diagnostics Session creates:
   support-bundle.zip
 ```
 
-Both current first-party workflow CLIs now enable diagnostics by default and expose:
+The Markdown report is a human-readable execution reconstruction containing:
+
+- environment and execution identity;
+- status/timing;
+- executed nodes/steps and stages;
+- batches/lots;
+- system decisions;
+- metrics/quality observations;
+- anomalies/inconsistent results;
+- subprocess/PowerShell outcomes;
+- errors/failures;
+- result/output summaries;
+- Run Journal lifecycle;
+- diagnostic hotspots/potential failure points derived only from recorded evidence;
+- raw-log inventory.
+
+The JSON report retains the machine-readable equivalent.
+
+Core and JSON workflow CLIs enable diagnostics by default and expose:
 
 ```text
 --diagnostics-dir <dir>
 --no-diagnostics
 ```
 
-Successful `--json` output contains `diagnosticBundle`; handled validation/execution/unexpected errors print the generated bundle path before returning their error code.
+Successful JSON output includes `diagnosticBundle`; handled failures print the bundle path before their classified exit code.
 
-### Engine correlation
+### Interruption / hard-crash evidence
 
-`WorkflowEngine` accepts an optional `DiagnosticsSession` independently of Run Journal. When supplied, node/run start/success/failure observations are correlated with real run/workflow/node IDs.
+Caught Ctrl+C/KeyboardInterrupt finalizes diagnostic status `INTERRUPTED` and returns code 130.
 
-Run Journal remains lifecycle authority; diagnostics supplements it rather than replacing it.
+During execution, `session.json` starts as RUNNING and `diagnostics.jsonl` is append-written. If normal finalization never occurs, a stale session can later be packaged as `ABANDONED_OR_INTERRUPTED` while preserving the last durable evidence.
 
-### Abnormal termination recovery
+Fresh incomplete sessions are deliberately not auto-recovered because another live process could still own them. Stronger process/session ownership remains later work.
 
-`recover_abandoned_sessions(...)` can package a stale diagnostics directory that contains an event stream but no final report, preserving the last durable evidence after a crash/forced termination/machine shutdown.
+### Hosted evidence
 
-Important safety boundary: absence of `report.json` alone does not prove process death. Recovery therefore requires a minimum staleness age by default; age `0` is only for callers with independent evidence that no live process owns the session. A future process ownership/lease model may strengthen this further.
+Accepted implementation/test candidate:
 
-## M3 still open
+`9c14e073ec5f770ce9d03d031c4ca1820bcd6ce2`
 
-Do **not** mark M3 resolved yet.
+GitHub Actions run:
 
-Remaining closure work includes:
+`33556969496`
 
-- make human-readable `report.md` as complete as `report.json` for batches, metrics, subprocesses, result summaries and journal history;
-- finish interruption/Ctrl+C CLI semantics;
-- ensure real JSON Node Pack success/failure support-bundle tests pass on Windows/Linux;
-- inspect latest hosted CI and fix any regressions;
-- record exact-head evidence and test counts;
-- update Decisions / Testing / Engineering Journal / spec evidence;
-- close M3 only after the final documentation head is green.
+All five jobs passed:
+
+- Ubuntu / Python 3.10;
+- Ubuntu / Python 3.13;
+- Windows / Python 3.10;
+- Windows / Python 3.13;
+- xyflow spike / Node.js 22.
+
+Representative Ubuntu/Python 3.13 lane:
+
+- **33 core tests — OK**;
+- **59 JSON Node Pack tests — OK**;
+- real PowerShell stdout/stderr diagnostic test — **OK**;
+- core CLI diagnostic smoke — OK;
+- real JSON workflow diagnostic smoke — OK;
+- generated JSON artifact verification — OK.
+
+The current closure commits after that SHA are canonical documentation/memory updates over the same accepted implementation/test tree. A final root CI run on the latest `main` remains the last guard before M4 code is allowed to advance.
+
+## Architecture direction now
+
+- `RunJournal` = durable lifecycle truth/history;
+- `DiagnosticsSession` = richer forensic/support evidence;
+- both correlate through run/workflow/node identity but remain separate injected concerns;
+- support bundles are share-safe by default and do not claim automatic root cause;
+- diagnostics is part of Definition of Done for new significant runtime/subprocess/integration capabilities;
+- unfinished/stale evidence is never treated as automatic proof of process death;
+- future cache/recovery decisions must emit diagnostic explanation.
+
+## Active roadmap milestone — M4 Artifact Lifecycle + Recovery + Semantic Cache
+
+Status: **ACTIVE TARGET — IMPLEMENTATION MAY START AFTER FINAL M3 MEMORY-HEAD CI IS GREEN**.
+
+M4 must answer with executable evidence:
+
+1. what makes an Artifact valid enough to reuse after restart;
+2. how file existence/content changes invalidate reuse;
+3. what exact input/config/node-version identity forms a safe cache signature;
+4. which nodes are cacheable versus side-effectful;
+5. how cached/recovered states extend M2 lifecycle truth;
+6. how process/session ownership affects restart recovery;
+7. how M3 diagnostics explains every reuse/invalidation/recovery decision.
+
+Do not implement broad automatic resume from old `RUNNING`/successful rows without those rules.
 
 ## Later roadmap
 
-M4 becomes Artifact Lifecycle + Recovery + Semantic Cache, now explicitly required to explain cache reuse/invalidation through M3 diagnostics.
-
-Subsequent milestones cover official local Node Packs, imported app adapters, UI contract API, production workflow editor, ready-made Tools, desktop packaging, agent-first composition and release hardening.
+After M4: official local Node Packs, imported application adapters, runtime/UI contract API, production workflow editor, ready-made Tools/Templates, desktop packaging, agent-first composition and release hardening.
 
 ## Next exact action
 
-Finish Diagnostics + Support Bundle V1 rather than starting artifact cache work. The immediate implementation target is complete human-report rendering plus interruption behavior, followed by exact-head hosted Windows/Linux acceptance.
+Wait for the final documentation/memory HEAD root CI. If green, create the dedicated M4 Artifact Lifecycle + Recovery + Semantic Cache spec and begin with persistent Artifact validity/provenance plus cache-signature acceptance tests before implementing automatic reuse.
