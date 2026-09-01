@@ -5,7 +5,18 @@ import unittest
 from pathlib import Path
 
 from ktools_core.artifact_registry import SQLiteArtifactRegistry, validate_artifact_record
-from ktools_core.models import Artifact, DataType
+from ktools_core.cache_store import SQLiteNodeCache
+from ktools_core.engine import WorkflowEngine
+from ktools_core.models import (
+    Artifact,
+    CachePolicy,
+    DataType,
+    NodeDefinition,
+    PortDefinition,
+    WorkflowDefinition,
+    WorkflowNode,
+)
+from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
 
 class SQLiteArtifactRegistryTests(unittest.TestCase):
@@ -50,6 +61,71 @@ class SQLiteArtifactRegistryTests(unittest.TestCase):
             self.assertEqual(record.artifact.produced_by, "run-origin/node-origin")
             self.assertEqual(record.artifact.metadata["kind"], "fixture")
             self.assertIsNotNone(record.snapshot)
+
+    def test_engine_records_executed_and_cached_occurrences_for_same_artifact(self) -> None:
+        output = self.root / "engine-result.bin"
+        calls = {"count": 0}
+        registry = NodeRegistry()
+
+        def handler(_inputs: dict, config: dict, context: NodeExecutionContext) -> dict:
+            calls["count"] += 1
+            output.write_bytes(b"stable-output")
+            return {
+                "file": Artifact.create(
+                    type=DataType.FILE,
+                    uri=output.resolve().as_uri(),
+                    produced_by=f"{context.run_id}/{context.node_id}",
+                    metadata={"config": config["label"]},
+                )
+            }
+
+        registry.register(
+            NodeDefinition(
+                type_id="test.artifact-producer",
+                title="Artifact producer",
+                outputs={"file": PortDefinition(DataType.FILE)},
+                version="1",
+                cache_policy=CachePolicy.PURE,
+            ),
+            handler,
+        )
+        workflow = WorkflowDefinition(
+            id="artifact-registry-cache",
+            nodes=(
+                WorkflowNode(
+                    id="producer",
+                    type="test.artifact-producer",
+                    config={"label": "same"},
+                ),
+            ),
+            edges=(),
+        )
+
+        with SQLiteArtifactRegistry(self.database) as artifact_registry:
+            with SQLiteNodeCache(self.root / "cache.sqlite3") as cache:
+                first = WorkflowEngine(
+                    registry,
+                    cache=cache,
+                    artifact_registry=artifact_registry,
+                ).execute(workflow)
+                second = WorkflowEngine(
+                    registry,
+                    cache=cache,
+                    artifact_registry=artifact_registry,
+                ).execute(workflow)
+
+            first_records = artifact_registry.list_for_run(first.run_id)
+            second_records = artifact_registry.list_for_run(second.run_id)
+
+        self.assertEqual(calls["count"], 1)
+        self.assertEqual(len(first_records), 1)
+        self.assertEqual(len(second_records), 1)
+        self.assertEqual(first_records[0].source, "EXECUTED")
+        self.assertEqual(second_records[0].source, "CACHED")
+        self.assertEqual(first_records[0].artifact.id, second_records[0].artifact.id)
+        self.assertEqual(second_records[0].node_id, "producer")
+        self.assertEqual(second_records[0].output_port, "file")
+        self.assertTrue(validate_artifact_record(second_records[0]).strongly_valid)
 
     def test_nested_artifacts_are_bound_to_output_port_and_value_path(self) -> None:
         first_path = self.root / "first.bin"
