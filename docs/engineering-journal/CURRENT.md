@@ -1,216 +1,168 @@
 # Engineering Journal — Current
 
-## H-001 — Shared node contracts are the correct integration boundary
+Historical Foundation/research entries H-001..H-007 and E-001..E-003 were preserved at:
 
-Status: VALIDATED FOR PLATFORM DIRECTION
-Origin: product goal + repository inspection
+`docs/engineering-journal/archive/2026-08-platform-foundation.md`
+
+This file tracks the currently active/recent engineering knowledge that should influence the next implementation cycles.
+
+---
+
+## H-008 — One-owner capability architecture works with real product behavior
+
+Status: **VALIDATED**
+Origin: OC-001 / `packages/ktools-json/`
 
 ### Claim
-Ready-made tools and workflows should use the same capability implementation behind node/runtime contracts.
+A K-Tools capability can have one implementation owner while being consumed through a direct API and through a workflow node.
 
-### Evidence / reasoning
-The repository already contains overlapping utility behavior, a large integrated GUI and standalone mature apps. Adding workflow-specific copies would create multiple owners for the same operation.
+### Evidence
+The JSON split milestone established:
+
+```text
+Direct API
+    \
+     -> writer.split_and_write -> capability.split_json_document
+    /
+json.split workflow node
+```
+
+Integration tests verify both routes reference/reach the same shared owner and produce byte-identical part files for equivalent input/config. Hosted Windows/Linux CI passed the complete pack suite and workflow smoke.
 
 ### Refutation attempt
-Continuing to add features directly to the legacy GUI is simpler short-term, but does not provide a reusable operational language for visual workflows or future agents and increases duplication.
+A thin workflow adapter could still accidentally become a second implementation over time. Structural tests in `ktools-json` explicitly reject split algorithms being moved into the node adapter and assert delegation to the shared owner.
 
 ### Practical implication
-New platform work begins outside the legacy monolith; capabilities are migrated behind reusable contracts.
-
----
-
-## H-002 — Python is the lowest-risk first core runtime
-
-Status: PARTIALLY VALIDATED / ACCEPTED FOR FOUNDATION
-Origin: repository inspection
-
-### Claim
-A Python workflow core minimizes migration friction for the first stage.
-
-### Evidence
-Most root utilities and the legacy K-Tools GUI are Python; YT-DLP TUI is Python. XCursos remains Node.js and can be adapted across a process boundary.
-
-### Refutation boundary
-This does not prove Python is the final desktop host or highest-performance scheduler. Reopen with integration/performance evidence.
-
----
-
-## H-003 — Nested imported workflows do not validate the monorepo
-
-Status: VALIDATED
-Origin: repository inspection
-
-### Claim
-`.github/workflows` directories inside `apps/...` are not sufficient K-Tools root CI.
-
-### Evidence
-The baseline repository had no root `.github/workflows/` directory; imported workflow files exist only below app directories.
-
-### Practical implication
-Root CI must explicitly own monorepo validation.
-
----
-
-## H-004 — Editor/runtime separation is a stable cross-project pattern
-
-Status: VALIDATED
-Origin: source study of Node-RED, Activepieces, n8n, Rete.js and xyflow
-
-### Claim
-K-Tools should keep workflow semantics/execution independent from the visual canvas.
-
-### Evidence
-The independently designed systems studied repeatedly separate graph/editor concerns from runtime/registry/execution concerns. xyflow itself solves interaction/viewport/handles without attempting to be an application workflow runtime.
-
-### Refutation attempt
-Using a visual-programming framework as both UI and workflow owner could reduce early code, but would duplicate or displace the already-tested `ktools-core` contracts and make CLI/Tools/agent clients depend on a UI framework.
-
-### Classification
-Validated for K-Tools architecture.
-
-### Practical implication
-`@xyflow/react` can become a frontend dependency while `ktools-core` remains authoritative.
+Future official Node Packs should use the same separation: capability semantics → shared I/O/orchestration where needed → thin direct/UI/workflow adapters.
 
 ### Evidence record
-`docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`
+`docs/multi-agent/handoffs/OC-001-AUDIT.md`
 
 ---
 
-## H-005 — xyflow is the lowest-lock-in canvas candidate
+## H-009 — Durable execution should be an injected runtime concern, not a mandatory database dependency
 
-Status: VALIDATED FOR UI SPIKE / PRODUCT PROMOTION STILL UNPROVED
-Origin: xyflow source + Activepieces source
-
-### Claim
-`@xyflow/react` is the best first implementation for the K-Tools workflow canvas among the studied projects.
-
-### Confirming evidence
-The xyflow source already provides handles, `isValidConnection`, viewport, selection, reconnection and graph-view utilities under MIT. Activepieces uses the same library throughout its real workflow builder with custom nodes/edges, minimap, context menus and selection behavior.
-
-### Refutation boundary
-No evidence yet proves K-Tools desktop-host packaging, native bridge or large-graph performance in our target environment.
-
-### Classification
-Use in a dedicated UI spike; do not call the editor delivered until that boundary is exercised.
-
----
-
-## H-006 — Run Journal + Artifact provenance must precede production use of expensive workflows
-
-Status: VALIDATED AS TARGET DIRECTION
-Origin: Activepieces durable execution + ComfyUI cache/progress + K-Tools media domain
+Status: **VALIDATED FOR V1**
+Origin: M2 Durable Execution V1
 
 ### Claim
-Long-running audio/video/PDF workflows need persistent per-node run state and artifact provenance before restart/resume/cache can be trustworthy.
+`WorkflowEngine` can provide durable lifecycle/history without forcing every execution to open SQLite or coupling nodes to persistence.
 
 ### Evidence
-Activepieces implements replay-and-skip from durable step outputs; ComfyUI uses input signatures/cached node outputs and explicit node progress states. K-Tools workloads can be substantially more expensive than the current deterministic fixture nodes.
+The engine accepts an optional `RunJournal`. Existing `WorkflowEngine(registry)` usage remains green. `MemoryRunJournal` captures ordered events in-memory, while `SQLiteRunJournal` persists the same logical event contract plus query projections.
+
+Hosted M2 tests prove success/failure ordering, no-journal compatibility, SQLite close/reopen queries and a real `json.literal -> json.split` workload.
 
 ### Refutation attempt
-A pure in-memory executor is sufficient for the Foundation milestone and remains intentionally simpler. It becomes inadequate only when real expensive workflows require crash recovery/history/cache.
+Embedding SQLite directly in the engine would reduce interfaces initially, but would make pure tests/headless embedding depend on storage and would couple a future alternate persistence transport to execution semantics.
 
 ### Practical implication
-After the first real Node Pack proves capability composition, persistence/Run Journal should precede a broad visual-workflow rollout.
+Future UI, cache/recovery and diagnostics should consume/build on the journal/run identities rather than invent parallel run-state stores.
 
 ---
 
-## H-007 — Third-party source must be classified by reuse boundary, not by popularity
+## H-010 — Events are the execution history; tables are query projections
 
-Status: VALIDATED
-Origin: license/source inspection of all seven study snapshots
+Status: **VALIDATED FOR SQLITE V1**
+Origin: M2 SQLite implementation
 
 ### Claim
-Some projects are safe candidates for direct dependency/selective reuse while others should remain clean-room references.
+The durable event stream should be the ordered logical history, while `runs` and `node_runs` are derived query-friendly projections updated in the same transaction per event.
 
-### Classification
-- xyflow: direct dependency candidate (MIT);
-- Activepieces: selective donor code only outside declared Enterprise areas and after per-file/dependency review (MIT area);
-- Node-RED: selective donor code possible under Apache-2.0 obligations;
-- Rete.js/LiteGraph.js: MIT, but adopting their graph ownership is architecturally unnecessary;
-- n8n: conceptual/UX reference under current strategy, not donor code due Sustainable Use restrictions;
-- ComfyUI: conceptual reference under current strategy, not donor code unless GPL compatibility is deliberately accepted.
+### Evidence
+`SQLiteRunJournal.record()` inserts an event and applies the corresponding projection update inside one SQLite transaction. Queries use the projections for run/node detail and the event table for ordered history.
 
-### Anti-repeat lesson
-Never copy a useful upstream implementation before classifying its license boundary and proving that direct reuse is better than a small contract-owned implementation.
+### Refutation boundary
+This is not yet full event sourcing: schema migration, replay-to-rebuild projections and distributed consumers are not implemented or claimed.
+
+### Practical implication
+M3 should extend existing run/node/artifact identities rather than create an unrelated cache-state database.
 
 ---
 
-## E-001 — Local editable install could not reach build dependencies
+## H-011 — Interrupted must remain distinct from Failed
 
-Status: CLASSIFIED / EXTERNAL HARNESS
-Environment: isolated execution sandbox
+Status: **VALIDATED FOR V1 SEMANTICS**
+Origin: M2 interruption design
 
-### Fingerprint
-pip failed resolving `setuptools` because package-index network/DNS access was unavailable.
+### Claim
+A process that disappears with durable `RUNNING` records must not be rewritten as a normal node/business failure.
 
-### Boundary reached
-Packaging dependency acquisition, before K-Tools package/runtime execution.
+### Evidence
+`SQLiteRunJournal.reconcile_incomplete_runs()` explicitly emits `NODE_INTERRUPTED` / `RUN_INTERRUPTED` and projects status `INTERRUPTED`. Tests persist an intentionally incomplete run, reopen the database, reconcile it and verify the separate terminal state.
 
-### Tempting but wrong interpretation
-"ktools-core cannot be installed."
+### Safety decision
+Reconciliation is **not automatic on journal construction**. A second live process could legitimately own a RUNNING record; auto-reconciliation would create false interruption reports without a lease/ownership model.
 
-### Classification
-Harness/environment limitation. Direct source tests and CLI smoke subsequently passed.
-
-### Regression guard
-GitHub CI performs the real editable-install boundary once a runner starts.
+### Practical implication
+M3 restart/recovery design must introduce explicit session/ownership semantics before any automatic resume behavior.
 
 ---
 
-## E-002 — Optional input passed validation but initially crashed execution
+## H-012 — Journal metadata needs a conservative serialization allow-list
 
-Status: RESOLVED
-Environment: local candidate before commit
+Status: **VALIDATED / SECURITY HARDENING**
+Origin: M2 JSON-safe persistence
+
+### Claim
+Durable observability must not serialize arbitrary object internals merely because a node returned a custom Python object.
+
+### Evidence
+`to_json_safe()` explicitly supports JSON-like values, K-Tools `Artifact`, enums, paths/dates and bounded metadata representations for bytes/non-finite floats. Unknown objects fall back to qualified type + `__nonSerializable__` instead of `repr`, dataclass field inspection or generic `to_dict` execution.
+
+A regression test uses an object whose `repr()` contains a fake token and proves that token is not persisted.
+
+### Practical implication
+New durable types should be admitted through explicit K-Tools contracts, not broad reflection.
+
+---
+
+## E-004 — A correct output-collision guard can make a non-isolated smoke look red
+
+Status: **CLASSIFIED / TEST-HARNESS LESSON**
+Origin: OC-001 local smoke handoff
 
 ### Fingerprint
-Executor indexed every declared input in the incoming-edge map even when `required=False`.
+A repeated local JSON-split smoke reused `%TEMP%/oc001-split-out`; the second run hit the intentional default `overwrite=False` collision guard.
 
-### Root cause
-Validation and execution had inconsistent optional-port semantics.
+### Classification
+Correct product safety behavior, stale local test state.
 
 ### Correction
-Executor now skips absent optional inputs.
-
-### Regression guard
-`test_optional_input_may_be_unconnected`.
+Hosted CI executes in a fresh runner temp directory. Future local filesystem smokes should use unique run directories or explicit cleanup when collision behavior is not the subject under test.
 
 ### Anti-repeat lesson
-Any schema distinction introduced in validation must be exercised through execution, not validated only structurally.
+Do not weaken overwrite/collision safety to make repeated smokes idempotent. Fix test isolation.
 
 ---
 
-## E-003 — GitHub Actions jobs failed before a recorded step
+## E-005 — GitHub Actions Node 20 deprecation warning came from action runtime majors, not K-Tools Node target
 
-Status: RESOLVED / ROOT CAUSE PROVED / REGRESSION BOUNDARY VALIDATED
-Environment / refs: PR #1; historical runs `33327645359`, `33327842478`; resolving run `33330660076`
+Status: **RESOLVED / HARNESS HARDENING**
+Origin: hosted M2 run `33552906228`
 
-### Historical fingerprint
-Every matrix job concluded `failure` almost immediately; API returned no job steps; representative job-log retrieval returned `BlobNotFound`.
+### Fingerprint
+The runner warned that `actions/checkout@v4` and `actions/setup-python@v5` targeted deprecated Node 20 internals and were being forced onto Node 24.
 
-### Boundary reached
-GitHub Actions orchestration / job startup. Checkout and K-Tools execution were not evidenced in the historical runs.
+### Boundary
+GitHub Action implementation runtime. K-Tools Python tests and the explicit xyflow Node.js 22 job were already green.
 
-### Platform evidence that resolved the unknown
-The GitHub Actions UI annotation stated that the jobs were not started because recent account payments had failed or the spending limit needed to be increased, directing the account to Billing & plans.
-
-This proved the original red jobs were an account/billing Actions boundary, not a Windows/Linux or `ktools-core` failure.
-
-### Material environment change
-The repository was changed from private to public; GitHub repository metadata reported `visibility: public`.
-
-### Resolving experiment
-Exact-head run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131`.
-
-Observed:
-
-- Ubuntu 3.10: success;
-- Ubuntu 3.13: success;
-- Windows 3.10: success;
-- Windows 3.13: success;
-- all matrix paths reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
-
-### Classification
-Historical external blocker closed. The workflow and product boundary are now evidenced on hosted Ubuntu/Windows runners.
+### Correction
+After checking current official Action documentation, the root workflow was moved to the v7 generation of checkout/setup-python/setup-node. Run `33553179743` on `4f1af103dff105807981f595be24cc7bf384f08c` passed all five jobs.
 
 ### Anti-repeat lesson
-A red CI badge is not product evidence unless the failing step reached the relevant code/runtime boundary. Once a platform annotation identifies billing, changing workflow/product code is not a valid fix. After an environmental change, rerun the exact acceptance boundary and classify from the first real failing step.
+Runner deprecation warnings should be classified by the Action that owns the runtime. Do not change the product's supported Python/Node versions to fix an action-internal runtime warning.
+
+---
+
+## Next journal focus — M3
+
+The next hypotheses must be proven rather than assumed:
+
+1. what makes an `Artifact` durable/valid enough to reuse after process restart;
+2. what exact inputs/config/node-version identity form a safe semantic cache key;
+3. whether cache/recovery belongs in `ktools-core` or a dedicated execution service layer;
+4. how a recovered/cached node is represented without corrupting the V1 event truth;
+5. what invalidates persisted outputs when files disappear or change outside K-Tools.
+
+Do not implement broad automatic resume until those questions have executable acceptance tests.
