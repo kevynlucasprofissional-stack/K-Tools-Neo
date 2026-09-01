@@ -4,7 +4,7 @@ Historical Foundation/research entries H-001..H-007 and E-001..E-003 were preser
 
 `docs/engineering-journal/archive/2026-08-platform-foundation.md`
 
-This file tracks the currently active/recent engineering knowledge that should influence the next implementation cycles.
+This file tracks active/recent engineering knowledge that should influence the next implementation cycles.
 
 ---
 
@@ -17,26 +17,10 @@ Origin: OC-001 / `packages/ktools-json/`
 A K-Tools capability can have one implementation owner while being consumed through a direct API and through a workflow node.
 
 ### Evidence
-The JSON split milestone established:
-
-```text
-Direct API
-    \
-     -> writer.split_and_write -> capability.split_json_document
-    /
-json.split workflow node
-```
-
-Integration tests verify both routes reference/reach the same shared owner and produce byte-identical part files for equivalent input/config. Hosted Windows/Linux CI passed the complete pack suite and workflow smoke.
-
-### Refutation attempt
-A thin workflow adapter could still accidentally become a second implementation over time. Structural tests in `ktools-json` explicitly reject split algorithms being moved into the node adapter and assert delegation to the shared owner.
+The JSON split milestone established a shared `writer.split_and_write -> capability.split_json_document` owner for direct and workflow routes. Integration tests verify shared ownership and byte-identical output under equivalent input/config. Hosted Windows/Linux CI passed.
 
 ### Practical implication
-Future official Node Packs should use the same separation: capability semantics → shared I/O/orchestration where needed → thin direct/UI/workflow adapters.
-
-### Evidence record
-`docs/multi-agent/handoffs/OC-001-AUDIT.md`
+Future official Node Packs preserve capability semantics → shared I/O/orchestration → thin direct/UI/workflow adapters.
 
 ---
 
@@ -45,75 +29,128 @@ Future official Node Packs should use the same separation: capability semantics 
 Status: **VALIDATED FOR V1**
 Origin: M2 Durable Execution V1
 
-### Claim
-`WorkflowEngine` can provide durable lifecycle/history without forcing every execution to open SQLite or coupling nodes to persistence.
-
-### Evidence
-The engine accepts an optional `RunJournal`. Existing `WorkflowEngine(registry)` usage remains green. `MemoryRunJournal` captures ordered events in-memory, while `SQLiteRunJournal` persists the same logical event contract plus query projections.
-
-Hosted M2 tests prove success/failure ordering, no-journal compatibility, SQLite close/reopen queries and a real `json.literal -> json.split` workload.
-
-### Refutation attempt
-Embedding SQLite directly in the engine would reduce interfaces initially, but would make pure tests/headless embedding depend on storage and would couple a future alternate persistence transport to execution semantics.
+`WorkflowEngine` accepts an optional `RunJournal`; Memory and SQLite implementations consume the same logical event contract. Existing storage-free engine usage remains green.
 
 ### Practical implication
-Future UI, cache/recovery and diagnostics should consume/build on the journal/run identities rather than invent parallel run-state stores.
+Future UI/cache/recovery use existing run identities rather than inventing a second execution state model.
 
 ---
 
-## H-010 — Events are the execution history; tables are query projections
+## H-010 — Events are execution history; tables are query projections
 
 Status: **VALIDATED FOR SQLITE V1**
-Origin: M2 SQLite implementation
+Origin: M2
 
-### Claim
-The durable event stream should be the ordered logical history, while `runs` and `node_runs` are derived query-friendly projections updated in the same transaction per event.
-
-### Evidence
-`SQLiteRunJournal.record()` inserts an event and applies the corresponding projection update inside one SQLite transaction. Queries use the projections for run/node detail and the event table for ordered history.
-
-### Refutation boundary
-This is not yet full event sourcing: schema migration, replay-to-rebuild projections and distributed consumers are not implemented or claimed.
-
-### Practical implication
-M3 should extend existing run/node/artifact identities rather than create an unrelated cache-state database.
+SQLite event writes and run/node projection updates occur transactionally per logical event. This is not yet a claim of full event sourcing.
 
 ---
 
 ## H-011 — Interrupted must remain distinct from Failed
 
 Status: **VALIDATED FOR V1 SEMANTICS**
-Origin: M2 interruption design
+Origin: M2 + M3
 
-### Claim
-A process that disappears with durable `RUNNING` records must not be rewritten as a normal node/business failure.
+A process/session disappearing is not the same as a normal business/runtime failure. M2 preserves `INTERRUPTED`; M3 similarly uses `ABANDONED_OR_INTERRUPTED` for stale diagnostic sessions that never finalized.
 
-### Evidence
-`SQLiteRunJournal.reconcile_incomplete_runs()` explicitly emits `NODE_INTERRUPTED` / `RUN_INTERRUPTED` and projects status `INTERRUPTED`. Tests persist an intentionally incomplete run, reopen the database, reconcile it and verify the separate terminal state.
-
-### Safety decision
-Reconciliation is **not automatic on journal construction**. A second live process could legitimately own a RUNNING record; auto-reconciliation would create false interruption reports without a lease/ownership model.
-
-### Practical implication
-M3 restart/recovery design must introduce explicit session/ownership semantics before any automatic resume behavior.
+### Safety implication
+Neither Run Journal reconciliation nor diagnostic-session recovery should infer process death merely from an unfinished record. A future lease/ownership model is still needed for stronger automatic recovery.
 
 ---
 
-## H-012 — Journal metadata needs a conservative serialization allow-list
+## H-012 — Durable observability needs a conservative serialization allow-list
 
 Status: **VALIDATED / SECURITY HARDENING**
-Origin: M2 JSON-safe persistence
+Origin: M2 + M3
 
-### Claim
-Durable observability must not serialize arbitrary object internals merely because a node returned a custom Python object.
+Unknown objects degrade to type-only metadata instead of arbitrary `repr()`/reflection. Diagnostics adds recursive credential-pattern redaction and avoids wholesale environment-variable snapshots.
 
 ### Evidence
-`to_json_safe()` explicitly supports JSON-like values, K-Tools `Artifact`, enums, paths/dates and bounded metadata representations for bytes/non-finite floats. Unknown objects fall back to qualified type + `__nonSerializable__` instead of `repr`, dataclass field inspection or generic `to_dict` execution.
+Regression tests seed fake secrets through object repr, structured fields, command arguments, exception messages and child-process output. Shareable outputs must not contain those seeded values.
 
-A regression test uses an object whose `repr()` contains a fake token and proves that token is not persisted.
+---
+
+## H-013 — Lifecycle history alone is insufficient for support-grade diagnosis
+
+Status: **VALIDATED FOR PLATFORM DIRECTION**
+Origin: M3 Diagnostics + Support Bundle V1
+
+### Claim
+A Run Journal can prove which run/node transitions happened, but it cannot by itself reconstruct why a complex execution behaved unexpectedly.
+
+### Confirming evidence
+The first diagnostics implementation required additional evidence classes that do not belong in run-state projections:
+
+- stdlib operational logs;
+- exceptions/tracebacks;
+- decisions and concise reasons;
+- metrics/quality observations;
+- batch/lots and counts;
+- anomalies/inconsistent results;
+- subprocess command outcome, stdout/stderr, timeout and launch failure;
+- human-readable report reconstruction and raw-log inventory.
+
+### Refutation attempt
+Putting all of those fields directly into Run Journal would simplify the number of abstractions, but would overload lifecycle truth with unbounded support evidence and make run state dependent on logging concerns.
 
 ### Practical implication
-New durable types should be admitted through explicit K-Tools contracts, not broad reflection.
+Keep the two injected concerns separate:
+
+```text
+RunJournal          = lifecycle truth/history
+DiagnosticsSession  = forensic/support evidence
+```
+
+Correlate them through run/workflow/node IDs and attach a Journal summary to the final support report when available.
+
+---
+
+## H-014 — Diagnostics must be a prerequisite, not a cleanup task
+
+Status: **VALIDATED AS SEQUENCING RULE**
+Origin: project-owner support requirement + M3 implementation
+
+### Claim
+Cache/recovery, FFmpeg, browsers, downloaders and imported applications become substantially harder to debug if their diagnostic contract is designed only after real failures occur.
+
+### Reasoning
+Those future boundaries introduce long-running side effects, native processes, network/auth state and non-deterministic external behavior. The M3 common subprocess/log/report layer gives later milestones one place to record evidence.
+
+### Practical implication
+Every significant new runtime/subprocess/integration capability after M3 includes diagnostic integration in Definition of Done.
+
+---
+
+## H-015 — A support bundle should reconstruct facts but not manufacture causal certainty
+
+Status: **VALIDATED / PRODUCT SUPPORT INVARIANT**
+Origin: M3 report design
+
+### Claim
+The diagnostic report can identify useful failure hotspots without pretending to know a root cause that was never observed.
+
+### Implementation
+`diagnosticHotspots` is derived only from recorded WARNING/ERROR/ANOMALY facts. The Markdown/JSON reports explicitly classify these as observations, not automatic root-cause conclusions.
+
+Domain components remain responsible for emitting explicit quality facts such as confidence below threshold, unexpected item counts, fallback/retry use or degraded output.
+
+### Anti-repeat lesson
+A plausible explanation belongs in later debugging analysis, not silently inside the runtime evidence file as if it were a fact.
+
+---
+
+## H-016 — Crash evidence must be durable before finalization
+
+Status: **VALIDATED FOR V1**
+Origin: M3 abnormal-session recovery
+
+### Claim
+A diagnostic system that only writes its report at normal process exit loses the most valuable evidence on hard crashes/power loss.
+
+### Implementation
+`diagnostics.jsonl` is append-written during execution and `session.json` begins as `RUNNING`. If normal finalization never occurs, a later explicit/stale recovery can preserve the last durable JSONL evidence and package the session as `ABANDONED_OR_INTERRUPTED`.
+
+### Boundary
+Staleness is not a perfect process-ownership proof. The safe default avoids fresh sessions; future leases can improve certainty.
 
 ---
 
@@ -122,47 +159,29 @@ New durable types should be admitted through explicit K-Tools contracts, not bro
 Status: **CLASSIFIED / TEST-HARNESS LESSON**
 Origin: OC-001 local smoke handoff
 
-### Fingerprint
-A repeated local JSON-split smoke reused `%TEMP%/oc001-split-out`; the second run hit the intentional default `overwrite=False` collision guard.
-
-### Classification
-Correct product safety behavior, stale local test state.
-
-### Correction
-Hosted CI executes in a fresh runner temp directory. Future local filesystem smokes should use unique run directories or explicit cleanup when collision behavior is not the subject under test.
-
-### Anti-repeat lesson
-Do not weaken overwrite/collision safety to make repeated smokes idempotent. Fix test isolation.
+Repeated JSON-split smoke reused a temp output directory and hit intentional `overwrite=False`. Fix test isolation, not safety behavior.
 
 ---
 
-## E-005 — GitHub Actions Node 20 deprecation warning came from action runtime majors, not K-Tools Node target
+## E-005 — GitHub Actions Node 20 deprecation warning came from action runtime majors
 
 Status: **RESOLVED / HARNESS HARDENING**
-Origin: hosted M2 run `33552906228`
+Origin: M2
 
-### Fingerprint
-The runner warned that `actions/checkout@v4` and `actions/setup-python@v5` targeted deprecated Node 20 internals and were being forced onto Node 24.
-
-### Boundary
-GitHub Action implementation runtime. K-Tools Python tests and the explicit xyflow Node.js 22 job were already green.
-
-### Correction
-After checking current official Action documentation, the root workflow was moved to the v7 generation of checkout/setup-python/setup-node. Run `33553179743` on `4f1af103dff105807981f595be24cc7bf384f08c` passed all five jobs.
-
-### Anti-repeat lesson
-Runner deprecation warnings should be classified by the Action that owns the runtime. Do not change the product's supported Python/Node versions to fix an action-internal runtime warning.
+Root Actions were moved to v7 generation; hosted run `33553179743` passed all jobs.
 
 ---
 
-## Next journal focus — M3
+## Next journal focus — M4
 
-The next hypotheses must be proven rather than assumed:
+After final M3 hosted closure, the next hypotheses are:
 
 1. what makes an `Artifact` durable/valid enough to reuse after process restart;
 2. what exact inputs/config/node-version identity form a safe semantic cache key;
-3. whether cache/recovery belongs in `ktools-core` or a dedicated execution service layer;
-4. how a recovered/cached node is represented without corrupting the V1 event truth;
-5. what invalidates persisted outputs when files disappear or change outside K-Tools.
+3. how externally modified/deleted files invalidate reuse;
+4. which nodes are cache-safe versus side-effectful;
+5. how `CACHED` / later recovery states extend M2 lifecycle truth;
+6. how M3 diagnostics explains every cache reuse/invalidation/recovery decision;
+7. what ownership/lease model is necessary before automatic resume.
 
-Do not implement broad automatic resume until those questions have executable acceptance tests.
+Do not implement broad automatic resume until these questions have executable acceptance tests.
