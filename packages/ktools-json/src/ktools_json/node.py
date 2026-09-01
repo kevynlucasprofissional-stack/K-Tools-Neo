@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ktools_core.models import DataType, NodeDefinition, PortDefinition
+from ktools_core.models import CachePolicy, DataType, NodeDefinition, PortDefinition
 from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
 from .capability import JsonSplitError, make_options
@@ -32,6 +32,8 @@ def register_nodes(registry: NodeRegistry) -> None:
                 "parts": PortDefinition(DataType.JSON),
                 "summary": PortDefinition(DataType.JSON),
             },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
         ),
         _json_split_handler,
     )
@@ -41,6 +43,8 @@ def register_nodes(registry: NodeRegistry) -> None:
             title="JSON literal",
             category="JSON",
             outputs={"json": PortDefinition(DataType.JSON)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
         ),
         _json_literal_handler,
     )
