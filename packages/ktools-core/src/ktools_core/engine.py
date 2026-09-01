@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from .journal import NullRunJournal, RunEvent, RunEventType, RunJournal
 from .models import WorkflowDefinition, is_type_compatible
 from .registry import NodeExecutionContext, NodeRegistry
 
@@ -24,8 +25,9 @@ class WorkflowResult:
 
 
 class WorkflowEngine:
-    def __init__(self, registry: NodeRegistry) -> None:
+    def __init__(self, registry: NodeRegistry, journal: RunJournal | None = None) -> None:
         self.registry = registry
+        self.journal: RunJournal = journal if journal is not None else NullRunJournal()
 
     def validate(self, workflow: WorkflowDefinition) -> tuple[str, ...]:
         nodes_by_id = {}
@@ -102,7 +104,30 @@ class WorkflowEngine:
 
         return tuple(order)
 
+    def _record(
+        self,
+        *,
+        run_id: str,
+        workflow_id: str,
+        event_type: RunEventType,
+        node_id: str | None = None,
+        node_type: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        self.journal.record(
+            RunEvent.create(
+                run_id=run_id,
+                workflow_id=workflow_id,
+                event_type=event_type,
+                node_id=node_id,
+                node_type=node_type,
+                payload=payload,
+            )
+        )
+
     def execute(self, workflow: WorkflowDefinition) -> WorkflowResult:
+        # Validation happens before an execution run begins. Invalid graphs are
+        # therefore validation errors, not durable runs that immediately fail.
         order = self.validate(workflow)
         nodes_by_id = {node.id: node for node in workflow.nodes}
         incoming: dict[tuple[str, str], tuple[str, str]] = {
@@ -112,53 +137,109 @@ class WorkflowEngine:
         outputs_by_node: dict[str, dict[str, Any]] = {}
         run_id = f"run_{uuid4().hex}"
 
+        self._record(
+            run_id=run_id,
+            workflow_id=workflow.id,
+            event_type=RunEventType.RUN_STARTED,
+        )
+
         for node_id in order:
             node = nodes_by_id[node_id]
             definition = self.registry.definition(node.type)
-            node_inputs: dict[str, Any] = {}
-            for port_name in definition.inputs:
-                source = incoming.get((node_id, port_name))
-                if source is None:
-                    continue
-                source_node, source_port = source
-                try:
-                    node_inputs[port_name] = outputs_by_node[source_node][source_port]
-                except KeyError as exc:
-                    raise WorkflowExecutionError(
-                        f"Upstream output missing: {source_node}.{source_port}"
-                    ) from exc
-
-            context = NodeExecutionContext(
+            self._record(
                 run_id=run_id,
                 workflow_id=workflow.id,
+                event_type=RunEventType.NODE_STARTED,
                 node_id=node_id,
+                node_type=node.type,
             )
+
             try:
-                node_outputs = self.registry.execute(
-                    node.type,
-                    node_inputs,
-                    dict(node.config),
-                    context,
+                node_inputs: dict[str, Any] = {}
+                for port_name in definition.inputs:
+                    source = incoming.get((node_id, port_name))
+                    if source is None:
+                        continue
+                    source_node, source_port = source
+                    try:
+                        node_inputs[port_name] = outputs_by_node[source_node][source_port]
+                    except KeyError as exc:
+                        raise WorkflowExecutionError(
+                            f"Upstream output missing: {source_node}.{source_port}"
+                        ) from exc
+
+                context = NodeExecutionContext(
+                    run_id=run_id,
+                    workflow_id=workflow.id,
+                    node_id=node_id,
                 )
+                try:
+                    node_outputs = self.registry.execute(
+                        node.type,
+                        node_inputs,
+                        dict(node.config),
+                        context,
+                    )
+                except Exception as exc:
+                    raise WorkflowExecutionError(f"Node {node_id} failed: {exc}") from exc
+
+                if not isinstance(node_outputs, dict):
+                    raise WorkflowExecutionError(f"Node {node_id} returned a non-dict output")
+
+                unknown_outputs = set(node_outputs) - set(definition.outputs)
+                if unknown_outputs:
+                    raise WorkflowExecutionError(
+                        f"Node {node_id} returned unknown outputs: {sorted(unknown_outputs)}"
+                    )
+                missing_outputs = {
+                    name
+                    for name, port in definition.outputs.items()
+                    if port.required and name not in node_outputs
+                }
+                if missing_outputs:
+                    raise WorkflowExecutionError(
+                        f"Node {node_id} omitted required outputs: {sorted(missing_outputs)}"
+                    )
             except Exception as exc:
-                raise WorkflowExecutionError(f"Node {node_id} failed: {exc}") from exc
-
-            if not isinstance(node_outputs, dict):
-                raise WorkflowExecutionError(f"Node {node_id} returned a non-dict output")
-
-            unknown_outputs = set(node_outputs) - set(definition.outputs)
-            if unknown_outputs:
-                raise WorkflowExecutionError(
-                    f"Node {node_id} returned unknown outputs: {sorted(unknown_outputs)}"
+                self._record(
+                    run_id=run_id,
+                    workflow_id=workflow.id,
+                    event_type=RunEventType.NODE_FAILED,
+                    node_id=node_id,
+                    node_type=node.type,
+                    payload={
+                        "errorType": type(exc).__name__,
+                        "errorMessage": str(exc),
+                    },
                 )
-            missing_outputs = {
-                name for name, port in definition.outputs.items() if port.required and name not in node_outputs
-            }
-            if missing_outputs:
-                raise WorkflowExecutionError(
-                    f"Node {node_id} omitted required outputs: {sorted(missing_outputs)}"
+                self._record(
+                    run_id=run_id,
+                    workflow_id=workflow.id,
+                    event_type=RunEventType.RUN_FAILED,
+                    payload={
+                        "errorType": type(exc).__name__,
+                        "errorMessage": str(exc),
+                        "failedNodeId": node_id,
+                        "failedNodeType": node.type,
+                    },
                 )
+                raise
+
             outputs_by_node[node_id] = node_outputs
+            self._record(
+                run_id=run_id,
+                workflow_id=workflow.id,
+                event_type=RunEventType.NODE_SUCCEEDED,
+                node_id=node_id,
+                node_type=node.type,
+                payload={"outputs": node_outputs},
+            )
+
+        self._record(
+            run_id=run_id,
+            workflow_id=workflow.id,
+            event_type=RunEventType.RUN_SUCCEEDED,
+        )
 
         return WorkflowResult(
             run_id=run_id,
