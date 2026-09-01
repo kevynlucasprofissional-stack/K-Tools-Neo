@@ -22,13 +22,13 @@ No external dependencies beyond `ktools-core`. No network, no GUI, no FFmpeg.
 
 ## Modules
 
-- `ktools_json.capability` — the single implementation owner (pure, no I/O).
+- `ktools_json.capability` — pure transformation/split-planning owner.
 - `ktools_json.writer` — shared file-producing orchestration used by both the
   direct API and the workflow node.
 - `ktools_json.api` — public direct API.
 - `ktools_json.node` — `json.split` (and `json.literal`) workflow nodes.
 - `ktools_json.cli` — headless workflow execution with this node pack.
-- `tests/` — capability, API, node, workflow-integration and CLI tests.
+- `tests/` — capability, API, node, workflow-integration, durable-execution and CLI tests.
 
 ## Run
 
@@ -51,6 +51,18 @@ writes `oc001-split-out/` relative to the current directory):
 ```powershell
 python -m ktools_json packages/ktools-json/examples/split-workflow.json --json
 ```
+
+To persist the workflow/run/node history and output metadata in SQLite:
+
+```powershell
+python -m ktools_json packages/ktools-json/examples/split-workflow.json `
+  --json `
+  --journal .\ktools-runs.sqlite3
+```
+
+The Node Pack does not own durability logic. It uses the optional journal
+boundary provided by `ktools-core`, so direct/workflow capability ownership
+remains separate from run-history persistence.
 
 ## Contract
 
