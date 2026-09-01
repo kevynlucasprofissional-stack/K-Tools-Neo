@@ -1,5 +1,16 @@
 from .builtin import register_builtin_nodes
 from .engine import WorkflowEngine, WorkflowExecutionError, WorkflowResult, WorkflowValidationError
+from .journal import (
+    MemoryRunJournal,
+    NodeRunStatus,
+    NullRunJournal,
+    RunEvent,
+    RunEventType,
+    RunJournal,
+    RunStatus,
+    to_json_safe,
+    utc_now_iso,
+)
 from .models import (
     Artifact,
     DataType,
@@ -11,14 +22,26 @@ from .models import (
     is_type_compatible,
 )
 from .registry import NodeExecutionContext, NodeRegistry
+from .sqlite_journal import NodeRunRecord, RunDetail, RunRecord, SQLiteRunJournal
 
 __all__ = [
     "Artifact",
     "DataType",
+    "MemoryRunJournal",
     "NodeDefinition",
     "NodeExecutionContext",
     "NodeRegistry",
+    "NodeRunRecord",
+    "NodeRunStatus",
+    "NullRunJournal",
     "PortDefinition",
+    "RunDetail",
+    "RunEvent",
+    "RunEventType",
+    "RunJournal",
+    "RunRecord",
+    "RunStatus",
+    "SQLiteRunJournal",
     "WorkflowDefinition",
     "WorkflowEdge",
     "WorkflowEngine",
@@ -28,4 +51,6 @@ __all__ = [
     "WorkflowValidationError",
     "is_type_compatible",
     "register_builtin_nodes",
+    "to_json_safe",
+    "utc_now_iso",
 ]
