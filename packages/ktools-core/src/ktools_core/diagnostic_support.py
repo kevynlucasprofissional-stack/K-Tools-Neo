@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,7 +12,6 @@ from .diagnostics import (
     DiagnosticKind,
     DiagnosticSeverity,
     DiagnosticsSession,
-    redact_text,
     redact_value,
 )
 
@@ -21,11 +21,7 @@ def _utc_now() -> str:
 
 
 class DiagnosticLogHandler(logging.Handler):
-    """Bridge standard-library logging records into a DiagnosticsSession.
-
-    The handler records the operational log message and safe LogRecord metadata.
-    It intentionally does not serialize arbitrary record.__dict__ values.
-    """
+    """Bridge standard-library logging records into a DiagnosticsSession."""
 
     def __init__(self, session: DiagnosticsSession, *, component: str | None = None) -> None:
         super().__init__()
@@ -76,30 +72,40 @@ class DiagnosticLogHandler(logging.Handler):
                 context=context,
             )
         except Exception:
-            # Logging must never make the product fail. Follow logging.Handler's
-            # conventional error path instead of re-raising into application code.
             self.handleError(record)
 
 
-def recover_abandoned_sessions(root: str | Path) -> tuple[Path, ...]:
-    """Create shareable reports for diagnostic sessions that never finalized.
+def recover_abandoned_sessions(
+    root: str | Path,
+    *,
+    minimum_age_seconds: float = 3600.0,
+) -> tuple[Path, ...]:
+    """Create shareable reports for stale sessions that never finalized.
 
-    A directory is considered abandoned when it contains ``diagnostics.jsonl``
-    but lacks ``report.json``. This covers process crashes, forced termination or
-    machine shutdown where Python never had a chance to call ``finalize``.
+    The absence of ``report.json`` does not prove a process died. To avoid
+    misclassifying a currently-running process, V1 only recovers sessions whose
+    diagnostic stream has not been modified for at least ``minimum_age_seconds``.
 
-    Recovery does not claim a root cause. It preserves the last durable diagnostic
-    evidence and labels the session ``ABANDONED_OR_INTERRUPTED``.
+    Callers may explicitly pass ``0`` only when they have independent evidence
+    that no live process still owns the session (tests, controlled startup
+    recovery after reboot, or a future ownership/lease mechanism).
     """
+    if minimum_age_seconds < 0:
+        raise ValueError("minimum_age_seconds must be >= 0")
+
     parent = Path(root).expanduser().resolve()
     if not parent.exists():
         return ()
 
     recovered: list[Path] = []
+    now = time.time()
     for session_dir in sorted(path for path in parent.iterdir() if path.is_dir()):
         events_path = session_dir / "diagnostics.jsonl"
         report_path = session_dir / "report.json"
         if not events_path.exists() or report_path.exists():
+            continue
+        age_seconds = max(0.0, now - events_path.stat().st_mtime)
+        if age_seconds < minimum_age_seconds:
             continue
 
         events: list[dict[str, Any]] = []
@@ -136,6 +142,8 @@ def recover_abandoned_sessions(root: str | Path) -> tuple[Path, ...]:
                 "lastRunId": last.get("runId"),
                 "lastWorkflowId": last.get("workflowId"),
                 "lastNodeId": last.get("nodeId"),
+                "staleAgeSeconds": age_seconds,
+                "minimumAgeSeconds": minimum_age_seconds,
             },
             "summary": {
                 "eventCount": len(events),
@@ -146,8 +154,9 @@ def recover_abandoned_sessions(root: str | Path) -> tuple[Path, ...]:
             "diagnosticHotspots": noteworthy[-20:],
             "events": events,
             "notice": (
-                "The process ended without a normal diagnostic finalization. "
-                "This report preserves recorded evidence but does not infer the cause."
+                "The process did not generate a normal diagnostic finalization. "
+                "The session was stale enough for explicit recovery, but this "
+                "report does not infer the root cause."
             ),
         }
         report_path.write_text(
@@ -161,10 +170,11 @@ def recover_abandoned_sessions(root: str | Path) -> tuple[Path, ...]:
             "- Status: **ABANDONED_OR_INTERRUPTED**",
             f"- First recorded event: {started_at or 'unknown'}",
             f"- Last recorded event: {last.get('occurredAt') or 'unknown'}",
+            f"- Stale age at recovery: {age_seconds:.1f}s",
             f"- Events preserved: {len(events)}",
             f"- JSONL parse errors: {parse_errors}",
             "",
-            "The previous process did not generate a normal final report. This can happen after a crash, forced termination or machine shutdown. The bundle contains the last durable evidence; it does not by itself establish the root cause.",
+            "The previous process did not generate a normal final report. This can happen after a crash, forced termination or machine shutdown. Staleness is evidence of abandonment, not proof of a specific failure cause.",
             "",
             "## Last recorded event",
             "",
