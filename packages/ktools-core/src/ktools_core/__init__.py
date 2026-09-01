@@ -1,4 +1,5 @@
 from .builtin import register_builtin_nodes
+from .diagnostic_support import DiagnosticLogHandler, recover_abandoned_sessions
 from .diagnostics import (
     DiagnosticEvent,
     DiagnosticKind,
@@ -39,6 +40,7 @@ __all__ = [
     "DataType",
     "DiagnosticEvent",
     "DiagnosticKind",
+    "DiagnosticLogHandler",
     "DiagnosticSeverity",
     "DiagnosticsSession",
     "MemoryRunJournal",
@@ -65,6 +67,7 @@ __all__ = [
     "WorkflowResult",
     "WorkflowValidationError",
     "is_type_compatible",
+    "recover_abandoned_sessions",
     "redact_command",
     "redact_text",
     "redact_value",
