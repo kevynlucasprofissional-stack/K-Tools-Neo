@@ -102,6 +102,7 @@ def recover_abandoned_sessions(
     for session_dir in sorted(path for path in parent.iterdir() if path.is_dir()):
         events_path = session_dir / "diagnostics.jsonl"
         report_path = session_dir / "report.json"
+        session_path = session_dir / "session.json"
         if not events_path.exists() or report_path.exists():
             continue
         age_seconds = max(0.0, now - events_path.stat().st_mtime)
@@ -182,6 +183,43 @@ def recover_abandoned_sessions(
             "",
         ]
         (session_dir / "report.md").write_text("\n".join(markdown), encoding="utf-8")
+
+        existing_state: dict[str, Any] = {}
+        if session_path.exists():
+            try:
+                parsed_state = json.loads(session_path.read_text(encoding="utf-8"))
+                if isinstance(parsed_state, dict):
+                    existing_state = parsed_state
+            except (OSError, json.JSONDecodeError):
+                existing_state = {}
+        existing_state.update(
+            {
+                "schemaVersion": 1,
+                "sessionId": existing_state.get("sessionId", session_dir.name),
+                "status": "ABANDONED_OR_INTERRUPTED",
+                "endedAt": recovered_at,
+                "recoveredAt": recovered_at,
+                "lastRecordedAt": last.get("occurredAt"),
+                "runId": last.get("runId") or existing_state.get("runId"),
+                "workflowId": last.get("workflowId") or existing_state.get("workflowId"),
+                "lastNodeId": last.get("nodeId"),
+                "recovery": {
+                    "reason": "stale session without normal finalization",
+                    "staleAgeSeconds": age_seconds,
+                    "minimumAgeSeconds": minimum_age_seconds,
+                },
+            }
+        )
+        session_path.write_text(
+            json.dumps(
+                redact_value(existing_state),
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            ),
+            encoding="utf-8",
+        )
 
         bundle = session_dir / "support-bundle.zip"
         with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
