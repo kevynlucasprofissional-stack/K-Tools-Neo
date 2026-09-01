@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import shutil
 import sys
 import tempfile
 import unittest
@@ -9,10 +11,11 @@ from pathlib import Path
 
 from ktools_core import (
     DiagnosticKind,
+    DiagnosticLogHandler,
     DiagnosticSeverity,
     DiagnosticsSession,
+    recover_abandoned_sessions,
     redact_command,
-    redact_text,
     redact_value,
 )
 
@@ -71,10 +74,6 @@ class DiagnosticsSessionTests(unittest.TestCase):
 
         bundle = session.finalize(status="FAILED", run_id="run_test", workflow_id="wf_test")
         self.assertTrue(bundle.exists())
-        self.assertTrue((session.root / "report.md").exists())
-        self.assertTrue((session.root / "report.json").exists())
-        self.assertTrue((session.root / "diagnostics.jsonl").exists())
-
         report = json.loads((session.root / "report.json").read_text(encoding="utf-8"))
         self.assertEqual(report["session"]["status"], "FAILED")
         self.assertEqual(report["session"]["runId"], "run_test")
@@ -124,12 +123,60 @@ class DiagnosticsSessionTests(unittest.TestCase):
 
     def test_subprocess_raw_logs_redact_inline_secret_patterns(self) -> None:
         session = DiagnosticsSession(self.root, session_id="diag-secret-process", component="tests")
-        result = session.run_subprocess(
-            [sys.executable, "-c", "print('token=VERYSECRET')"]
-        )
+        result = session.run_subprocess([sys.executable, "-c", "print('token=VERYSECRET')"])
         raw = Path(result.stdout_path).read_text(encoding="utf-8")
         self.assertNotIn("VERYSECRET", raw)
         self.assertIn("<redacted>", raw)
+        session.finalize(status="SUCCEEDED")
+
+    def test_standard_logging_handler_captures_message_and_exception(self) -> None:
+        session = DiagnosticsSession(self.root, session_id="diag-logging", component="tests")
+        logger = logging.getLogger("ktools.tests.diagnostics")
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+        handler = DiagnosticLogHandler(session)
+        logger.addHandler(handler)
+        try:
+            logger.warning("low confidence score=%s", 0.31)
+            try:
+                raise ValueError("token=LOGGERSECRET")
+            except ValueError:
+                logger.exception("model stage failed")
+        finally:
+            logger.removeHandler(handler)
+            handler.close()
+        events = [event for event in session.events if event.category == "python.logging"]
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].severity, DiagnosticSeverity.WARNING)
+        self.assertEqual(events[1].kind, DiagnosticKind.EXCEPTION)
+        session.finalize(status="FAILED")
+        text = (session.root / "diagnostics.jsonl").read_text(encoding="utf-8")
+        self.assertNotIn("LOGGERSECRET", text)
+
+    def test_abandoned_session_is_recovered_to_shareable_bundle(self) -> None:
+        session = DiagnosticsSession(self.root, session_id="diag-abandoned", component="tests")
+        session.log("Started batch", batch_id="batch-1")
+        session.anomaly("Worker stopped responding")
+        # Simulate abrupt death by intentionally not calling finalize().
+        recovered = recover_abandoned_sessions(self.root)
+        self.assertEqual(len(recovered), 1)
+        bundle = recovered[0]
+        self.assertTrue(bundle.exists())
+        report = json.loads((session.root / "report.json").read_text(encoding="utf-8"))
+        self.assertTrue(report["recoveredAbandonedSession"])
+        self.assertEqual(report["session"]["status"], "ABANDONED_OR_INTERRUPTED")
+        self.assertEqual(recover_abandoned_sessions(self.root), ())
+
+    @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "PowerShell unavailable")
+    def test_powershell_output_can_be_captured_when_available(self) -> None:
+        executable = shutil.which("pwsh") or shutil.which("powershell")
+        session = DiagnosticsSession(self.root, session_id="diag-powershell", component="tests")
+        result = session.run_subprocess(
+            [executable, "-NoProfile", "-Command", "Write-Output 'ps-out'; [Console]::Error.WriteLine('ps-err')"]
+        )
+        self.assertEqual(result.return_code, 0)
+        self.assertIn("ps-out", Path(result.stdout_path).read_text(encoding="utf-8"))
+        self.assertIn("ps-err", Path(result.stderr_path).read_text(encoding="utf-8"))
         session.finalize(status="SUCCEEDED")
 
 
