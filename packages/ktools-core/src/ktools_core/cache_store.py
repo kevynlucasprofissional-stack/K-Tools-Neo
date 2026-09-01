@@ -5,7 +5,6 @@ import math
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 
@@ -55,42 +54,51 @@ class CacheEntryValidation:
     artifact_reason: str | None = None
 
 
+_ENVELOPE = "__ktoolsCacheEnvelope__"
+
+
 def _encode_value(value: Any, snapshots: list[ArtifactSnapshot]) -> Any:
+    """Encode cache output without marker collisions with user JSON.
+
+    Every container is wrapped in an internal envelope. A user mapping containing
+    keys that resemble K-Tools internals is itself encoded as a mapping envelope,
+    so it can never be mistaken for an Artifact marker during decode.
+    """
     if value is None or isinstance(value, (str, bool, int)):
         return value
     if isinstance(value, float):
         if not math.isfinite(value):
             raise CacheSerializationUnsupported("Non-finite float cannot be cached")
         return value
-    if isinstance(value, Enum):
-        return _encode_value(value.value, snapshots)
     if isinstance(value, Artifact):
         try:
             snapshot = snapshot_artifact(value)
-        except ArtifactSnapshotError as exc:
+        except (ArtifactSnapshotError, OSError) as exc:
             raise CacheSerializationUnsupported(
                 f"Artifact output is not strongly cache-valid: {exc}"
             ) from exc
         snapshots.append(snapshot)
         return {
-            "__ktoolsCacheType__": "Artifact",
-            "value": _encode_value(value.to_dict(), snapshots=[]),
+            _ENVELOPE: "artifact",
+            "value": _encode_value(value.to_dict(), snapshots),
         }
     if isinstance(value, Path):
         raise CacheSerializationUnsupported(
             "Path outputs are not cache-safe; use a file Artifact with strong validity"
         )
     if isinstance(value, Mapping):
-        encoded: dict[str, Any] = {}
-        for key, item in value.items():
+        items: list[list[Any]] = []
+        for key, item in sorted(value.items(), key=lambda pair: str(pair[0])):
             if not isinstance(key, str):
                 raise CacheSerializationUnsupported(
                     f"Cache output mappings require string keys, got {type(key).__name__}"
                 )
-            encoded[key] = _encode_value(item, snapshots)
-        return {key: encoded[key] for key in sorted(encoded)}
-    if isinstance(value, (list, tuple)):
-        return [_encode_value(item, snapshots) for item in value]
+            items.append([key, _encode_value(item, snapshots)])
+        return {_ENVELOPE: "mapping", "items": items}
+    if isinstance(value, list):
+        return {_ENVELOPE: "list", "items": [_encode_value(item, snapshots) for item in value]}
+    if isinstance(value, tuple):
+        return {_ENVELOPE: "tuple", "items": [_encode_value(item, snapshots) for item in value]}
     raise CacheSerializationUnsupported(
         f"Unsupported cache output type: {type(value).__module__}.{type(value).__qualname__}"
     )
@@ -99,22 +107,40 @@ def _encode_value(value: Any, snapshots: list[ArtifactSnapshot]) -> Any:
 def _decode_value(value: Any) -> Any:
     if value is None or isinstance(value, (str, bool, int, float)):
         return value
-    if isinstance(value, list):
-        return [_decode_value(item) for item in value]
-    if isinstance(value, dict):
-        if value.get("__ktoolsCacheType__") == "Artifact" and set(value) == {
-            "__ktoolsCacheType__",
-            "value",
-        }:
-            raw = value["value"]
-            if not isinstance(raw, dict):
-                raise CacheCorruptionError("Cached Artifact payload is not an object")
-            try:
-                return Artifact.from_dict(raw)
-            except Exception as exc:
-                raise CacheCorruptionError(f"Cached Artifact payload is invalid: {exc}") from exc
-        return {str(key): _decode_value(item) for key, item in value.items()}
-    raise CacheCorruptionError(f"Unsupported encoded cache value: {type(value).__name__}")
+    if not isinstance(value, dict):
+        raise CacheCorruptionError(f"Unsupported encoded cache value: {type(value).__name__}")
+
+    kind = value.get(_ENVELOPE)
+    if kind == "artifact":
+        if set(value) != {_ENVELOPE, "value"}:
+            raise CacheCorruptionError("Cached Artifact envelope has unexpected fields")
+        raw = _decode_value(value["value"])
+        if not isinstance(raw, dict):
+            raise CacheCorruptionError("Cached Artifact payload is not an object")
+        try:
+            return Artifact.from_dict(raw)
+        except Exception as exc:
+            raise CacheCorruptionError(f"Cached Artifact payload is invalid: {exc}") from exc
+
+    if kind == "mapping":
+        if set(value) != {_ENVELOPE, "items"} or not isinstance(value["items"], list):
+            raise CacheCorruptionError("Cached mapping envelope is invalid")
+        decoded: dict[str, Any] = {}
+        for pair in value["items"]:
+            if not isinstance(pair, list) or len(pair) != 2 or not isinstance(pair[0], str):
+                raise CacheCorruptionError("Cached mapping item is invalid")
+            if pair[0] in decoded:
+                raise CacheCorruptionError(f"Duplicate cached mapping key: {pair[0]}")
+            decoded[pair[0]] = _decode_value(pair[1])
+        return decoded
+
+    if kind in {"list", "tuple"}:
+        if set(value) != {_ENVELOPE, "items"} or not isinstance(value["items"], list):
+            raise CacheCorruptionError(f"Cached {kind} envelope is invalid")
+        decoded_items = [_decode_value(item) for item in value["items"]]
+        return decoded_items if kind == "list" else tuple(decoded_items)
+
+    raise CacheCorruptionError("Unknown or missing cache envelope type")
 
 
 def encode_cached_outputs(outputs: Mapping[str, Any]) -> tuple[dict[str, Any], tuple[ArtifactSnapshot, ...]]:
@@ -134,7 +160,15 @@ def decode_cached_outputs(encoded: Mapping[str, Any]) -> dict[str, Any]:
 
 def validate_cache_entry(entry: CacheEntry) -> CacheEntryValidation:
     for snapshot in entry.artifact_snapshots:
-        result = validate_artifact_snapshot(snapshot)
+        try:
+            result = validate_artifact_snapshot(snapshot)
+        except (ArtifactSnapshotError, OSError) as exc:
+            return CacheEntryValidation(
+                False,
+                "artifact-validation-error",
+                artifact_uri=snapshot.uri,
+                artifact_reason=type(exc).__name__,
+            )
         if not result.valid:
             return CacheEntryValidation(
                 False,
@@ -221,16 +255,19 @@ class SQLiteNodeCache:
         )
 
     def get(self, signature: str) -> CacheEntry | None:
-        row = self._connection.execute(
-            """
-            SELECT signature, node_type, node_version, origin_run_id,
-                   origin_node_id, outputs_json, artifact_snapshots_json,
-                   created_at, last_used_at
-              FROM node_cache
-             WHERE signature = ?
-            """,
-            (signature,),
-        ).fetchone()
+        try:
+            row = self._connection.execute(
+                """
+                SELECT signature, node_type, node_version, origin_run_id,
+                       origin_node_id, outputs_json, artifact_snapshots_json,
+                       created_at, last_used_at
+                  FROM node_cache
+                 WHERE signature = ?
+                """,
+                (signature,),
+            ).fetchone()
+        except sqlite3.Error as exc:
+            raise CacheError(f"SQLite cache read failed: {exc}") from exc
         if row is None:
             return None
         try:
@@ -270,47 +307,56 @@ class SQLiteNodeCache:
         encoded_outputs, snapshots = encode_cached_outputs(outputs)
         created_at = _utc_now()
         snapshots_payload = [snapshot.to_dict() for snapshot in snapshots]
-        with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO node_cache(
-                    signature, node_type, node_version, origin_run_id,
-                    origin_node_id, outputs_json, artifact_snapshots_json,
-                    created_at, last_used_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
-                ON CONFLICT(signature) DO UPDATE SET
-                    node_type = excluded.node_type,
-                    node_version = excluded.node_version,
-                    origin_run_id = excluded.origin_run_id,
-                    origin_node_id = excluded.origin_node_id,
-                    outputs_json = excluded.outputs_json,
-                    artifact_snapshots_json = excluded.artifact_snapshots_json,
-                    created_at = excluded.created_at,
-                    last_used_at = NULL
-                """,
-                (
-                    signature,
-                    node_type,
-                    node_version,
-                    origin_run_id,
-                    origin_node_id,
-                    self._dump(encoded_outputs),
-                    self._dump(snapshots_payload),
-                    created_at,
-                ),
-            )
+        try:
+            with self._connection:
+                self._connection.execute(
+                    """
+                    INSERT INTO node_cache(
+                        signature, node_type, node_version, origin_run_id,
+                        origin_node_id, outputs_json, artifact_snapshots_json,
+                        created_at, last_used_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                    ON CONFLICT(signature) DO UPDATE SET
+                        node_type = excluded.node_type,
+                        node_version = excluded.node_version,
+                        origin_run_id = excluded.origin_run_id,
+                        origin_node_id = excluded.origin_node_id,
+                        outputs_json = excluded.outputs_json,
+                        artifact_snapshots_json = excluded.artifact_snapshots_json,
+                        created_at = excluded.created_at,
+                        last_used_at = NULL
+                    """,
+                    (
+                        signature,
+                        node_type,
+                        node_version,
+                        origin_run_id,
+                        origin_node_id,
+                        self._dump(encoded_outputs),
+                        self._dump(snapshots_payload),
+                        created_at,
+                    ),
+                )
+        except sqlite3.Error as exc:
+            raise CacheError(f"SQLite cache write failed: {exc}") from exc
         entry = self.get(signature)
         if entry is None:
             raise CacheError("Cache entry disappeared immediately after write")
         return entry
 
     def mark_used(self, signature: str) -> None:
-        with self._connection:
-            self._connection.execute(
-                "UPDATE node_cache SET last_used_at = ? WHERE signature = ?",
-                (_utc_now(), signature),
-            )
+        try:
+            with self._connection:
+                self._connection.execute(
+                    "UPDATE node_cache SET last_used_at = ? WHERE signature = ?",
+                    (_utc_now(), signature),
+                )
+        except sqlite3.Error as exc:
+            raise CacheError(f"SQLite cache touch failed: {exc}") from exc
 
     def invalidate(self, signature: str) -> None:
-        with self._connection:
-            self._connection.execute("DELETE FROM node_cache WHERE signature = ?", (signature,))
+        try:
+            with self._connection:
+                self._connection.execute("DELETE FROM node_cache WHERE signature = ?", (signature,))
+        except sqlite3.Error as exc:
+            raise CacheError(f"SQLite cache invalidation failed: {exc}") from exc
