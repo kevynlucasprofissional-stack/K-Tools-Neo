@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from .diagnostics import DiagnosticKind, DiagnosticSeverity, DiagnosticsSession
 from .journal import NullRunJournal, RunEvent, RunEventType, RunJournal
 from .models import WorkflowDefinition, is_type_compatible
 from .registry import NodeExecutionContext, NodeRegistry
@@ -25,9 +26,15 @@ class WorkflowResult:
 
 
 class WorkflowEngine:
-    def __init__(self, registry: NodeRegistry, journal: RunJournal | None = None) -> None:
+    def __init__(
+        self,
+        registry: NodeRegistry,
+        journal: RunJournal | None = None,
+        diagnostics: DiagnosticsSession | None = None,
+    ) -> None:
         self.registry = registry
         self.journal: RunJournal = journal if journal is not None else NullRunJournal()
+        self.diagnostics = diagnostics
 
     def validate(self, workflow: WorkflowDefinition) -> tuple[str, ...]:
         nodes_by_id = {}
@@ -125,9 +132,31 @@ class WorkflowEngine:
             )
         )
 
+    def _diagnose(
+        self,
+        message: str,
+        *,
+        run_id: str,
+        workflow_id: str,
+        node_id: str | None = None,
+        severity: DiagnosticSeverity = DiagnosticSeverity.INFO,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        if self.diagnostics is None:
+            return
+        self.diagnostics.record(
+            message,
+            severity=severity,
+            kind=DiagnosticKind.LIFECYCLE,
+            category="workflow.execution",
+            component="ktools-core.engine",
+            run_id=run_id,
+            workflow_id=workflow_id,
+            node_id=node_id,
+            context=context,
+        )
+
     def execute(self, workflow: WorkflowDefinition) -> WorkflowResult:
-        # Validation happens before an execution run begins. Invalid graphs are
-        # therefore validation errors, not durable runs that immediately fail.
         order = self.validate(workflow)
         nodes_by_id = {node.id: node for node in workflow.nodes}
         incoming: dict[tuple[str, str], tuple[str, str]] = {
@@ -137,10 +166,12 @@ class WorkflowEngine:
         outputs_by_node: dict[str, dict[str, Any]] = {}
         run_id = f"run_{uuid4().hex}"
 
-        self._record(
+        self._record(run_id=run_id, workflow_id=workflow.id, event_type=RunEventType.RUN_STARTED)
+        self._diagnose(
+            "Workflow run started",
             run_id=run_id,
             workflow_id=workflow.id,
-            event_type=RunEventType.RUN_STARTED,
+            context={"nodeCount": len(workflow.nodes), "edgeCount": len(workflow.edges), "executionOrder": order},
         )
 
         for node_id in order:
@@ -152,6 +183,13 @@ class WorkflowEngine:
                 event_type=RunEventType.NODE_STARTED,
                 node_id=node_id,
                 node_type=node.type,
+            )
+            self._diagnose(
+                "Node started",
+                run_id=run_id,
+                workflow_id=workflow.id,
+                node_id=node_id,
+                context={"nodeType": node.type},
             )
 
             try:
@@ -168,18 +206,9 @@ class WorkflowEngine:
                             f"Upstream output missing: {source_node}.{source_port}"
                         ) from exc
 
-                context = NodeExecutionContext(
-                    run_id=run_id,
-                    workflow_id=workflow.id,
-                    node_id=node_id,
-                )
+                context = NodeExecutionContext(run_id=run_id, workflow_id=workflow.id, node_id=node_id)
                 try:
-                    node_outputs = self.registry.execute(
-                        node.type,
-                        node_inputs,
-                        dict(node.config),
-                        context,
-                    )
+                    node_outputs = self.registry.execute(node.type, node_inputs, dict(node.config), context)
                 except Exception as exc:
                     raise WorkflowExecutionError(f"Node {node_id} failed: {exc}") from exc
 
@@ -192,8 +221,7 @@ class WorkflowEngine:
                         f"Node {node_id} returned unknown outputs: {sorted(unknown_outputs)}"
                     )
                 missing_outputs = {
-                    name
-                    for name, port in definition.outputs.items()
+                    name for name, port in definition.outputs.items()
                     if port.required and name not in node_outputs
                 }
                 if missing_outputs:
@@ -207,10 +235,7 @@ class WorkflowEngine:
                     event_type=RunEventType.NODE_FAILED,
                     node_id=node_id,
                     node_type=node.type,
-                    payload={
-                        "errorType": type(exc).__name__,
-                        "errorMessage": str(exc),
-                    },
+                    payload={"errorType": type(exc).__name__, "errorMessage": str(exc)},
                 )
                 self._record(
                     run_id=run_id,
@@ -223,6 +248,25 @@ class WorkflowEngine:
                         "failedNodeType": node.type,
                     },
                 )
+                if self.diagnostics is not None:
+                    self.diagnostics.capture_exception(
+                        exc,
+                        "Node execution failed",
+                        category="workflow.execution",
+                        component="ktools-core.engine",
+                        run_id=run_id,
+                        workflow_id=workflow.id,
+                        node_id=node_id,
+                        context={"nodeType": node.type},
+                    )
+                    self._diagnose(
+                        "Workflow run failed",
+                        severity=DiagnosticSeverity.ERROR,
+                        run_id=run_id,
+                        workflow_id=workflow.id,
+                        node_id=node_id,
+                        context={"failedNodeType": node.type},
+                    )
                 raise
 
             outputs_by_node[node_id] = node_outputs
@@ -234,15 +278,15 @@ class WorkflowEngine:
                 node_type=node.type,
                 payload={"outputs": node_outputs},
             )
+            self._diagnose(
+                "Node succeeded",
+                run_id=run_id,
+                workflow_id=workflow.id,
+                node_id=node_id,
+                context={"nodeType": node.type, "outputPorts": sorted(node_outputs)},
+            )
 
-        self._record(
-            run_id=run_id,
-            workflow_id=workflow.id,
-            event_type=RunEventType.RUN_SUCCEEDED,
-        )
+        self._record(run_id=run_id, workflow_id=workflow.id, event_type=RunEventType.RUN_SUCCEEDED)
+        self._diagnose("Workflow run succeeded", run_id=run_id, workflow_id=workflow.id)
 
-        return WorkflowResult(
-            run_id=run_id,
-            workflow_id=workflow.id,
-            node_outputs=outputs_by_node,
-        )
+        return WorkflowResult(run_id=run_id, workflow_id=workflow.id, node_outputs=outputs_by_node)
