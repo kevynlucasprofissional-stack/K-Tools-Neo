@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ktools_core.cache_store import SQLiteNodeCache
+from ktools_core.cache_store import CacheError, SQLiteNodeCache
 from ktools_core.diagnostics import DiagnosticsSession
 from ktools_core.engine import WorkflowEngine
 from ktools_core.journal import MemoryRunJournal, NodeRunStatus, RunEventType
@@ -83,7 +83,8 @@ class EngineSemanticCacheTests(unittest.TestCase):
         self.assertEqual(cached_event.payload["originRunId"], first.run_id)
         self.assertEqual(cached_event.payload["originNodeId"], "work")
         decisions = [
-            event for event in diagnostics.events
+            event
+            for event in diagnostics.events
             if event.category == "workflow.cache" and event.kind.value == "DECISION"
         ]
         self.assertTrue(
@@ -222,11 +223,93 @@ class EngineSemanticCacheTests(unittest.TestCase):
         self.assertTrue(output.exists())
         self.assertIsInstance(second.node_outputs["work"]["file"], Artifact)
         invalidation = [
-            event for event in diagnostics.events
-            if event.category == "workflow.cache"
-            and event.context.get("reason") == "missing"
+            event
+            for event in diagnostics.events
+            if event.category == "workflow.cache" and event.context.get("reason") == "missing"
         ]
         self.assertTrue(invalidation)
+
+    def test_cache_read_and_write_failures_do_not_break_workflow_execution(self) -> None:
+        calls = {"count": 0}
+        registry = NodeRegistry()
+
+        def handler(_inputs: dict, _config: dict, _context: NodeExecutionContext) -> dict:
+            calls["count"] += 1
+            return {"text": "still-runs"}
+
+        registry.register(
+            NodeDefinition(
+                type_id="test.fail-open",
+                title="Fail open",
+                outputs={"text": PortDefinition(DataType.TEXT)},
+                cache_policy=CachePolicy.PURE,
+            ),
+            handler,
+        )
+
+        class BrokenCache:
+            def get(self, signature: str):
+                raise CacheError(f"read unavailable for {signature}")
+
+            def put(self, **_kwargs):
+                raise CacheError("write unavailable")
+
+            def mark_used(self, signature: str) -> None:
+                raise CacheError(f"touch unavailable for {signature}")
+
+            def invalidate(self, signature: str) -> None:
+                raise CacheError(f"invalidate unavailable for {signature}")
+
+        diagnostics = DiagnosticsSession(self.root / "diagnostics", session_id="fail-open-diag")
+        result = WorkflowEngine(
+            registry,
+            cache=BrokenCache(),
+            diagnostics=diagnostics,
+        ).execute(self._workflow("test.fail-open"))
+        diagnostics.finalize(status="SUCCEEDED")
+
+        self.assertEqual(calls["count"], 1)
+        self.assertEqual(result.node_outputs["work"]["text"], "still-runs")
+        reasons = {
+            event.context.get("reason")
+            for event in diagnostics.events
+            if event.category == "workflow.cache"
+        }
+        self.assertIn("cache-read-error", reasons)
+        self.assertIn("cache-write-unsupported-or-failed", reasons)
+
+    def test_uncacheable_output_does_not_turn_successful_node_into_failure(self) -> None:
+        registry = NodeRegistry()
+
+        def handler(_inputs: dict, _config: dict, _context: NodeExecutionContext) -> dict:
+            return {"value": self.root / "raw-path.txt"}
+
+        registry.register(
+            NodeDefinition(
+                type_id="test.path-output",
+                title="Path output",
+                outputs={"value": PortDefinition(DataType.ANY)},
+                cache_policy=CachePolicy.PURE,
+            ),
+            handler,
+        )
+        diagnostics = DiagnosticsSession(self.root / "diagnostics", session_id="path-diag")
+        with SQLiteNodeCache(self.root / "cache.sqlite3") as cache:
+            result = WorkflowEngine(
+                registry,
+                cache=cache,
+                diagnostics=diagnostics,
+            ).execute(self._workflow("test.path-output"))
+        diagnostics.finalize(status="SUCCEEDED")
+
+        self.assertEqual(result.node_outputs["work"]["value"], self.root / "raw-path.txt")
+        self.assertTrue(
+            any(
+                event.context.get("reason") == "cache-write-unsupported-or-failed"
+                for event in diagnostics.events
+                if event.category == "workflow.cache"
+            )
+        )
 
 
 if __name__ == "__main__":
