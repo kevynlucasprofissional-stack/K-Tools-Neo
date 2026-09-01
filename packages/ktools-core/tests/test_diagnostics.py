@@ -84,16 +84,40 @@ class DiagnosticsSessionTests(unittest.TestCase):
         self.assertTrue(report["anomalies"])
         self.assertTrue(report["errors"])
 
+        session_state = json.loads((session.root / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual(session_state["status"], "FAILED")
+        self.assertEqual(session_state["runId"], "run_test")
+
+        report_md = (session.root / "report.md").read_text(encoding="utf-8")
+        for heading in (
+            "## Environment",
+            "## Diagnostic hotspots / possible failure points",
+            "## Executed nodes / steps",
+            "## Stages",
+            "## Batches / lots",
+            "## System decisions",
+            "## Metrics / quality observations",
+            "## Anomalies / inconsistent results",
+            "## Subprocess / PowerShell / external runtime events",
+            "## Errors / failures",
+            "## Result / outputs",
+            "## Run Journal lifecycle",
+            "## Raw logs",
+        ):
+            self.assertIn(heading, report_md)
+
         share_text = (
-            (session.root / "report.md").read_text(encoding="utf-8")
+            report_md
             + (session.root / "report.json").read_text(encoding="utf-8")
             + (session.root / "diagnostics.jsonl").read_text(encoding="utf-8")
+            + (session.root / "session.json").read_text(encoding="utf-8")
         )
-        self.assertNotIn("SECRET", share_text)
+        self.assertNotIn("SUPER-SECRET", share_text)
         self.assertNotIn("SHOULD-NOT-LEAK", share_text)
 
         with zipfile.ZipFile(bundle) as archive:
             names = set(archive.namelist())
+            self.assertIn("session.json", names)
             self.assertIn("report.md", names)
             self.assertIn("report.json", names)
             self.assertIn("diagnostics.jsonl", names)
@@ -120,6 +144,11 @@ class DiagnosticsSessionTests(unittest.TestCase):
         self.assertEqual(len(subprocess_events), 2)
         self.assertEqual(subprocess_events[-1].severity, DiagnosticSeverity.ERROR)
         session.finalize(status="FAILED")
+        report_md = (session.root / "report.md").read_text(encoding="utf-8")
+        self.assertIn("hello", Path(result.stdout_path).read_text(encoding="utf-8"))
+        self.assertIn("## Subprocess / PowerShell / external runtime events", report_md)
+        self.assertIn(Path(result.stdout_path).name, report_md)
+        self.assertIn(Path(result.stderr_path).name, report_md)
 
     def test_subprocess_raw_logs_redact_inline_secret_patterns(self) -> None:
         session = DiagnosticsSession(self.root, session_id="diag-secret-process", component="tests")
@@ -157,10 +186,7 @@ class DiagnosticsSessionTests(unittest.TestCase):
         session = DiagnosticsSession(self.root, session_id="diag-abandoned", component="tests")
         session.log("Started batch", batch_id="batch-1")
         session.anomaly("Worker stopped responding")
-        # Fresh sessions are not recovered by the safe default because another
-        # live process could still own them.
         self.assertEqual(recover_abandoned_sessions(self.root), ())
-        # This test explicitly simulates known process death, so age 0 is safe.
         recovered = recover_abandoned_sessions(self.root, minimum_age_seconds=0)
         self.assertEqual(len(recovered), 1)
         bundle = recovered[0]
@@ -168,6 +194,11 @@ class DiagnosticsSessionTests(unittest.TestCase):
         report = json.loads((session.root / "report.json").read_text(encoding="utf-8"))
         self.assertTrue(report["recoveredAbandonedSession"])
         self.assertEqual(report["session"]["status"], "ABANDONED_OR_INTERRUPTED")
+        state = json.loads((session.root / "session.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["status"], "ABANDONED_OR_INTERRUPTED")
+        self.assertIn("recovery", state)
+        with zipfile.ZipFile(bundle) as archive:
+            self.assertIn("session.json", archive.namelist())
         self.assertEqual(recover_abandoned_sessions(self.root, minimum_age_seconds=0), ())
 
     @unittest.skipUnless(shutil.which("pwsh") or shutil.which("powershell"), "PowerShell unavailable")
