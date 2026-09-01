@@ -38,7 +38,9 @@ def _utc_now() -> str:
 def _path_from_file_uri(uri: str) -> Path:
     parsed = urlparse(uri)
     if parsed.scheme.lower() != "file":
-        raise UnsupportedArtifactError(f"Strong V1 validity supports only file:// URIs, got: {parsed.scheme or 'no scheme'}")
+        raise UnsupportedArtifactError(
+            f"Strong V1 validity supports only file:// URIs, got: {parsed.scheme or 'no scheme'}"
+        )
     if parsed.netloc not in {"", "localhost"}:
         raise UnsupportedArtifactError("Network/UNC file URI validity is not supported in V1")
     raw_path = url2pathname(unquote(parsed.path))
@@ -70,7 +72,6 @@ class ArtifactSnapshot:
 
     @property
     def content_identity(self) -> dict[str, Any]:
-        """Stable semantic identity, intentionally excluding random Artifact id/run."""
         return {
             "type": self.artifact_type.value,
             "sizeBytes": self.size_bytes,
@@ -108,24 +109,29 @@ class ArtifactValidationResult:
     current_size_bytes: int | None = None
     current_mtime_ns: int | None = None
     current_sha256: str | None = None
+    error_message: str | None = None
 
 
 def snapshot_artifact(artifact: Artifact) -> ArtifactSnapshot:
     if artifact.type is DataType.FOLDER:
         raise UnsupportedArtifactError("Directory Artifact strong validity is not supported in V1")
-    path = _path_from_file_uri(artifact.uri)
-    if not path.exists():
-        raise ArtifactSnapshotError(f"Artifact file does not exist: {path}")
-    if not path.is_file():
-        raise ArtifactSnapshotError(f"Artifact URI does not resolve to a file: {path}")
+    try:
+        path = _path_from_file_uri(artifact.uri)
+        if not path.exists():
+            raise ArtifactSnapshotError(f"Artifact file does not exist: {path}")
+        if not path.is_file():
+            raise ArtifactSnapshotError(f"Artifact URI does not resolve to a file: {path}")
 
-    before = path.stat()
-    digest = _sha256_file(path)
-    after = path.stat()
+        before = path.stat()
+        digest = _sha256_file(path)
+        after = path.stat()
+    except ArtifactSnapshotError:
+        raise
+    except OSError as exc:
+        raise ArtifactSnapshotError(f"Artifact could not be observed: {exc}") from exc
+
     if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
-        raise ArtifactChangedDuringObservation(
-            f"Artifact changed while being hashed: {path}"
-        )
+        raise ArtifactChangedDuringObservation(f"Artifact changed while being hashed: {path}")
 
     return ArtifactSnapshot(
         artifact_type=artifact.type,
@@ -140,29 +146,37 @@ def snapshot_artifact(artifact: Artifact) -> ArtifactSnapshot:
 
 def validate_artifact_snapshot(snapshot: ArtifactSnapshot) -> ArtifactValidationResult:
     path = Path(snapshot.local_path)
-    if not path.exists():
-        return ArtifactValidationResult(False, "missing")
-    if not path.is_file():
-        return ArtifactValidationResult(False, "not-a-file")
+    try:
+        if not path.exists():
+            return ArtifactValidationResult(False, "missing")
+        if not path.is_file():
+            return ArtifactValidationResult(False, "not-a-file")
 
-    before = path.stat()
-    if before.st_size != snapshot.size_bytes:
+        before = path.stat()
+        if before.st_size != snapshot.size_bytes:
+            return ArtifactValidationResult(
+                False,
+                "size-changed",
+                current_size_bytes=before.st_size,
+                current_mtime_ns=before.st_mtime_ns,
+            )
+        if before.st_mtime_ns != snapshot.mtime_ns:
+            return ArtifactValidationResult(
+                False,
+                "mtime-changed",
+                current_size_bytes=before.st_size,
+                current_mtime_ns=before.st_mtime_ns,
+            )
+
+        digest = _sha256_file(path)
+        after = path.stat()
+    except OSError as exc:
         return ArtifactValidationResult(
             False,
-            "size-changed",
-            current_size_bytes=before.st_size,
-            current_mtime_ns=before.st_mtime_ns,
-        )
-    if before.st_mtime_ns != snapshot.mtime_ns:
-        return ArtifactValidationResult(
-            False,
-            "mtime-changed",
-            current_size_bytes=before.st_size,
-            current_mtime_ns=before.st_mtime_ns,
+            "io-error",
+            error_message=f"{type(exc).__name__}: {exc}",
         )
 
-    digest = _sha256_file(path)
-    after = path.stat()
     if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
         return ArtifactValidationResult(
             False,
@@ -203,17 +217,15 @@ def _semantic_value(value: Any) -> Any:
         snapshot = snapshot_artifact(value)
         return {"__artifact__": snapshot.content_identity}
     if isinstance(value, Path):
-        # Raw paths are semantic values but are not implicitly content-hashed.
-        # Capability owners that mean 'file content' should use Artifact inputs.
         return {"__path__": str(value.expanduser().resolve())}
     if isinstance(value, Mapping):
         result: dict[str, Any] = {}
         for key, item in value.items():
-            if not isinstance(key, (str, int, float, bool)):
+            if not isinstance(key, str):
                 raise CacheSignatureUnsupported(
-                    f"Unsupported mapping key type in cache signature: {type(key).__name__}"
+                    f"Cache-signature mappings require string keys, got {type(key).__name__}"
                 )
-            result[str(key)] = _semantic_value(item)
+            result[key] = _semantic_value(item)
         return {key: result[key] for key in sorted(result)}
     if isinstance(value, (list, tuple)):
         return [_semantic_value(item) for item in value]
@@ -223,7 +235,11 @@ def _semantic_value(value: Any) -> Any:
             return sorted(
                 converted,
                 key=lambda item: json.dumps(
-                    item, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    item,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
                 ),
             )
         except TypeError as exc:
