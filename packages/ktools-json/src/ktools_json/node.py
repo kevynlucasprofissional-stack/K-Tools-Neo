@@ -1,9 +1,10 @@
-"""Workflow node adapter for the JSON split capability (OC-001).
+"""Workflow node adapters for the JSON split capability (OC-001).
 
-The node does **not** implement any splitting logic. It marshals config into
-validated :class:`SplitOptions` and delegates to the same
-``writer.split_and_write`` orchestration used by the direct API, which in turn
-calls the single implementation owner ``capability.split_json_document``.
+All split semantics remain owned by :mod:`ktools_json.capability`. ``json.split``
+publishes files and is intentionally side-effectful/non-cacheable. The
+``json.split.plan`` adapter exposes the same deterministic transformation without
+I/O so workflows can reuse/cache expensive planning independently from file
+publication.
 """
 
 from __future__ import annotations
@@ -13,10 +14,11 @@ from typing import Any
 from ktools_core.models import CachePolicy, DataType, NodeDefinition, PortDefinition
 from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
-from .capability import JsonSplitError, make_options
+from .capability import JsonSplitError, make_options, split_json_document
 from .writer import DEFAULT_PREFIX, split_and_write
 
 NODE_TYPE_ID = "json.split"
+PLAN_TYPE_ID = "json.split.plan"
 LITERAL_TYPE_ID = "json.literal"
 
 
@@ -39,6 +41,18 @@ def register_nodes(registry: NodeRegistry) -> None:
     )
     registry.register(
         NodeDefinition(
+            type_id=PLAN_TYPE_ID,
+            title="Planejar divisão JSON",
+            category="JSON",
+            inputs={"json_data": PortDefinition(DataType.JSON)},
+            outputs={"plan": PortDefinition(DataType.JSON)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
+        ),
+        _json_split_plan_handler,
+    )
+    registry.register(
+        NodeDefinition(
             type_id=LITERAL_TYPE_ID,
             title="JSON literal",
             category="JSON",
@@ -57,6 +71,26 @@ def build_options(config: dict[str, Any]) -> Any:
         parts=config.get("parts"),
         target_bytes=config.get("target_bytes"),
     )
+
+
+def _plan_payload(data: Any, config: dict[str, Any]) -> dict[str, Any]:
+    plan = split_json_document(data, build_options(config))
+    return {
+        "rootType": plan.root_type,
+        "listPath": plan.list_path_label,
+        "itemCount": plan.item_count,
+        "partCount": plan.part_count,
+        "chunks": list(plan.chunks),
+        "estimatedSizes": list(plan.estimated_sizes),
+    }
+
+
+def _json_split_plan_handler(
+    inputs: dict[str, Any],
+    config: dict[str, Any],
+    _context: NodeExecutionContext,
+) -> dict[str, Any]:
+    return {"plan": _plan_payload(inputs["json_data"], config)}
 
 
 def _json_split_handler(
