@@ -89,11 +89,11 @@ Reason: this pattern is the mechanism that allows traditional simple tools, work
 
 Implementation rule: future Node Packs should preserve the same shape. UI components and workflow adapters are callers/adapters, not capability owners.
 
-## ADR-009 — Durable execution is the next platform boundary before production editor or broad media migration
+## ADR-009 — Durable execution precedes production editor and broad expensive-workflow rollout
 
-Status: ACCEPTED AS SEQUENCING DECISION
+Status: **PROVED AS SEQUENCING DECISION**
 
-After proving a real Node Pack, the next platform milestone is Run Journal + durable run/node persistence before broad production editor work and before expensive media pipelines become first-class workflows.
+After proving a real Node Pack, the next platform boundary is Run Journal + durable run/node persistence before production editor work and before expensive media pipelines become first-class workflows.
 
 Reason:
 
@@ -102,7 +102,66 @@ Reason:
 - Artifact provenance requires a durable run/node identity boundary;
 - recovery/cache should build on recorded execution state rather than create a second parallel state model.
 
-Scope rule: Durable Execution V1 establishes journal/persistence/history first. Full resume and semantic cache remain later milestones unless implementation evidence shows a safe trivial extension.
+M2 implemented and hosted-tested this boundary. Full resume and semantic cache remain later milestones.
+
+## ADR-010 — RunJournal is the runtime contract; SQLite is a persistence implementation
+
+Status: **PROVED / ACCEPTED FOR DURABLE EXECUTION V1**
+
+`WorkflowEngine` depends on an injected `RunJournal` contract rather than directly depending on SQLite.
+
+Accepted shape:
+
+```text
+WorkflowEngine
+      ↓
+  RunJournal
+   ↙      ↘
+Memory    SQLite
+```
+
+Consequences:
+
+- `WorkflowEngine(registry)` remains a valid storage-free execution path;
+- `MemoryRunJournal` supports deterministic/ephemeral observation;
+- `SQLiteRunJournal` provides durable history/query projections without making a database mandatory for every consumer;
+- future UI/transports may consume the same logical event model without redefining engine state.
+
+Evidence: M2 hosted runs recorded in `docs/specs/durable-execution-v1/evidence.md`.
+
+## ADR-011 — Ordered events are execution history; run/node tables are V1 query projections
+
+Status: **ACCEPTED FOR V1**
+
+Durable events preserve the logical ordered history. `runs` and `node_runs` are query-friendly projections updated in the same SQLite transaction as each event.
+
+This is deliberately **not** a claim of full event sourcing. K-Tools does not yet promise replay-to-rebuild, schema-event migrations or distributed event consumers.
+
+Reason: this gives future UI/history/recovery logic stable ordered facts while keeping common history queries simple.
+
+Implementation rule: M3 cache/artifact/recovery state must extend these run/node identities rather than introduce a disconnected execution-history model.
+
+## ADR-012 — Interrupted execution is distinct from Failed and reconciliation is explicit in V1
+
+Status: **PROVED / ACCEPTED**
+
+A run left `RUNNING` because a process/session disappeared is not a normal business/runtime `FAILED` result.
+
+`SQLiteRunJournal.reconcile_incomplete_runs()` explicitly projects unfinished run/node records to `INTERRUPTED` using journal events.
+
+It does **not** execute automatically when a database is opened because another live process may still legitimately own a `RUNNING` record. Automatic recovery requires a future process/session ownership or lease model.
+
+Implementation rule: do not implement automatic resume by treating every old `RUNNING` record as abandoned.
+
+## ADR-013 — Durable output metadata uses an explicit serialization allow-list
+
+Status: **PROVED / ACCEPTED**
+
+Journal serialization explicitly supports JSON-like structures and approved K-Tools runtime types such as `Artifact`, paths, enums and dates. Unknown custom Python objects degrade to qualified type-only metadata and are marked non-serializable.
+
+Do not persist arbitrary `repr()`, dataclass internals, object attributes or generic custom `to_dict()` results merely for observability.
+
+Reason: runtime observability should not unexpectedly reflect opaque object internals/secrets into durable local history, and persistence must remain deterministic enough for later cache/signature work.
 
 ## Research and audit records
 
@@ -117,3 +176,7 @@ Audited xyflow spike:
 Audited first official Node Pack:
 
 `docs/multi-agent/handoffs/OC-001-AUDIT.md`
+
+Durable Execution V1 evidence:
+
+`docs/specs/durable-execution-v1/evidence.md`
