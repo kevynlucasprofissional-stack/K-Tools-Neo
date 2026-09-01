@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .artifact_registry import ArtifactRegistry, SQLiteArtifactRegistry
 from .builtin import register_builtin_nodes
 from .cache_store import NodeCache, SQLiteNodeCache
 from .diagnostics import DiagnosticsSession
@@ -29,10 +30,17 @@ def build_engine(
     journal: RunJournal | None = None,
     diagnostics: DiagnosticsSession | None = None,
     cache: NodeCache | None = None,
+    artifact_registry: ArtifactRegistry | None = None,
 ) -> WorkflowEngine:
     registry = NodeRegistry()
     register_builtin_nodes(registry)
-    return WorkflowEngine(registry, journal=journal, diagnostics=diagnostics, cache=cache)
+    return WorkflowEngine(
+        registry,
+        journal=journal,
+        diagnostics=diagnostics,
+        cache=cache,
+        artifact_registry=artifact_registry,
+    )
 
 
 def _latest_correlation(diagnostics: DiagnosticsSession | None) -> tuple[str | None, str | None]:
@@ -61,6 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Enable persistent semantic node cache using a SQLite database",
     )
     parser.add_argument(
+        "--artifact-registry",
+        type=Path,
+        metavar="SQLITE_DB",
+        help="Persist Artifact provenance/validity observations using SQLite",
+    )
+    parser.add_argument(
         "--diagnostics-dir",
         type=Path,
         default=Path.cwd() / "ktools-diagnostics",
@@ -80,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     journal = SQLiteRunJournal(args.journal) if args.journal is not None else None
     cache = SQLiteNodeCache(args.cache) if args.cache is not None else None
+    artifact_registry = (
+        SQLiteArtifactRegistry(args.artifact_registry)
+        if args.artifact_registry is not None
+        else None
+    )
     result = None
     bundle: Path | None = None
 
@@ -97,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
                 journal=journal,
                 diagnostics=diagnostics,
                 cache=cache,
+                artifact_registry=artifact_registry,
             ).execute(workflow)
         except WorkflowValidationError as exc:
             if diagnostics is not None:
@@ -160,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
             payload["journal"] = str(args.journal)
         if args.cache is not None:
             payload["cache"] = str(args.cache)
+        if args.artifact_registry is not None:
+            payload["artifactRegistry"] = str(args.artifact_registry)
         if diagnostics is not None:
             journal_events = () if journal is None else journal.get_events(result.run_id)
             bundle = diagnostics.finalize(
@@ -183,3 +205,5 @@ def main(argv: list[str] | None = None) -> int:
             journal.close()
         if cache is not None:
             cache.close()
+        if artifact_registry is not None:
+            artifact_registry.close()
