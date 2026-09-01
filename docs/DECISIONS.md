@@ -217,6 +217,50 @@ Recovered sessions become `ABANDONED_OR_INTERRUPTED`, preserve the last durable 
 
 This is intentionally conservative until a future process/session lease model can establish ownership more strongly.
 
+## ADR-017 — Semantic cache is explicit opt-in and fail-open
+
+Status: **PROVED / ACCEPTED FOR M4 V1**
+
+Every node defaults to `CachePolicy.NEVER`. Only a capability owner may explicitly mark a versioned node `PURE` when equivalent semantic inputs/config produce deterministic outputs and skipping the handler has no required external side effect.
+
+`NodeCache` is an optional injected optimization. Read/write/touch/invalidation failures are diagnostic evidence and fall back to normal execution where possible rather than turning a valid workflow into a cache-induced failure.
+
+Implementation rule: future Node Packs must justify `PURE`; never infer cacheability merely because code appears deterministic.
+
+## ADR-018 — Cached execution is a distinct lifecycle fact
+
+Status: **PROVED / ACCEPTED**
+
+If a handler is skipped because a prior output is substituted, the journal records `NODE_CACHED` and projects `NodeRunStatus.CACHED`.
+
+A cached node does not emit `NODE_STARTED` and is not rewritten as ordinary `SUCCEEDED` execution.
+
+Reason: the history must preserve whether computation actually ran. UI/history can later display reuse without reconstructing it heuristically from diagnostics.
+
+## ADR-019 — Strong reusable file validity requires content identity
+
+Status: **PROVED / ACCEPTED FOR LOCAL FILE V1**
+
+For reusable local file Artifacts, size and mtime are quick invalidation evidence but are not sufficient to claim equality. If quick fields still match, K-Tools recomputes SHA-256 before reuse.
+
+Regression evidence changes file content while preserving size and restoring the exact previous mtime; the digest still invalidates the candidate.
+
+Folders and remote URIs remain without strong V1 validity until dedicated contracts exist.
+
+`SQLiteArtifactRegistry` preserves per-run/node/output occurrence provenance and historical snapshots without deleting user files.
+
+## ADR-020 — Restart recovery is a new run until ownership is proved
+
+Status: **ACCEPTED SAFETY BOUNDARY**
+
+M4 recovery means starting a new run and selectively substituting validated completed PURE results through semantic cache.
+
+It does not mean taking an old `RUNNING` row and continuing it automatically. `RECOVERED` remains unavailable until a later process/session ownership contract proves atomic acquisition, liveness/takeover and side-effect replay/idempotency.
+
+M2 `INTERRUPTED` reconciliation remains the authoritative treatment for abandoned in-flight history.
+
+Retention rule: M4 cache/Artifact-registry stores own metadata only. K-Tools does not automatically delete user output Artifacts; automatic temp/intermediate cleanup requires explicit file-ownership evidence first.
+
 ## Research and audit records
 
 Source-based workflow-platform comparative study:
@@ -238,3 +282,7 @@ Durable Execution V1 evidence:
 Diagnostics + Support Bundle V1 evidence:
 
 `docs/specs/diagnostics-support-bundle-v1/evidence.md`
+
+Artifact Lifecycle + Recovery + Semantic Cache V1 evidence:
+
+`docs/specs/artifact-recovery-cache-v1/evidence.md`
