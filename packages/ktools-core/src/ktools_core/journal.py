@@ -22,6 +22,7 @@ class RunStatus(str, Enum):
 class NodeRunStatus(str, Enum):
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
+    CACHED = "CACHED"
     FAILED = "FAILED"
     INTERRUPTED = "INTERRUPTED"
 
@@ -30,6 +31,7 @@ class RunEventType(str, Enum):
     RUN_STARTED = "RUN_STARTED"
     NODE_STARTED = "NODE_STARTED"
     NODE_SUCCEEDED = "NODE_SUCCEEDED"
+    NODE_CACHED = "NODE_CACHED"
     NODE_FAILED = "NODE_FAILED"
     RUN_SUCCEEDED = "RUN_SUCCEEDED"
     RUN_FAILED = "RUN_FAILED"
@@ -38,7 +40,6 @@ class RunEventType(str, Enum):
 
 
 def utc_now_iso() -> str:
-    """Return a timezone-aware UTC timestamp suitable for durable records."""
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
@@ -48,13 +49,6 @@ def _qualified_type_name(value: Any) -> str:
 
 
 def to_json_safe(value: Any) -> Any:
-    """Convert runtime metadata to deterministic, JSON-safe structures.
-
-    The converter has a deliberately small allow-list. Unknown objects are
-    represented by type metadata only instead of inspecting attributes,
-    dataclass fields or ``repr(value)``. This avoids journaling opaque object
-    internals or credentials merely because a node returned a custom object.
-    """
     if value is None or isinstance(value, (str, bool, int)):
         return value
 
@@ -72,8 +66,6 @@ def to_json_safe(value: Any) -> Any:
     if isinstance(value, Enum):
         return to_json_safe(value.value)
 
-    # Artifact is an explicit K-Tools persistence contract and is therefore
-    # allowed to expose its documented serialization.
     if isinstance(value, Artifact):
         return to_json_safe(value.to_dict())
 
@@ -169,19 +161,15 @@ class RunEvent:
 
 class RunJournal(Protocol):
     def record(self, event: RunEvent) -> None:
-        """Persist or retain one ordered logical execution event."""
+        ...
 
 
 class NullRunJournal:
-    """No-op journal used when callers do not request execution observability."""
-
     def record(self, event: RunEvent) -> None:
         del event
 
 
 class MemoryRunJournal:
-    """Simple ordered journal for tests and ephemeral/headless consumers."""
-
     def __init__(self) -> None:
         self._events: list[RunEvent] = []
 
