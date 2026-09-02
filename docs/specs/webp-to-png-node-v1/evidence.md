@@ -1,112 +1,126 @@
 # Evidence — Image Safety Foundation + WebP→PNG Node V1
 
-Status: **DISCOVERY ACCEPTED / SPEC GATE PENDING**
+Status: **TECHNICAL GREEN / AUDITED / MEMORY CLOSURE GATE**
 
-## Prerequisite gate
+## Prerequisite
 
-Mixed Document Split terminal closure:
+M5 Slice 5 terminal closure `3d2d955df71cd65162839a5ac2c1335e5b5a4518` passed run `33665431920` 5/5. Slice 6 therefore began from a terminal-green mixed-document orchestrator.
 
-- terminal HEAD `3d2d955df71cd65162839a5ac2c1335e5b5a4518`;
-- run `33665431920`;
-- Ubuntu 3.10 success;
-- Ubuntu 3.13 success;
-- Windows 3.10 success;
-- Windows 3.13 success;
-- xyflow success.
+## Fresh discovery and selection
 
-Every Python lane installed `ktools-documents`, passed its suite and passed the real mixed split workflow smoke. Slice 6 discovery therefore starts from a terminal-green Slice 5.
+The exact legacy owner was re-inspected and WebP→PNG, Images→PDF and bounded Files/Folders were compared rather than carrying forward a stale ranking.
 
-## Fresh discovery facts from the legacy owner
+WebP→PNG was selected because it establishes a reusable image-safety boundary with lower semantic surface than Images→PDF and lower traversal/platform ambiguity than Files/Folders.
 
-### Shared image boundary already present
+The legacy contract characterized before implementation includes:
 
-The stable GUI currently defines:
+- existing `.webp` regular-file filtering and ordered processing;
+- 80,000,000-pixel safety ceiling plus Pillow decompression-bomb handling;
+- EXIF orientation normalization;
+- animated WebP uses frame 0 only;
+- alpha/transparency preserved in PNG;
+- RGB/L preserved and other non-alpha modes normalized to RGB;
+- collision-safe destination allocation;
+- same-directory temp publication per PNG;
+- abort on first failed compatible source while already-published earlier files remain.
 
-- `MAX_IMAGE_TOTAL_PIXELS = 80_000_000`;
-- Pillow `Image.MAX_IMAGE_PIXELS` configured to that value;
-- `DecompressionBombWarning` promoted to an exception inside guarded decode regions;
-- `DecompressionBombError` classified as a user-facing image-safety failure;
-- explicit positive-dimension / pixel-count validation;
-- `ImageOps.exif_transpose(...)` before final normalization;
-- image-format helpers and collision-safe path allocation.
+Images→PDF shares the safety/EXIF/frame foundation but additionally aggregates multiple image formats into one PDF, converts pages to RGB and composites alpha onto white. Files/Folders exposes a broader traversal/result-schema problem. Both were deliberately deferred.
 
-This is sufficient evidence that image safety is existing product behavior to characterize, not a new speculative feature.
+## Dependency gate
 
-### WebP→PNG behavior
+External release verification on 2026-09-02 established Pillow 12.3.0 as compatible with Python >=3.10 and the hosted Python 3.10/3.13 matrix. V1 locks `Pillow>=12,<13`; the upper bound is dependency governance, not a claim about future Pillow 13 incompatibility.
 
-The legacy converter:
+## Spec gate
 
-- filters to existing `.webp` regular files;
-- rejects an empty compatible set;
-- creates the output directory;
-- reserves case-insensitive collision-safe `{stem}.png`, `_1`, `_2`, ... names;
-- writes each output through a same-directory temp path;
-- opens under bomb-warning protection;
-- validates dimensions before and after EXIF transpose;
-- detects animation and intentionally seeks/uses only frame 0;
-- preserves transparency by converting `RGBA`, `LA` and transparent palette sources to `RGBA`;
-- leaves `RGB`/`L` in those modes and normalizes other modes to RGB;
-- writes a real PNG, checks it is non-empty, then promotes it;
-- cleans the current temp path on handled failure;
-- aborts on the first failed compatible source rather than exposing partial success;
-- leaves earlier successfully published outputs on disk if a later source fails.
-
-### Images→PDF behavior
-
-The legacy Images→PDF path shares the same safety/EXIF/first-frame foundation but has extra semantics:
-
-- accepts several image formats rather than only WebP;
-- converts every prepared page to RGB;
-- composites alpha/transparency onto a white background because PDF output does not preserve alpha consistently;
-- holds prepared page copies and serializes them as one aggregate PDF;
-- publishes one singular destination atomically.
-
-This is a larger contract and benefits from extracting the shared image boundary first.
-
-### Files/Folders behavior
-
-The legacy scan surface walks directories with `os.walk`, mutates `dirnames` to enforce hidden/recursion policy, accumulates permission/OSError records, produces structured entries/stats and has periodic traversal progress. A neighboring listing/report path has overlapping but not identical traversal/result semantics.
-
-Therefore Files/Folders is not a single obvious capability yet; it needs a bounded cross-platform traversal spec before implementation.
-
-## Candidate decision
-
-Selected: **WebP→PNG as Image Safety Foundation**.
-
-Reason: it provides the best ratio of product value to boundary risk while establishing a reusable safety owner needed by the next image capability. It introduces one well-understood third-party dependency but no subprocess/native-tool orchestration.
-
-Deferred:
-
-- Images→PDF until safety/EXIF/frame/mode policy is canonical;
-- Files/Folders until traversal/result semantics are bounded.
-
-## Dependency verification
-
-External release verification on 2026-09-02 found Pillow 12.3.0 as the current PyPI release, with `Requires-Python >=3.10` and CPython 3.10+ wheels including Windows. This matches the K-Tools Python 3.10/3.13 hosted matrix.
-
-V1 therefore locks:
+Commit `bd454050c182aec74c8f45d529ab2e0377cb3ad3` formalized:
 
 ```text
-Pillow>=12,<13
+image.webp_to_png
+  files: FILE_SET
+      -> files: FILE_SET containing IMAGE Artifacts
 ```
 
-The upper major bound is deliberate dependency governance, not a claim that future Pillow 13 is incompatible. Reopen through evidence when upgrading the image pack.
+version 1, `CachePolicy.NEVER`, no `IMAGE_SET`.
 
-## Selected architectural hypothesis
+Run `33666227293` passed all five hosted jobs before RED was introduced.
 
-Create `packages/ktools-images` with reusable pack-local `safety.py`, pack-local publication helpers and one converter owner.
+## Discriminating RED
 
-Workflow contract:
+Commit `311c82a26b5ef64a7c80299b9253829a8e98cfbc` added 15 product contracts and an image-suite CI step while installing Pillow explicitly as a RED fixture dependency.
 
-```text
-files.literal
-   ↓ FILE_SET
-image.webp_to_png   (NEVER)
-   ↓ FILE_SET containing IMAGE Artifacts
-```
+Run `33667224304` reached the intended missing-product boundary. In the observed Ubuntu 3.13 lane:
 
-No IMAGE_SET is introduced. Current member-level Artifact typing is sufficient for V1.
+- Core: 76 tests passed;
+- JSON: 64 tests passed;
+- Text: 28 tests passed;
+- PDF: 24 tests passed;
+- Documents: 7 tests passed;
+- `Pillow 12.3.0` installed successfully;
+- Image tests failed at `ModuleNotFoundError: No module named 'ktools_images'`.
 
-## Next evidence gate
+This is accepted product RED: prior product boundaries and dependency bootstrap were green before the absent Image pack failed.
 
-The next accepted evidence is the exact docs-only spec commit passing the existing five hosted jobs without code changes. Only after that may RED contracts be added.
+## GREEN implementation
+
+Commit `670a503d822ba100a66eea3ba0b31cfe39692984` introduced:
+
+- `packages/ktools-images/`;
+- package metadata with `ktools-core>=0.1.0` and `Pillow>=12,<13`;
+- `safety.py` as the 80M-pixel/decompression/EXIF owner;
+- `publication.py` as image-pack collision/temp/promote owner;
+- one canonical `converter.convert_webp_files_to_png` owner;
+- thin direct API;
+- thin `image.webp_to_png` workflow adapter;
+- IMAGE Artifacts with PNG MIME, provenance and source/frame/orientation/mode/dimension metadata;
+- real generated RGB/RGBA WebP→PNG hosted smoke;
+- root CI installation/tests/smoke for the new pack.
+
+Run `33667874076` passed **5/5**:
+
+- Ubuntu Python 3.10 — success;
+- Ubuntu Python 3.13 — success;
+- Windows Python 3.10 — success;
+- Windows Python 3.13 — success;
+- xyflow spike — success.
+
+Every Python lane installed `ktools-images`, passed Core/JSON/Text/PDF/Documents/Image suites, preserved all previous smokes and passed the new real WebP→PNG workflow smoke.
+
+## Contract evidence
+
+The Image suite proves:
+
+- filtering/order and IMAGE Artifact output;
+- no-compatible-input fail closed;
+- real RGB and RGBA pixel/mode preservation;
+- EXIF orientation normalization before publication;
+- animated WebP frame-0 policy plus metadata;
+- bounded progress including animation notice and final 1.0;
+- safety ceiling fail closed without a huge fixture;
+- collision-safe repeated naming with no overwrite;
+- later-source failure retains earlier complete PNG and leaves no current partial/temp output;
+- `FILE_SET -> FILE_SET`, version 1, NEVER;
+- ArtifactRegistry strong nested-output snapshots and current run/node provenance;
+- cached `files.literal` does not suppress re-publication;
+- direct/workflow pixel and metadata equivalence;
+- API/node structural delegation to one converter owner;
+- workflow failure correlation to the conversion node.
+
+## Integration audit
+
+Audit result: **PASS**.
+
+No second WebP transformation owner was introduced. API/node contain no Pillow decode, EXIF, save, bomb or temp-publication algorithm. The image pack did not create a generic cross-domain writer or generalized media abstraction. `FILE_SET` remains sufficient because member IMAGE Artifacts carry the semantic type. M3 subprocess diagnostics are not promoted as evidence here because this capability has no subprocess/native execution boundary.
+
+The stable GUI WebP→PNG implementation now becomes compatibility debt; canonical semantic evolution belongs to `ktools-images`.
+
+## Remaining boundaries
+
+- batch publication remains per output, not set-wide transactional;
+- Image pack metadata/persistence does not grant ownership to delete earlier published user outputs;
+- Pillow 13+ is not automatically accepted;
+- Images→PDF remains a separate aggregate-output contract and must reuse, not recopy, the image-safety foundation;
+- production GUI/tool wiring is not part of this slice.
+
+## Promotion gate
+
+Technical implementation is complete and audited. The only remaining evidence required for formal Slice-6 promotion is the synchronized ADR/canonical-memory closure HEAD itself passing the standard five hosted jobs.
