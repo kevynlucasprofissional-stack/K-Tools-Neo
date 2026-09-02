@@ -93,6 +93,29 @@ def _cleanup(path: Path) -> None:
         pass
 
 
+def write_text_content_atomic(
+    content: str,
+    output_path: Path,
+    *,
+    encoding: str = "utf-8",
+    newline: str | None = "",
+) -> Path:
+    """Publish already-rendered text with same-directory temp + replace semantics."""
+    if not isinstance(content, str):
+        raise TypeError("text content must be a string")
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temp_output = _temp_output_path(output)
+    try:
+        with temp_output.open("w", encoding=encoding, newline=newline) as handle:
+            handle.write(content)
+        os.replace(str(temp_output), str(output))
+    except Exception:
+        _cleanup(temp_output)
+        raise
+    return output
+
+
 def merge_text_files(
     input_files: Sequence[Path],
     output_file: Path,

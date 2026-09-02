@@ -105,7 +105,7 @@ class TextSplitV1CharacterizationTests(unittest.TestCase):
 
     def test_direct_file_split_names_utf8_output_normalized_newlines_and_collisions(self) -> None:
         source = self.root / "Notas.TXT"
-        source.write_bytes("um\r\ndois dois\r\ntrês\r\nquatro quatro\r\n".encode("cp1252"))
+        source.write_bytes("a\r\nbbbb\r\ncc\r\ndddddd\r\ne\r\n".encode("cp1252"))
         output_dir = self.root / "parts"
 
         first = split_api()(source, output_dir, 3)
@@ -128,7 +128,7 @@ class TextSplitV1CharacterizationTests(unittest.TestCase):
                 "Notas_parte_03_de_03_1.txt",
             ],
         )
-        self.assertEqual(b"".join(first_bytes).decode("utf-8"), "um\ndois dois\ntrês\nquatro quatro\n")
+        self.assertEqual(b"".join(first_bytes).decode("utf-8"), "a\nbbbb\ncc\ndddddd\ne\n")
         self.assertTrue(all(b"\r\n" not in data for data in first_bytes))
         self.assertEqual([path.read_bytes() for path in first], first_bytes)
 

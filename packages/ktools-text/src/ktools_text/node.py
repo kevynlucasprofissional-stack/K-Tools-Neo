@@ -7,10 +7,12 @@ from ktools_core.local_files import LocalFileUriError, path_from_file_uri
 from ktools_core.models import Artifact, CachePolicy, DataType, NodeDefinition, PortDefinition
 from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
-from . import writer
+from . import splitter, writer
 from .capability import TextMergeError
+from .splitter import TextSplitError
 
 NODE_TYPE_ID = "text.merge.files"
+SPLIT_NODE_TYPE_ID = "text.split.parts"
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -26,17 +28,27 @@ def register_nodes(registry: NodeRegistry) -> None:
         ),
         _merge_files_handler,
     )
+    registry.register(
+        NodeDefinition(
+            type_id=SPLIT_NODE_TYPE_ID,
+            title="Dividir Markdown/TXT",
+            category="Text",
+            inputs={"file": PortDefinition(DataType.FILE)},
+            outputs={"files": PortDefinition(DataType.FILE_SET)},
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _split_parts_handler,
+    )
 
 
-def _artifact_path(artifact: Artifact) -> Path:
+def _artifact_path(artifact: Artifact, operation: str) -> Path:
     if artifact.type is not DataType.FILE:
-        raise TextMergeError(
-            f"text.merge.files requires FILE Artifacts, got {artifact.type.value}"
-        )
+        raise ValueError(f"{operation} requires a FILE Artifact, got {artifact.type.value}")
     try:
         return path_from_file_uri(artifact.uri)
     except LocalFileUriError as exc:
-        raise TextMergeError(f"text.merge.files received an unsupported Artifact URI: {exc}") from exc
+        raise ValueError(f"{operation} received an unsupported Artifact URI: {exc}") from exc
 
 
 def _merge_files_handler(
@@ -62,10 +74,41 @@ def _merge_files_handler(
     if not isinstance(separator_mode, str):
         raise TextMergeError("text.merge.files config.separator_mode must be a string")
 
+    try:
+        input_paths = [_artifact_path(artifact, NODE_TYPE_ID) for artifact in artifacts]
+    except ValueError as exc:
+        raise TextMergeError(str(exc)) from exc
+
     output = writer.merge_text_files(
-        [_artifact_path(artifact) for artifact in artifacts],
+        input_paths,
         Path(output_path),
         separator_mode,
         produced_by=f"{context.run_id}/{context.node_id}",
     )
     return {"file": output}
+
+
+def _split_parts_handler(
+    inputs: dict[str, Any],
+    config: dict[str, Any],
+    context: NodeExecutionContext,
+) -> dict[str, Any]:
+    artifact = inputs.get("file")
+    if not isinstance(artifact, Artifact):
+        raise TextSplitError("text.split.parts requires one FILE Artifact")
+    output_dir = config.get("output_dir")
+    if not isinstance(output_dir, str) or not output_dir.strip():
+        raise TextSplitError("text.split.parts config.output_dir is required")
+    parts = config.get("parts")
+    try:
+        source_path = _artifact_path(artifact, SPLIT_NODE_TYPE_ID)
+    except ValueError as exc:
+        raise TextSplitError(str(exc)) from exc
+
+    outputs = splitter.split_text_file_into_parts(
+        source_path,
+        Path(output_dir),
+        parts,
+        produced_by=f"{context.run_id}/{context.node_id}",
+    )
+    return {"files": outputs}
