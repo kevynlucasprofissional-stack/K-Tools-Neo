@@ -62,7 +62,8 @@ Carry-forward invariants:
 - singular and collection cardinality remain explicit (`FILE` is not a one-item `FILE_SET` convention);
 - domain-specific collection types are introduced only when a real graph-time requirement proves them necessary;
 - multi-output publication must state whether its transaction boundary is per output or set-wide;
-- compatibility copies in the legacy GUI are frozen once a canonical package owner is promoted.
+- compatibility copies in the legacy GUI are frozen once a canonical package owner is promoted;
+- cross-pack orchestration must preserve child capability ownership and returned domain Artifacts rather than copy primitive algorithms.
 
 ## M5 — Official local Node Packs — ACTIVE / ITERATIVE DELIVERY
 
@@ -90,46 +91,68 @@ Terminal closure `a26dfcee626eedc27366dfec93be68503343941a`, run `33656157870`, 
 
 ### Slice 4 — Text Split Node V1 — RESOLVED / PROMOTED
 
-`packages/ktools-text/` is now canonical for balanced Markdown/TXT split as well as merge.
+`packages/ktools-text/` is canonical for balanced Markdown/TXT split as well as merge.
 
-Delivered:
-
-- split-specific legacy decode policy `utf-8-sig -> utf-8 -> cp1252 -> latin-1` without changing Text Merge decoding;
-- pure `split_text_balanced(...)` line-unit planner;
-- `split_text_file_into_parts(...)` as one split owner;
-- UTF-8 output normalization and collision-safe naming;
-- reusable Text-pack atomic text-content publication;
-- direct API + thin `text.split.parts` adapter;
-- `text.split.parts: FILE -> FILE_SET`, version 1, NEVER;
-- FILE Artifact MIME/provenance/chunk metadata;
-- nested ArtifactRegistry strong snapshots;
-- cached `file.literal` + required re-publication proof;
-- forced later-part failure boundary;
-- direct/workflow byte equivalence;
-- ordered `file.literal -> text.split.parts -> text.merge.files` composition;
-- hosted Text split→merge smoke in every Python lane.
+Delivered split-specific decode policy `utf-8-sig -> utf-8 -> cp1252 -> latin-1`, pure balanced line-unit planning, one split owner, UTF-8 collision-safe publication, per-part atomic behavior, `text.split.parts: FILE -> FILE_SET` version 1 NEVER, FILE Artifact metadata/provenance, nested strong snapshots, cached-source/republication proof, direct/workflow equivalence and hosted split→merge composition.
 
 Evidence chain:
 
-- spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa`, run `33656954591`, 5/5;
-- RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e`, run `33657352636`, discriminating at Text Split product contracts;
+- spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa`, run `33656954591`;
+- RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e`, run `33657352636`;
 - GREEN `87558e8194692c045bdd95780fe05beb0f436e3a`, run `33657882057`, 5/5;
-- hardened candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23`, run `33660594733`, 5/5 including Text split→merge smoke.
+- hardened candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23`, run `33660594733`, 5/5;
+- terminal closure `4a52bef50653aa11878351645d122d0c0ab52343`, run `33661273251`, 5/5.
 
 ADR: `docs/decisions/ADR-026-TEXT-SPLIT-NODE-V1.md`.
-Evidence/final report: `docs/specs/text-split-node-v1/`.
+Historical stable-GUI Text merge/split implementations remain frozen compatibility debt.
 
-Historical stable-GUI Text merge/split implementations remain frozen compatibility debt; semantic evolution belongs to `ktools-text`.
+### Slice 5 — Mixed Document Split Orchestrator V1 — RESOLVED / PROMOTION CLOSURE GATE
 
-### Slice 5 — PENDING FRESH DISCOVERY
+`packages/ktools-documents/` is now the canonical evolution owner for the mixed `.md/.txt/.pdf` **batch orchestration** boundary. Primitive split behavior remains owned by `ktools-text` and `ktools-pdf`.
 
-Both primitive branches used by the historical mixed Document Split are now canonical:
+Delivered:
 
-- PDF split -> `ktools-pdf`;
-- Markdown/TXT split -> `ktools-text`.
+- new package depending only on core/text/pdf;
+- `DocumentSplitBatchResult` + `DocumentSplitBatchError`;
+- supported-input filtering matching the legacy mixed tool;
+- ordered dispatch `.md/.txt -> ktools-text`, `.pdf -> ktools-pdf`;
+- equal-span progress weighting across compatible sources;
+- per-source continue-after-error behavior;
+- partial-success JSON report with counts/errors/destination;
+- zero-successful-output classified failure;
+- exact child Artifact preservation, including `PDF` members and Text `FILE` members;
+- coherent current run/node provenance + ArtifactRegistry snapshots;
+- direct API + `document.split.files: FILE_SET -> FILE_SET + JSON`, version 1, NEVER;
+- cached `files.literal` without skipped child publication;
+- collision-safe repeated publication inherited from child owners;
+- source-level structural guard against primitive Text/PDF algorithm duplication;
+- real mixed Markdown/PDF workflow smoke in every Python lane.
 
-Fresh discovery should therefore compare mixed Document Split orchestration against Images→PDF, WebP→PNG and bounded Files/Folders work. Do not assume Document Split automatically wins; inspect its real dispatch, aggregation, progress, naming and failure contract first.
+Evidence chain:
+
+- spec `c3fe4b98bc923eeb02a0b47877262bcbf83620d9`, run `33661964413`, 5/5;
+- discriminating RED `3a60b6b4e73cf40d14f3da8b2de9d862402f76db`, run `33662320157`;
+- GREEN/audited technical candidate `bde8b3789d86959b1218969510ed68aed14d410e`, run `33664355218`, 5/5.
+
+ADR: `docs/decisions/ADR-027-DOCUMENT-SPLIT-ORCHESTRATOR-V1.md`.
+Evidence/final report: `docs/specs/document-split-orchestrator-v1/`.
+
+The stable GUI mixed dispatcher is now frozen compatibility debt. New mixed orchestration semantics belong to `ktools-documents`; the package must never absorb the primitive Text/PDF split algorithms.
+
+### Slice 6 — PENDING FRESH DISCOVERY
+
+Remaining bounded candidate families currently include:
+
+- Images→PDF;
+- WebP→PNG;
+- bounded Files/Folders operations.
+
+Do not preselect by node count. Re-inspect the exact terminal `main` after this Slice-5 closure HEAD is green.
+
+Image capabilities require a locked Pillow boundary before implementation: supported Pillow range, decompression-bomb policy, EXIF orientation, alpha/background behavior, animated/multi-frame handling and output Artifact/publication semantics.
+
+Files/Folders work requires a bounded traversal/result schema: root validity, hidden/subfolder policy, symlink/reparse behavior, ordering, permission errors, report shape and cache/Artifact implications.
 
 ## Next exact action
 
-Require this Slice-4 synchronized memory-closure HEAD itself to pass the standard 5-job hosted CI gate. If green, begin Slice 5 discovery from that exact terminal `main` state and continue discovery -> spec -> RED -> GREEN -> REFACTOR -> hosted evidence -> memory closure.
+Require this synchronized Slice-5 memory-closure HEAD itself to pass the standard five hosted jobs. If green, Slice 5 is terminally **RESOLVED / PROMOTED** and Slice 6 begins fresh discovery from that exact `main` state.

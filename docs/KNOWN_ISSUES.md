@@ -12,11 +12,11 @@ Next: design root jobs/path filters for imported applications before imported-ap
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN / REDUCED BY M5 SLICES 1–4
+Status: OPEN / REDUCED BY M5 SLICES 1–5
 
 `K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file with many capability implementations embedded beside presentation/runtime concerns.
 
-M5 has now extracted canonical owners for Markdown/TXT merge, balanced Markdown/TXT split, PDF merge and balanced PDF split. Many image, mixed-document, filesystem and media utilities remain in the monolith.
+M5 has now extracted canonical owners for Markdown/TXT merge, balanced Markdown/TXT split, PDF merge, balanced PDF split and mixed Text/PDF document-split orchestration. Image, filesystem and media utilities remain substantially in the monolith.
 
 Invariant: extract capability-by-capability behind tested node contracts rather than performing a broad monolith rewrite.
 
@@ -24,7 +24,7 @@ Invariant: extract capability-by-capability behind tested node contracts rather 
 
 Status: RESOLVED
 
-Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text/PDF capabilities plus ordered `files.literal` and single `file.literal` source contracts.
+Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text/PDF/Documents capabilities plus ordered `files.literal` and single `file.literal` source contracts.
 
 ## KI-004 — Workflow/run/artifact persistence is absent
 
@@ -60,7 +60,7 @@ Future CI failures must be classified from their actual first failing step rathe
 
 Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-`packages/ktools-text` is now the canonical evolution owner for both Markdown/TXT merge and balanced Markdown/TXT split. `K Tools Neo - Versão Estável 2.py` still executes historical implementations of both behaviors.
+`packages/ktools-text` is the canonical evolution owner for both Markdown/TXT merge and balanced Markdown/TXT split. `K Tools Neo - Versão Estável 2.py` still executes historical implementations of both behaviors.
 
 Impact: direct edits to the legacy copies could drift from the tested package semantics.
 
@@ -72,7 +72,7 @@ Next: when traditional Text Tool surfaces are migrated to platform workflows, re
 
 Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-`packages/ktools-pdf` is the canonical evolution owner for both PDF merge and balanced PDF split after M5 Slices 2–3. The stable GUI still contains and invokes historical implementations of both behaviors.
+`packages/ktools-pdf` is the canonical evolution owner for both PDF merge and balanced PDF split. The stable GUI still contains and invokes historical implementations of both behaviors.
 
 Impact: direct edits to the old copies could drift from the tested package behavior.
 
@@ -102,17 +102,35 @@ Revisit set-wide transaction/rollback only if a real workflow requires it and fi
 
 Status: OPEN / DESIGN WATCH
 
-`FILE_SET` can contain typed PDF or Text-file Artifacts and already proves PDF split→merge and Text split→merge composition. No `PDF_SET` or text-specific collection type exists.
+`FILE_SET` can contain typed PDF and Text-file Artifacts. Hosted PDF split→merge, Text split→merge and mixed `document.split.files` flows prove that member-level Artifact typing is currently sufficient without `PDF_SET`, text-specific sets or a new document-set type.
 
 Revisit only when graph-time element-type rejection or catalog/UI behavior demonstrates a concrete safety/product need that member-level Artifact typing/runtime validation cannot satisfy.
 
 ## KI-013 — Mixed Document Split orchestration is still legacy-only
 
-Status: OPEN / NEXT-CANDIDATE BOUNDARY
+Status: RESOLVED / CANONICAL OWNER EXTRACTED
 
-The historical mixed Document Split now delegates conceptually to two capabilities that both have canonical package owners:
+`packages/ktools-documents` now owns the mixed `.md/.txt/.pdf` filtering/dispatch/progress/error/report boundary through `document.split.files` and the structured direct API.
+
+Primitive behavior remains deliberately outside this pack:
 
 - PDF split -> `ktools-pdf`;
 - Markdown/TXT split -> `ktools-text`.
 
-However, the mixed dispatcher/aggregation/progress/error contract itself has not yet been extracted. Do not implement a new mixed node by copying either primitive algorithm; characterize the orchestration boundary first.
+The stable GUI copy is now compatibility debt. New mixed orchestration semantics must originate in `ktools-documents`.
+
+Technical evidence: `bde8b3789d86959b1218969510ed68aed14d410e`, run `33664355218`, 5/5.
+
+## KI-014 — Failed child split may leave unreturned published parts on disk
+
+Status: OPEN / EXPLICIT V1 OWNERSHIP BOUNDARY
+
+A primitive Text/PDF split can publish earlier parts atomically and then fail on a later part. `document.split.files` catches the child failure and continues later source files, but the child API does not return those earlier parts when it raises.
+
+Consequences:
+
+- already-published child files may remain on disk;
+- they are not falsely claimed in the orchestrator's successful `FILE_SET` or `outputCount`;
+- batch rollback is not attempted because ownership/deletion semantics are not strong enough to delete user-visible outputs safely.
+
+Revisit only if a future transactional workflow requires set-wide rollback and K-Tools can prove ownership, collision provenance and safe deletion across all child publishers.

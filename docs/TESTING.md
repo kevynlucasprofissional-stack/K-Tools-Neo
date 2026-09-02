@@ -16,7 +16,7 @@ Do not promote evidence across levels. A green job proves only the commands that
 
 `.github/workflows/core-ci.yml` validates two surfaces.
 
-### Python runtime + official JSON/Text/PDF Node Packs
+### Python runtime + official JSON/Text/PDF/Documents Node Packs
 
 Matrix:
 
@@ -33,16 +33,19 @@ Each matrix job performs:
 4. editable install of `packages/ktools-json`;
 5. editable install of `packages/ktools-text`;
 6. editable install of `packages/ktools-pdf` plus declared dependencies;
-7. complete core unit/contract suite;
-8. complete JSON Node Pack suite;
-9. complete Text Node Pack suite;
-10. complete PDF Node Pack suite;
-11. core CLI smoke;
-12. JSON workflow CLI smoke + generated JSON-part verification;
-13. Text merge workflow smoke + exact text Artifact verification;
-14. Text split->merge workflow smoke that reopens ordered emitted chunks, proves clean concatenation reconstructs the source and verifies downstream merge behavior;
-15. PDF merge workflow smoke + reopened page-order/dimension verification;
-16. PDF split->merge workflow smoke that generates a five-page source, reopens three split parts to verify `2/2/1`, merges emitted Artifacts and reopens the recomposed PDF to verify original page order.
+7. editable install of `packages/ktools-documents` after Text/PDF;
+8. complete core unit/contract suite;
+9. complete JSON Node Pack suite;
+10. complete Text Node Pack suite;
+11. complete PDF Node Pack suite;
+12. complete Documents Node Pack suite;
+13. core CLI smoke;
+14. JSON workflow CLI smoke + generated JSON-part verification;
+15. Text merge workflow smoke + exact text Artifact verification;
+16. Text split->merge workflow smoke that reopens ordered emitted chunks, proves clean concatenation reconstructs the source and verifies downstream merge behavior;
+17. PDF merge workflow smoke + reopened page-order/dimension verification;
+18. PDF split->merge workflow smoke that generates a five-page source, reopens three split parts to verify `2/2/1`, merges emitted Artifacts and reopens the recomposed PDF to verify original page order;
+19. Documents mixed split workflow smoke that creates real Markdown + PDF sources, filters an unsupported file, executes `files.literal -> document.split.files`, verifies report counts/types, reconstructs Text from emitted parts and reopens/verifies PDF page order/dimensions.
 
 Because suites are discovered from the repository, the matrix also exercises Durable Execution, Diagnostics/Support Bundle and M4 Artifact/Cache contracts together, including SQLite lifecycle, safe redaction, support reports, subprocess failure boundaries, semantic cache reuse/invalidation and persistent Artifact observations.
 
@@ -90,51 +93,64 @@ Terminal closure `e3a3934aada29e185de7da18cf413ceaa3c299e8`, run `33651923578`, 
 
 A balanced PDF split migration claim requires `file.literal: -> FILE` PURE; single/multi file literals sharing local Artifact construction; source mutation invalidation; honest FILE/FILE_SET cardinality; `parts >= 2`; page-count clamp; balanced contiguous ranges; deterministic collision-safe names; fail-closed protected/corrupt/empty inputs; supplemental progress; per-part atomic publication; explicit later-part failure semantics; `pdf.split.parts: FILE -> FILE_SET` version 1 NEVER; PDF Artifact metadata/provenance; nested strong snapshots; one shared splitter owner; cached source without skipped publication; repeated collision-safe re-publication; direct/workflow equivalence; and hosted split->merge reopen proof.
 
-Evidence chain: spec `a09d600924aa66d031cc2bcc2f59feb04bdf0704` / `33652921999`; RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831`; GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159`; hardened candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424`, all hosted 5/5. Terminal closure `a26dfcee626eedc27366dfec93be68503343941a` passed `33656157870` 5/5.
+Evidence chain: spec `a09d600924aa66d031cc2bcc2f59feb04bdf0704` / `33652921999`; RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831`; GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159`; hardened candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424`; terminal closure `a26dfcee626eedc27366dfec93be68503343941a` / `33656157870`, hosted 5/5.
 
 ## Text Split Node V1 evidence expectations
 
-A balanced Text split migration claim requires:
+A balanced Text split migration claim requires split-specific `.md/.txt` decode characterization; `parts >= 2`; line-unit preservation/clamp/balancing; UTF-8 collision-safe atomic-per-output publication; explicit later-part failure semantics; `text.split.parts: FILE -> FILE_SET` v1 NEVER; FILE Artifact MIME/provenance/chunk metadata; nested strong snapshots; one canonical splitter owner; cached source without skipped publication; direct/workflow byte equivalence; and hosted split->merge proof in all Python lanes.
 
-### Decode/planner semantics
+Evidence chain: spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa` / `33656954591`; RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e` / `33657352636`; GREEN `87558e8194692c045bdd95780fe05beb0f436e3a` / `33657882057`; hardened `0630e63d87ae1c452c3d886a2dbab8d994bb3b23` / `33660594733`; terminal closure `4a52bef50653aa11878351645d122d0c0ab52343` / `33661273251`, 5/5.
 
-- `.md` / `.txt` source validation;
-- split-specific fallback order `utf-8-sig`, `utf-8`, `cp1252`, `latin-1`;
-- existing Text Merge decoder remains regression-green and is not silently changed;
-- empty/whitespace-only input fails closed;
-- `parts >= 2`, bool/non-integer rejected;
-- line units remain indivisible;
-- requested parts clamp to available line units;
-- uneven line lengths are balanced by the characterized character-target algorithm;
-- ordered clean chunks reconstruct the decoded normal source.
+## Mixed Document Split Orchestrator V1 evidence expectations
 
-### Publication / Artifact contract
+A mixed `.md/.txt/.pdf` orchestration migration claim requires all of the following.
 
-- clean names use `{stem}_parte_XX_de_YY{lower_suffix}` with actual output count;
-- collisions choose `_1`, `_2`, ... rather than overwrite;
-- outputs are UTF-8;
-- each part uses Text-pack temp-then-replace publication;
-- multi-output transaction boundary is explicit: earlier completed parts may remain after a later failure, while the failed destination is absent/clean;
-- `text.split.parts: FILE -> FILE_SET`, version 1, NEVER;
-- every output member is a FILE Artifact with MIME/provenance/chunk metadata;
-- ArtifactRegistry snapshots nested outputs strongly;
-- cached `file.literal` may be reused while split still executes and republishes.
+### Batch behavior
 
-### Architecture / equivalence / composition
+- existing supported inputs only; unsupported/missing/non-files filtered before attempt;
+- compatible source order preserved;
+- `parts` integer >= 2, bool/non-integer rejected;
+- `.md/.txt` dispatches to `ktools-text`; `.pdf` dispatches to `ktools-pdf`;
+- each compatible source owns equal progress span `1/N` and child progress is clamped/mapped into that span;
+- per-source exceptions are accumulated without aborting later sources;
+- returned outputs flatten source order then child part order;
+- at least one successful child result means node success with report errors;
+- zero successful child results means classified batch failure;
+- report includes input/output/error counts, error strings and normalized destination.
 
-- pure `split_text_balanced` owner is directly tested;
-- direct API and node delegate to `splitter.split_text_file_into_parts`;
-- adapter contains no decoder, balancing, collision or publication algorithm;
-- direct/workflow outputs are byte-identical in independent clean directories;
-- hosted `file.literal -> text.split.parts -> text.merge.files` executes successfully and verifies both emitted chunks and downstream merge behavior on Ubuntu/Windows Python 3.10/3.13;
-- xyflow remains green.
+### Architecture
 
-Evidence chain:
+- `packages/ktools-documents` depends on core/text/pdf and introduces no new image/native dependency;
+- direct API and workflow node delegate to one batch owner;
+- batch owner calls `ktools_text.splitter.split_text_file_into_parts` and `ktools_pdf.splitter.split_pdf_into_parts` directly;
+- documents pack contains no Text decoding/balancing, PDF reader/page-copy, primitive collision allocation or primitive atomic-writer algorithm;
+- `document.split.files: FILE_SET -> FILE_SET + JSON`, version 1, `CachePolicy.NEVER`.
 
-- spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa` / run `33656954591` — 5/5;
-- RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e` / run `33657352636` — discriminating Text Split product failure;
-- GREEN `87558e8194692c045bdd95780fe05beb0f436e3a` / run `33657882057` — 5/5;
-- hardened candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23` / run `33660594733` — 5/5 including Text split->merge smoke on every Python lane.
+### Artifact/cache/persistence
+
+- returned child Artifacts are preserved rather than reconstructed;
+- PDF outputs remain PDF Artifacts with PDF metadata; Text outputs remain FILE Artifacts with Text metadata/MIME;
+- current workflow `run_id/node_id` provenance is coherent;
+- ArtifactRegistry snapshots every successfully returned flattened output;
+- cached upstream `files.literal` may be reused while Documents still executes and republishes;
+- repeated execution uses child collision-safe publication and does not become a Documents cache hit.
+
+### Failure ownership
+
+- child per-output atomic/non-transactional semantics remain explicit;
+- earlier child outputs may exist on disk after a later child failure;
+- when a child raises without returning those earlier outputs, Documents does not falsely include them in its successful FILE_SET;
+- batch rollback/deletion is not inferred without ownership evidence.
+
+### Hosted evidence
+
+- spec gate `c3fe4b98bc923eeb02a0b47877262bcbf83620d9` / `33661964413`, 5/5;
+- RED `3a60b6b4e73cf40d14f3da8b2de9d862402f76db` / `33662320157`, discriminating after Core/JSON/Text/PDF passed;
+- GREEN/audited candidate `bde8b3789d86959b1218969510ed68aed14d410e` / `33664355218`, 5/5;
+- every Python lane installed Documents, ran its suite and passed the real mixed Text/PDF workflow smoke;
+- xyflow remained green.
+
+Final promotion additionally requires the synchronized memory-closure HEAD to pass the same five hosted jobs.
 
 ## Recovery / ownership evidence boundary
 
@@ -142,7 +158,7 @@ M4 restart reuse is not equivalent to continuing an old in-flight run. Until ato
 
 ## Retention / deletion evidence boundary
 
-Cache and Artifact-registry databases own metadata, not user output files. Metadata invalidation must not silently delete user Artifacts. Automatic cleanup of intermediate files requires later explicit ownership evidence.
+Cache and Artifact-registry databases own metadata, not user output files. Metadata invalidation must not silently delete user Artifacts. Automatic cleanup of intermediate or orphaned published files requires later explicit ownership evidence.
 
 ## Serialization / privacy safety evidence
 

@@ -1,66 +1,46 @@
 # Plan — Mixed Document Split Orchestrator V1
 
-Status: **ACTIVE / SPEC LOCKED**
+Status: **RESOLVED / PROMOTION CLOSURE PENDING TERMINAL HEAD CI**
 
-## Sequence
+## Executed sequence
 
-1. Preserve terminal Slice-4 evidence and exact `main` head.
-2. Land Slice-5 spec/plan/tasks/evidence skeleton as a docs-only gate.
-3. Add discriminating RED tests before package implementation.
-4. Implement `ktools-documents` package with no primitive split logic.
-5. Reuse canonical `ktools_text.splitter` and `ktools_pdf.splitter` owners directly so returned Artifacts preserve domain semantics.
-6. Expose structured direct API and `document.split.files` workflow node.
-7. Add root CI install/test/smoke for the new pack.
-8. Audit source for duplicated text/PDF algorithms and validate partial-success/report semantics.
-9. Require exact-head Windows/Linux Python 3.10/3.13 + xyflow green.
-10. Close ADR/memory/final report and require terminal closure CI.
+1. Preserved the terminal Slice-4 gate `4a52bef50653aa11878351645d122d0c0ab52343` / `33661273251`, 5/5.
+2. Performed fresh discovery against mixed Document Split, Images→PDF, WebP→PNG and bounded Files/Folders work.
+3. Locked the mixed orchestration spec in `c3fe4b98bc923eeb02a0b47877262bcbf83620d9`; hosted gate `33661964413` passed 5/5.
+4. Added RED contracts before implementation. `3a60b6b4e73cf40d14f3da8b2de9d862402f76db` / `33662320157` reached the new Documents suite after prior Core/JSON/Text/PDF suites passed and failed because `ktools_documents` did not exist.
+5. Implemented `packages/ktools-documents` as a thin package over canonical `ktools-text` and `ktools-pdf` splitters.
+6. Added structured direct API plus `document.split.files: FILE_SET -> FILE_SET + JSON`, version 1, NEVER.
+7. Added root-CI package installation/tests and a real mixed Markdown/PDF workflow smoke.
+8. Audited source ownership, partial-success semantics, Artifact preservation/provenance and cached-source/republication behavior.
+9. Technical candidate `bde8b3789d86959b1218969510ed68aed14d410e` passed run `33664355218` 5/5 on Ubuntu/Windows Python 3.10/3.13 plus xyflow.
+10. Recorded ADR/evidence/final report and canonical project memory. The only remaining gate is the CI of this documentation closure HEAD itself.
 
-## RED strategy
-
-The initial RED should import the expected package/API/node symbols dynamically where practical so the first product failure is the absence of `ktools-documents`, not a malformed test harness.
-
-The RED fixture should include:
-
-- one valid `.md` source;
-- one valid `.pdf` source;
-- one unsupported path to prove filtering;
-- one compatible but deliberately bad source for partial-success behavior;
-- later valid source after the failure to prove continuation.
-
-## GREEN design
-
-Keep the package thin:
+## Architectural result
 
 ```text
-batch.py
-  DocumentSplitBatchError
-  DocumentSplitBatchResult
-  split_documents_into_parts
-
-api.py
-  split_document_files_into_parts
-
-node.py
-  DOCUMENT_SPLIT_NODE_TYPE_ID
-  register_nodes
+files.literal (PURE)
+      ↓ FILE_SET
+ktools_documents.batch.split_documents_into_parts
+      ├─ .md/.txt → ktools_text.splitter.split_text_file_into_parts
+      └─ .pdf     → ktools_pdf.splitter.split_pdf_into_parts
+      ↓
+ordered successful child Artifacts + structured report
+      ↓
+direct API / document.split.files (NEVER)
 ```
 
-`batch.py` is allowed to know only:
+`ktools-documents` owns dispatch, batch aggregation, equal-span progress mapping and partial-success reporting only. It owns no Text/PDF primitive algorithm and introduces no generic orchestration framework.
 
-- supported suffix dispatch;
-- child callback weighting;
-- per-source exception aggregation;
-- ordered Artifact flattening;
-- batch result/report construction.
+## Audit answers
 
-Text/PDF primitive algorithms remain forbidden in this package.
+- Every compatible Text/PDF child call reaches the canonical package owner: **yes**.
+- Current workflow provenance is coherent without reconstructing child Artifacts: **yes**.
+- Partial-success errors remain product output in `report`: **yes**.
+- Zero-output failure is distinct from partial success: **yes**.
+- Cached `files.literal` can be reused while Documents executes/republishes: **yes**.
+- Root CI runs a real mixed Text/PDF smoke in all four Python lanes: **yes**.
+- A generalized fan-out/fan-in or document collection abstraction was introduced: **no**.
 
-## Integration audit questions
+## Next sequencing rule
 
-- Does every Text/PDF child call go through canonical owners?
-- Is provenance current-run/current-node without reconstructing Artifacts?
-- Are partial-success errors exposed as product output rather than swallowed?
-- Does zero-output failure remain distinguishable from partial success?
-- Does repeated execution republish because the node is NEVER?
-- Does root CI exercise a real mixed Text/PDF batch in every Python lane?
-- Did the new package accidentally create a generic orchestrator abstraction not justified by this one use case?
+After the closure HEAD is terminal-green, begin a fresh Slice-6 discovery. Do not infer that Images→PDF, WebP→PNG or Files/Folders wins merely from remaining node count. Image work must first lock Pillow/decompression-bomb/EXIF/alpha/animation policy; Files/Folders must first bound traversal and report semantics.
