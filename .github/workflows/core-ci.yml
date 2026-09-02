@@ -51,6 +51,9 @@ jobs:
       - name: PDF node pack tests
         run: python -m unittest discover -s packages/ktools-pdf/tests -v
 
+      - name: Documents node pack tests
+        run: python -m unittest discover -s packages/ktools-documents/tests -v
+
       - name: Core CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
 
