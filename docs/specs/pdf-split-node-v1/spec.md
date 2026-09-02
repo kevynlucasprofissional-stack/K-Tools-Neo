@@ -1,241 +1,132 @@
 # Spec — PDF Split Node V1
 
-Status: **ACTIVE / SPEC LOCKED**
+Status: **RESOLVED / PROMOTED**
 Milestone: M5 — Official local Node Packs, Slice 3
 Owner/implementer: ChatGPT Solo Development Mode
 
 ## Objective
 
-Extend the canonical `packages/ktools-pdf/` owner with the legacy PDF split capability and prove that one local PDF can be divided into an ordered set of safely published PDF Artifacts through the same direct-API/workflow implementation owner.
+Extend canonical `packages/ktools-pdf/` with the legacy balanced PDF split capability and prove one local PDF can become an ordered set of safely published PDF Artifacts through one shared direct-API/workflow implementation owner.
 
 Historical characterization source: `split_pdf_into_parts(...)` in `K Tools Neo - Versão Estável 2.py`.
 
-## Slice selection
+## Selected architecture
 
-Fresh discovery after PDF Merge V1 compared the remaining bounded owners:
+Fresh discovery compared PDF split, Images→PDF, WebP→PNG, mixed Document Split and bounded Files/Folders scan. PDF split was selected because it reuses the accepted `pypdf`/checked-reader/atomic-publication boundary, adds a real one-file→multi-file contract, and removes a prerequisite for later Document Split migration.
 
-| Candidate | Dependency boundary | New contract pressure | Legacy coupling | Slice-3 fit |
-|---|---|---|---|---:|
-| PDF split | existing `pypdf` | one-file input + multi-file output | already reused by Document Split | **selected** |
-| Images→PDF | new Pillow policy | EXIF, alpha flattening, animation, decompression safety | standalone | later |
-| WebP→PNG | new Pillow policy | image FILE_SET output, alpha/animation | standalone | later |
-| Document split | mixed Text + PDF orchestration | cross-pack dispatch/error aggregation | already delegates to PDF split | after primitives |
-| Files/Folders scan | stdlib | folder traversal + JSON/report semantics | broad feature surface | later bounded slice |
-
-PDF split is selected because it reuses the accepted PDF dependency/reader/publication boundary, introduces a real cardinality/composition requirement, and removes a prerequisite for migrating mixed Document Split later.
-
-## Legacy behavior to characterize
-
-The legacy owner establishes:
-
-- input is one local `.pdf` path;
-- missing/non-file/non-PDF inputs fail;
-- `parts` must be at least 2;
-- the PDF is opened through the checked reader boundary;
-- protected/encrypted/corrupt/no-readable-page inputs fail closed;
-- requested parts are clamped to the page count;
-- pages are divided into balanced contiguous ranges; earlier parts may contain one extra page;
-- output folder is created when absent;
-- output names use `{stem}_parte_{index:02d}_de_{actual_parts:02d}.pdf`;
-- existing/reserved names are not overwritten: a numeric suffix is selected instead;
-- each output PDF is published through the PDF writer's atomic temp-then-replace boundary;
-- output order follows page-range order;
-- progress callback is supplemental and owns no split semantics;
-- the legacy function returns the ordered output paths.
-
-V1 may normalize error wording, but not supported page partitioning, order, collision avoidance or publication semantics.
-
-## Package boundary
-
-Extend, do not create a second PDF package:
+Canonical path:
 
 ```text
-packages/ktools-pdf/src/ktools_pdf/
-  reader.py          # checked PDF read boundary
-  writer.py          # shared atomic PDF publication + merge
-  splitter.py        # PDF split planning/publication owner
-  api.py             # thin direct API
-  node.py            # thin workflow adapters
-```
-
-One-owner split path:
-
-```text
-checked reader + split planner + atomic PDF publisher
+checked reader + balanced planner + atomic PDF publisher
                       ↓
           splitter.split_pdf_into_parts
              ↙                    ↘
         direct API             pdf.split.parts
 ```
 
-The node adapter must not contain page partitioning, page-copy loops, collision naming or publication logic.
+`node.py` remains an adapter; it does not own page partitioning, page-copy loops, collision naming or PDF publication.
 
-## Minimal single-file source contract
+## Contracts
 
-Add builtin node:
+### `file.literal`
 
-`file.literal`
+- config: `path` local file path;
+- output: `file: FILE`;
+- version: `1`;
+- cache: `PURE`;
+- shares local Artifact construction/validation with `files.literal`;
+- M4 strong local-file revalidation invalidates stale cache after content mutation.
 
-Config:
+### `pdf.split.parts`
 
-- `path`: required local file path string.
+- input: `file: FILE`;
+- output: `files: FILE_SET` whose members are PDF Artifacts;
+- config: `output_dir`, integer `parts >= 2`; bool is rejected;
+- version: `1`;
+- cache: `NEVER` because publication is required behavior.
 
-Output:
+No `PDF_SET` is introduced. `FILE_SET` is sufficient because members preserve `Artifact.type == PDF`, ArtifactRegistry snapshots nested members, and `pdf.split.parts -> pdf.merge.files` composes directly.
 
-- `file: FILE`.
+## Preserved behavior
 
-Version: `1`.
-Cache policy: `PURE`.
-
-`file.literal` and existing `files.literal` must share one local-file Artifact construction/validation helper. Do not duplicate path validation or Artifact metadata semantics.
-
-M4 strong Artifact revalidation is the validity proof for cached file literals.
-
-## PDF split node contract
-
-Type id:
-
-`pdf.split.parts`
-
-Input:
-
-- `file: FILE` — runtime-validated as a supported local PDF. `PDF` output Artifacts may feed this FILE input through existing subtype compatibility.
-
-Output:
-
-- `files: FILE_SET` — ordered list of output Artifacts. Each member is type `PDF`, MIME `application/pdf`.
-
-Config:
-
-- `output_dir`: required destination directory path/string;
-- `parts`: required integer >= 2; boolean is not accepted as an integer configuration value.
-
-Version: `1`.
-Cache policy: `NEVER`.
-
-Reason: publication of new part files is required behavior. A cached list of old Artifact references is not equivalent to performing the requested split, especially because collision-safe naming can intentionally produce new paths on repeated runs.
-
-## FILE_SET decision
-
-Do **not** add `PDF_SET` in V1.
-
-This is the second real PDF collection use case, so the earlier deferral is explicitly revisited. `FILE_SET` remains sufficient because:
-
-- every member retains first-class `Artifact.type == PDF`;
-- ArtifactRegistry can snapshot nested PDF Artifacts;
-- `pdf.split.parts -> pdf.merge.files` composes directly without collection-conversion nodes;
-- a new collection type would add graph compatibility rules without increasing runtime truth for this use case.
-
-Revisit typed collection specialization only if a future capability needs graph-time element-type rejection that runtime Artifact typing cannot represent safely.
+- one local `.pdf` input;
+- missing/directory/non-PDF input rejected;
+- protected/encrypted/corrupt/zero-readable-page PDF fails closed;
+- requested parts clamp to page count;
+- balanced contiguous ranges, e.g. 5 pages / 3 parts = 2/2/1;
+- `{stem}_parte_XX_de_YY.pdf` naming using actual clamped part count;
+- existing/reserved names never overwritten; `_1`, `_2`, ... suffixes are selected;
+- each part is atomically published;
+- output order follows page order;
+- supplemental progress reaches completion without owning semantics;
+- failure is not all-or-nothing across the set: earlier successfully published parts may remain if a later part fails, while the failing destination is not left partial or falsely claimed.
 
 ## Artifact semantics
 
-Every split output Artifact:
+Each output member is:
 
-- type `PDF`;
-- local normalized `file://` URI;
-- `produced_by = {run_id}/{node_id}` for workflow execution;
+- `Artifact.type == PDF`;
 - MIME `application/pdf`;
-- JSON-safe metadata including `partIndex`, `partCount`, `pageStart`, `pageEnd`, `pageCount`, and source name where useful.
+- local normalized `file://` URI;
+- workflow provenance `{run_id}/{node_id}`;
+- JSON-safe metadata including part index/count and page range/count.
 
-The ordered list itself is the FILE_SET value; no wrapper class is introduced.
+## Acceptance — satisfied
 
-## Collision and publication policy
+### A — characterization
 
-Preserve legacy non-overwrite behavior:
+- [x] missing/directory/non-PDF source rejected;
+- [x] invalid `parts` rejected;
+- [x] requested parts clamp to page count;
+- [x] balanced contiguous partitioning characterized;
+- [x] deterministic clean-folder naming characterized;
+- [x] collision-safe suffix naming characterized;
+- [x] empty/encrypted/corrupt PDF fails closed;
+- [x] progress reaches completion without owning semantics.
 
-- clean target name first;
-- if it exists or was reserved in the same batch, choose `_1`, `_2`, ... before `.pdf`;
-- never silently replace an existing part file;
-- each selected path is written atomically;
-- a handled failure must not leave a partial file at the failing destination;
-- V1 does not claim all-or-nothing transactionality across the entire multi-file set; earlier successfully published parts may remain if a later part fails. This boundary must be explicit and tested where practical.
+### B — source/platform
 
-## Shared PDF writer refactor
+- [x] `file.literal: -> FILE`, version 1, PURE;
+- [x] single/multi file literals share local Artifact owner;
+- [x] strong cache invalidation after file mutation.
 
-`write_pdf_writer_atomic()` is reusable for merge and split, but its failure wording must be operation-neutral. Do not fork a second atomic PDF writer.
+### C — one owner
 
-Do not generalize PDF-specific publication into `ktools-core` merely because Text/JSON/PDF all use temp files. A third cross-domain abstraction requires a stable shared contract, not visual similarity.
+- [x] `splitter.split_pdf_into_parts` owns split behavior;
+- [x] direct API delegates to splitter;
+- [x] node adapter delegates to splitter;
+- [x] checked reader + shared atomic writer reused;
+- [x] structural guards prevent split algorithm duplication in adapter.
 
-## Direct/workflow composition proof
+### D — workflow/Artifact
 
-The strongest V1 proof is:
-
-```text
-file.literal -> pdf.split.parts -> pdf.merge.files
-```
-
-On a deterministic fixture PDF, the recomposed PDF must preserve the source page count and ordered page markers/dimensions.
-
-This proves:
-
-- one-file source cardinality;
-- FILE -> FILE_SET -> PDF typed composition;
-- PDF Artifacts inside FILE_SET;
-- split publication;
-- merge consumption of split outputs;
-- no need for PDF_SET.
-
-## Acceptance
-
-### A — characterization RED
-
-- [ ] missing/directory/non-PDF source rejected;
-- [ ] parts < 2, bool and non-integer config rejected;
-- [ ] parts > page count clamps to page count;
-- [ ] balanced contiguous partitioning characterized (e.g. 5 pages -> 3 parts = 2/2/1);
-- [ ] deterministic clean-folder naming characterized;
-- [ ] collision-safe suffix naming characterized;
-- [ ] empty/encrypted/corrupt PDF fails closed;
-- [ ] progress reaches completion without owning semantics.
-
-### B — platform/source contract
-
-- [ ] `file.literal: -> FILE`, version 1, PURE;
-- [ ] `file.literal` and `files.literal` share local Artifact construction;
-- [ ] file literal cache is strongly invalidated by source content mutation.
-
-### C — package owner
-
-- [ ] `splitter.split_pdf_into_parts` is the single split implementation owner;
-- [ ] direct API delegates to splitter;
-- [ ] node adapter delegates to splitter;
-- [ ] split reuses checked reader and atomic PDF writer;
-- [ ] structural guard prevents page partition/copy logic from moving into adapter.
-
-### D — workflow/Artifact contract
-
-- [ ] `pdf.split.parts` is FILE -> FILE_SET, version 1, NEVER;
-- [ ] each output member is a PDF Artifact with provenance and page-range metadata;
-- [ ] ArtifactRegistry records/snapshots nested split outputs;
-- [ ] cached `file.literal` may be reused while split still executes;
-- [ ] repeated split in same output directory publishes collision-safe new files rather than cache-skipping or overwriting.
+- [x] `pdf.split.parts: FILE -> FILE_SET`, version 1, NEVER;
+- [x] output members are PDF Artifacts with provenance/page metadata;
+- [x] ArtifactRegistry snapshots nested outputs;
+- [x] cached `file.literal` does not suppress split publication;
+- [x] repeated split collision-safely publishes new files.
 
 ### E — equivalence/composition
 
-- [ ] direct API and workflow produce semantically equivalent page ranges in clean independent directories;
-- [ ] split -> merge end-to-end composition recreates original page order/count semantics.
+- [x] direct API/workflow semantic equivalence;
+- [x] split→merge recreates source page order/count semantics.
 
 ### F — hosted regression
 
-- [ ] PDF suite passes Ubuntu/Windows Python 3.10/3.13;
-- [ ] core/JSON/Text regressions remain green;
-- [ ] hosted PDF split workflow smoke reopens every part and verifies page ranges;
-- [ ] hosted split -> merge composition smoke passes at least one Python lane per OS (or all matrix lanes if inexpensive);
-- [ ] xyflow remains green.
+- [x] Ubuntu Python 3.10/3.13;
+- [x] Windows Python 3.10/3.13;
+- [x] Core/JSON/Text regressions green;
+- [x] hosted split→merge smoke reopens parts and recomposed PDF in every Python lane;
+- [x] xyflow green.
 
-## Non-goals
+## Evidence chain
 
-- mixed MD/TXT/PDF document split in this slice;
-- Images→PDF or WebP conversion;
-- PDF extraction by arbitrary page expressions/ranges;
-- per-page split mode distinct from balanced `parts` contract;
-- password decryption/cracking;
-- PDF_SET;
-- all-or-nothing transaction across the whole output set;
-- production visual editor changes;
-- broad stable-GUI rewrite.
+- prerequisite Slice 2 closure `e3a3934aada29e185de7da18cf413ceaa3c299e8`, run `33651923578`, 5/5;
+- Slice 3 spec gate `a09d600924aa66d031cc2bcc2f59feb04bdf0704`, run `33652921999`, 5/5;
+- RED `e43f01db3473aa693382325e70fc7e1c17d1943d`, run `33653225831`, previous suites green and new PDF split tests red at missing product contracts;
+- GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925`, run `33653824159`, 5/5;
+- hardened technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e`, run `33654265424`, 5/5 including hosted split→merge smoke.
 
-## Promotion rule
+## Non-goals preserved
 
-Promote only after spec gate, discriminating RED, GREEN, integration audit, exact-head Windows/Linux + xyflow hosted evidence, explicit canonical ownership/debt classification, terminal memory closure and green terminal `main` HEAD.
+Mixed document split, Images→PDF, WebP conversion, arbitrary page expressions, password decryption, PDF_SET, set-wide transactionality, production editor changes and broad stable-GUI rewrites remain outside this slice.

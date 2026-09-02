@@ -42,7 +42,7 @@ Capability families:
 - Images/PDF;
 - Media.
 
-Slice rule: inspect the actual legacy owner before extraction; characterize behavior first; prefer bounded capabilities with explicit dependency/native risk; preserve one-owner direct API + workflow architecture; use first-class Artifacts; classify PURE versus publication side effects explicitly; integrate diagnostics at the real boundary.
+Slice rule: inspect the actual legacy owner before extraction; characterize behavior first; prefer bounded capabilities with explicit dependency/native/security risk; preserve one-owner direct API + workflow architecture; use first-class Artifacts; classify PURE versus required publication explicitly; integrate diagnostics at real native/subprocess boundaries.
 
 ### Slice 1 — Text Node Pack V1
 
@@ -50,49 +50,69 @@ Status: **RESOLVED / PROMOTED**
 
 Delivered ordered FILE_SET, PURE `files.literal`, canonical `packages/ktools-text/`, characterized Markdown/TXT merge, `text.merge.files` as NEVER, direct/workflow equivalence, ArtifactRegistry proof, centralized local URI parsing and hosted Text smoke.
 
-Promotion merge `958d5bf563cda21673d69865d1508831c599c006` passed run `33630159514`; final memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388` passed `33631040505`.
+Promotion `958d5bf563cda21673d69865d1508831c599c006` passed `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388` passed `33631040505`.
 
 ### Slice 2 — PDF Merge Node Pack V1
 
 Status: **RESOLVED / PROMOTED**
 
+Delivered `packages/ktools-pdf/`, explicit `pypdf>=5,<7`, checked PDF reader/error taxonomy, ordered page merge, atomic publication, progress-preserving direct API, `pdf.merge.files: FILE_SET -> PDF` version 1 NEVER, PDF Artifact/ArtifactRegistry provenance, source-cache/publication lifecycle proof, deterministic fixtures, hosted reopen verification and protected/encrypted fail-closed behavior.
+
+Terminal closure `e3a3934aada29e185de7da18cf413ceaa3c299e8` passed run `33651923578` 5/5.
+
+### Slice 3 — PDF Split Node V1
+
+Status: **RESOLVED / PROMOTED**
+
 Delivered:
 
-- `packages/ktools-pdf/` with explicit `pypdf>=5,<7`;
-- checked PDF reader/error taxonomy;
-- ordered page merge + safe atomic publication;
-- progress-preserving direct API;
-- `pdf.merge.files: FILE_SET -> PDF`, version 1, NEVER;
-- PDF Artifact/ArtifactRegistry provenance;
-- source-cache + required-publication lifecycle proof;
-- deterministic generated PDF fixtures;
-- hosted PDF workflow smoke + reopened page-order assertion;
-- fail-closed protected/encrypted behavior;
-- no duplicate URI parser or reader/page-copy implementation in adapter.
+- `file.literal: -> FILE`, version 1, PURE;
+- shared local-file Artifact construction with `files.literal`;
+- `ktools_pdf.splitter.split_pdf_into_parts` as one split owner;
+- `pdf.split.parts: FILE -> FILE_SET`, version 1, NEVER;
+- balanced contiguous part planning with clamp to page count;
+- non-overwriting collision-safe part naming;
+- per-part atomic publication and explicit partial-set failure contract;
+- output PDF Artifacts with provenance/page-range metadata + strong nested snapshots;
+- direct/workflow equivalence;
+- cached source + required publication proof;
+- real hosted `file.literal -> pdf.split.parts -> pdf.merge.files` composition on every Python lane;
+- explicit decision to keep FILE_SET with typed PDF members rather than invent PDF_SET.
 
 Evidence:
 
-- spec `081dac1380361761bf38e2914db495138e4c9b76` / run `33631531313`;
-- RED `29a90cb7c2085b22d0cf3e345b39fecb6c050b76` / run `33648993271`;
-- GREEN `cdce28caa6e7cc8b62cf2f55e32559a2ff8cfd25` / run `33649227197` 5/5;
-- technical candidate `a370028b9dbb2c44981a3c7e05d176ce7e54b71c` / run `33649789491` 5/5;
-- synchronized memory candidate `8600b0adda1bba2a460da9fee8f45b7a02b41f9b` / run `33650661761` 5/5.
+- spec `a09d600924aa66d031cc2bcc2f59feb04bdf0704` / `33652921999`;
+- RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831`;
+- GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159`, 5/5;
+- technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424`, 5/5 including split→merge smoke.
 
-Canonical owner: `packages/ktools-pdf`. Stable-GUI PDF merge remains compatibility debt.
+Canonical owner: `packages/ktools-pdf`. Stable-GUI PDF merge/split remain compatibility debt.
 
-### Slice 3 — ACTIVE DISCOVERY
+### Slice 4 — FRESH DISCOVERY GATE
 
-Status: **UNSELECTED**
+Status: **PENDING TERMINAL SLICE-3 CI**
 
-Re-inspect remaining real owners. Current candidate set:
+After the Slice-3 memory closure itself is green, re-inspect remaining actual owners and compare:
 
-- PDF split;
 - Images→PDF;
 - WebP→PNG;
-- mixed document split;
+- mixed Document Split;
 - bounded Files/Folders operations.
 
-Compare each on behavior clarity, dependency/native coupling, side effects/publication semantics, Artifact/typed-port shape, cacheability/validity, diagnostics needs, composition value and duplicate-owner migration cost. Do not select merely to maximize node count.
+Decision dimensions:
+
+- behavior clarity and characterization cost;
+- dependency/security/native coupling;
+- side effects/publication semantics;
+- Artifact/typed-port cardinality;
+- cacheability/output validity;
+- diagnostics needs;
+- composition value;
+- duplicate-owner migration cost.
+
+Do not select merely to maximize node count.
+
+A likely sequencing advantage now exists for mixed Document Split because both canonical Text and PDF primitives are available, but that hypothesis must be compared against the other candidates rather than assumed.
 
 Media rule: before broad audio/video nodes, establish one shared FFmpeg/FFprobe process boundary using M3 subprocess diagnostics and explicit M4 Artifact/cache semantics.
 
@@ -123,6 +143,6 @@ Status: **CONTINUOUS + FINAL RELEASE GATE** — CI, licenses, duplicate-owner re
 
 ## Execution rule
 
-Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit spec → evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure.
+Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery → spec → evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure.
 
-Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly.
+Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly. Every file cardinality remains honest; avoid collection conventions that hide singular semantics.

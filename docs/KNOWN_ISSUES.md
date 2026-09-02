@@ -12,19 +12,19 @@ Next: design root jobs/path filters for imported applications before imported-ap
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN / REDUCED BY M5 SLICES 1–2
+Status: OPEN / REDUCED BY M5 SLICES 1–3
 
 `K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file with many capability implementations embedded beside presentation/runtime concerns.
 
-M5 now extracts canonical Markdown/TXT merge and PDF merge package owners, proving the incremental migration pattern, but many utilities remain in the monolith.
+M5 has now extracted canonical owners for Markdown/TXT merge, PDF merge and balanced PDF split, proving the incremental migration pattern. Many image, document, filesystem and media utilities remain in the monolith.
 
-Next: continue capability-by-capability extraction behind node contracts rather than broad monolith rewrite.
+Invariant: extract capability-by-capability behind tested node contracts rather than performing a broad monolith rewrite.
 
 ## KI-003 — No real K-Tools utility node is integrated yet
 
 Status: RESOLVED
 
-Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text and PDF capabilities plus the ordered `files.literal` source contract.
+Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text and PDF capabilities plus ordered `files.literal` and single `file.literal` source contracts.
 
 ## KI-004 — Workflow/run/artifact persistence is absent
 
@@ -40,7 +40,7 @@ Status: OPEN
 
 No production canvas/palette/inspector/run UI exists yet.
 
-Research and the audited spike identify `@xyflow/react` as the preferred implementation layer while `ktools-core` remains runtime authority. Desktop-host integration and target-environment performance remain unproved.
+Research and the audited spike identify `@xyflow/react` as the preferred interaction layer while `ktools-core` remains runtime authority. Desktop-host integration and target-environment performance remain unproved.
 
 ## KI-006 — No adapter boundary to imported apps yet
 
@@ -68,18 +68,36 @@ Invariant: new behavior/bug fixes originate in `ktools-text`; the historical cop
 
 Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-`packages/ktools-pdf` is the canonical evolution owner for PDF merge after M5 Slice 2 final promotion, but the stable GUI still contains and invokes its historical PDF merge implementation.
+`packages/ktools-pdf` is the canonical evolution owner for both PDF merge and balanced PDF split after M5 Slices 2–3. The stable GUI still contains and invokes historical implementations of both behaviors.
 
-Impact: direct edits to the old copy could drift from the tested package behavior.
+Impact: direct edits to the old copies could drift from the tested package behavior.
 
-Invariant: new PDF merge behavior/bug fixes originate in `ktools-pdf`; the historical implementation is a compatibility path only.
+Invariant: new PDF merge/split behavior and bug fixes originate in `ktools-pdf`; historical implementations are compatibility paths only.
 
-Next: when the traditional PDF Tool surface is migrated to platform workflows, redirect it to `ktools-pdf` and remove/reduce the duplicate. Do not block bounded capability extraction on a full GUI rewrite.
+Next: when traditional PDF Tool surfaces are migrated to platform workflows, redirect them to `ktools-pdf` and remove/reduce duplicate owners. Do not block bounded capability extraction on a full GUI rewrite.
 
-## KI-010 — Shared temp-then-replace pattern is repeated across file-producing packs
+## KI-010 — Shared temp-then-promote patterns exist across file-producing packs
 
 Status: OPEN / OBSERVE BEFORE ABSTRACTING
 
-Text and PDF writers both use same-directory temporary publication followed by final replacement, but their write/finalization contracts differ.
+Text and PDF writers use temporary output before final publication, and PDF split reuses the PDF atomic writer across multiple outputs. Their write/finalization/collision contracts remain materially different across domains.
 
-Do not create a generic core abstraction merely because two implementations look similar. Re-evaluate after another file-producing pack shows a stable cross-domain API for temp allocation, cleanup and promotion without leaking writer-specific semantics.
+Do not create a generic core publication abstraction merely because several implementations use temporary files. Re-evaluate only after another file-producing pack proves a stable cross-domain API for allocation, cleanup, collision policy and promotion without leaking writer-specific semantics.
+
+## KI-011 — Multi-output operations are not globally transactional
+
+Status: OPEN / EXPLICIT V1 BOUNDARY
+
+`pdf.split.parts` is atomic per produced PDF but not all-or-nothing across the entire output set. If publication of a later part fails, previously published parts may remain.
+
+This is intentional and tested. The failed destination must not be partial or falsely claimed successful.
+
+Revisit set-wide transaction/rollback only if a real workflow requires it and file ownership/rollback semantics can be made reliable across platforms.
+
+## KI-012 — Domain-specialized collection types are intentionally deferred
+
+Status: OPEN / DESIGN WATCH
+
+`FILE_SET` can contain typed PDF Artifacts and already proves `pdf.split.parts -> pdf.merge.files` composition. No `PDF_SET` exists.
+
+Revisit only when graph-time element-type rejection or catalog/UI behavior demonstrates a concrete safety/product need that member-level Artifact typing cannot satisfy.

@@ -56,7 +56,7 @@ Status: **ACCEPTED SAFETY BOUNDARY**.
 Status: **VALIDATED** — FILE_SET is the current exact ordered collection contract.
 
 ## H-025 — A source can be PURE while downstream publication remains NEVER
-Status: **VALIDATED IN TEXT + PDF** — cached `files.literal` does not suppress required destination publication.
+Status: **VALIDATED IN TEXT + PDF** — cached file sources do not suppress required destination publication.
 
 ## H-026 — Green behavior tests do not prove architectural single ownership
 Status: **VALIDATED / AUDIT LESSON** — integration audit is still required after tests turn green.
@@ -65,16 +65,28 @@ Status: **VALIDATED / AUDIT LESSON** — integration audit is still required aft
 Status: **ACCEPTED MIGRATION BOUNDARY** — canonical package owners may coexist temporarily with frozen legacy compatibility paths.
 
 ## H-028 — Semantic document equivalence can be stronger than binary identity
-Status: **VALIDATED IN PDF MERGE V1** — reopened page count/order/dimensions are the deterministic product oracle; serializer bytes are not assumed semantic.
+Status: **VALIDATED IN PDF** — reopened page count/order/dimensions are the deterministic product oracle; serializer bytes are not assumed semantic.
 
 ## H-029 — Dependencies belong to package/bootstrap boundaries, not capability execution
-Status: **VALIDATED IN PDF MERGE V1** — hosted RED installed pypdf from package metadata before behavior tests.
+Status: **VALIDATED IN PDF** — hosted RED installed pypdf from package metadata before behavior tests.
 
 ## H-030 — Encryption support should not expand implicitly
 Status: **ACCEPTED PDF V1 SAFETY BOUNDARY** — protected/encrypted PDFs fail closed until a dedicated spec defines support.
 
 ## H-031 — Similar temp-publication code is not sufficient reason to generalize
-Status: **ACTIVE DESIGN WATCH** — Text/PDF writers differ materially; revisit after another file-producing pack proves a stable common abstraction.
+Status: **ACTIVE DESIGN WATCH** — Text/PDF writers differ materially; revisit only after another file-producing pack proves a stable common abstraction.
+
+## H-032 — Singular cardinality should not be encoded as a one-item collection convention
+Status: **VALIDATED IN PDF SPLIT V1** — `file.literal: -> FILE` plus `pdf.split.parts: FILE -> FILE_SET` keeps graph semantics honest and avoids runtime singleton assertions masquerading as type safety.
+
+## H-033 — Typed Artifact members can postpone domain-specific collection types
+Status: **VALIDATED FOR CURRENT PDF COMPOSITION** — FILE_SET containing PDF Artifacts composes split→merge across hosted Windows/Linux lanes without PDF_SET. Introduce specialized collections only when graph-time member typing proves necessary.
+
+## H-034 — Multi-output publication needs an explicit transaction boundary
+Status: **VALIDATED / SAFETY BOUNDARY** — PDF split is atomic per part, not all-or-nothing across the set. Earlier completed outputs may remain after a later failure; the failing output must not be partial or falsely claimed.
+
+## H-035 — Composition tests are stronger than isolated contract tests for cardinality decisions
+Status: **VALIDATED** — hosted `FILE -> FILE_SET -> PDF` split→merge proved source cardinality, member Artifact typing, publication and downstream consumption together.
 
 ## E-004 — Correct output-collision guard can make non-isolated smoke red
 Status: **CLASSIFIED** — fix isolation, not safety behavior.
@@ -97,24 +109,44 @@ Status: **RESOLVED / REFACTOR LESSON**.
 ## E-010 — PDF Merge RED proved dependency/bootstrap before behavior
 Status: **RESOLVED / USEFUL RED** — `29a90cb7c2085b22d0cf3e345b39fecb6c050b76`, run `33648993271`, reached intentionally red PDF tests after dependencies and prior suites passed.
 
+## E-011 — PDF Split RED isolated the intended missing product contracts
+Status: **RESOLVED / USEFUL RED** — `e43f01db3473aa693382325e70fc7e1c17d1943d`, run `33653225831`, kept Core/JSON/Text and existing PDF Merge green while the new suite failed on missing `file.literal`, split API/node and shared owner.
+
+## E-012 — Multi-output failure semantics cannot be inferred from atomic single-output writer tests
+Status: **RESOLVED / TEST-DESIGN LESSON** — Slice 3 added a forced second-part publication failure proving earlier completed output retention, failed-destination absence and temp cleanup.
+
 ## M5 Slice 1 closure
 
-Text Node Pack V1 promotion merge `958d5bf563cda21673d69865d1508831c599c006` passed post-merge run `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388` passed run `33631040505`.
+Text Node Pack V1 promotion `958d5bf563cda21673d69865d1508831c599c006` passed run `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388` passed `33631040505`.
+
+Result: **Slice 1 RESOLVED / PROMOTED**.
 
 ## M5 Slice 2 closure
 
-PDF Merge V1 technical candidate `a370028b9dbb2c44981a3c7e05d176ce7e54b71c` passed run `33649789491` 5/5, including real PDF workflow/reopen verification in every Python lane.
+PDF Merge V1 terminal closure `e3a3934aada29e185de7da18cf413ceaa3c299e8` passed run `33651923578` 5/5.
 
-Synchronized memory candidate `8600b0adda1bba2a460da9fee8f45b7a02b41f9b` passed run `33650661761` 5/5.
+Result: **Slice 2 RESOLVED / PROMOTED**. `packages/ktools-pdf` became canonical for PDF merge; legacy GUI merge became compatibility debt.
 
-Result: **Slice 2 RESOLVED / PROMOTED**. `packages/ktools-pdf` is canonical; legacy GUI PDF merge is compatibility debt.
+## M5 Slice 3 closure
 
-## Next journal focus — M5 Slice 3
+Spec gate `a09d600924aa66d031cc2bcc2f59feb04bdf0704` passed `33652921999` 5/5.
 
-1. re-inventory remaining actual legacy owners rather than inheriting a favorite candidate;
-2. compare PDF split, Images→PDF, WebP→PNG, mixed document split and bounded Files/Folders operations;
-3. judge composition value relative to dependency/native policy and side-effect complexity;
-4. do not introduce `PDF_SET` or generic atomic-publication abstraction without a proved need;
-5. preserve direct API + workflow one-owner architecture;
-6. integrate diagnostics at native/subprocess boundaries from the start;
-7. if FFmpeg/FFprobe enters scope, establish the shared diagnostic process boundary before broad media nodes.
+RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831` discriminated at the new PDF split product boundary.
+
+GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159` passed 5/5.
+
+Hardened technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424` passed 5/5, including hosted split→merge in Ubuntu/Windows Python 3.10/3.13.
+
+Result pending only this memory-closure HEAD gate: **Slice 3 RESOLVED / PROMOTED**. `packages/ktools-pdf` is canonical for balanced PDF split; stable GUI merge/split copies are compatibility debt.
+
+## Next journal focus — M5 Slice 4
+
+After the Slice-3 closure HEAD is green:
+
+1. re-inventory remaining legacy owners from the exact terminal main;
+2. compare Images→PDF, WebP→PNG, mixed Document Split and bounded Files/Folders operations;
+3. specifically test the hypothesis that Document Split is now a low-duplication orchestration slice because Text/PDF primitives exist — do not assume it without inspecting its non-PDF behavior and output/error contract;
+4. if an image capability is selected, specify Pillow version/decompression-bomb policy, EXIF orientation, alpha/background semantics and animation behavior before implementation;
+5. preserve one-owner direct API + workflow architecture and explicit publication/cache policy;
+6. do not generalize FILE_SET, atomic publication or domain collection types without new evidence;
+7. if FFmpeg/FFprobe enters scope later, establish the shared diagnostic process boundary before broad media nodes.
