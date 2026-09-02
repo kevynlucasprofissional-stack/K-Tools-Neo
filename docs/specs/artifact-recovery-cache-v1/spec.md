@@ -1,6 +1,6 @@
 # Spec — Artifact Lifecycle + Recovery + Semantic Cache V1
 
-Status: **IMPLEMENTATION COMPLETE / FINAL MEMORY-HEAD CI PENDING**
+Status: **RESOLVED / PROMOTED**
 Milestone: M4
 Owner/implementer: ChatGPT Solo Development Mode
 
@@ -26,8 +26,6 @@ Create a conservative local-first Artifact lifecycle and semantic-cache foundati
 
 Node definitions carry a version and cache policy.
 
-V1 policies:
-
 - `NEVER` — default; always execute;
 - `PURE` — deterministic output for equivalent semantic inputs/config and no externally required side effect.
 
@@ -37,13 +35,7 @@ Additional policies may appear only with evidence. Do not infer purity from impl
 
 ### Strong local-file validity
 
-For `file://` Artifacts, V1 records:
-
-- normalized local path/URI;
-- file size;
-- mtime-ns as quick-change evidence;
-- SHA-256 content digest as strong identity;
-- observation timestamp.
+For `file://` Artifacts, V1 records normalized local path/URI, file size, mtime-ns, SHA-256 and observation timestamp.
 
 On reuse:
 
@@ -55,42 +47,17 @@ Directories and remote URIs are not strongly cache-valid in V1. Unsupported case
 
 ### Stable semantic node signature
 
-Canonical signature input includes:
-
-- node type id;
-- declared node implementation/version;
-- canonicalized config;
-- semantic input values;
-- Artifact inputs represented by stable content identity instead of random Artifact/run ids;
-- explicit signature extras when required by later capabilities.
-
-Canonical JSON is sorted and hashed with SHA-256. Unknown/non-deterministically serializable values disable caching instead of guessing. Mapping keys must be strings to avoid canonicalization collisions.
+Canonical signature input includes node type id, declared implementation/version, canonicalized config, semantic inputs and Artifact content identity rather than random Artifact/run ids. Mapping keys must be strings to avoid canonicalization collisions. Unknown/non-deterministically serializable values disable caching instead of guessing.
 
 ### Persistent cache records
 
-`SQLiteNodeCache` persists:
-
-- cache signature;
-- node type/version;
-- originating run/node;
-- safely encoded outputs;
-- output Artifact snapshots;
-- creation/last-used timestamps.
+`SQLiteNodeCache` persists cache signature, node type/version, origin run/node, safely encoded outputs, output Artifact snapshots and created/last-used timestamps.
 
 The cache is an optional injected optimization. Cache read/write/touch/invalidation failures do not turn a valid workflow into a failed workflow.
 
 ### Persistent Artifact lifecycle observations
 
-`SQLiteArtifactRegistry` records Artifact occurrences independently from the semantic cache and binds them to:
-
-- current run id;
-- current node id;
-- output port;
-- nested value path;
-- source (`EXECUTED` or `CACHED`);
-- original Artifact id/provenance/metadata;
-- strong snapshot when supported;
-- explicit snapshot error when strong validity is unsupported.
+`SQLiteArtifactRegistry` records Artifact occurrences independently from semantic cache and binds them to current run, current node, output port, nested value path, `EXECUTED`/`CACHED` source, original Artifact identity/provenance/metadata, strong snapshot when supported and explicit snapshot error otherwise.
 
 The registry never deletes or mutates user files.
 
@@ -157,7 +124,7 @@ Automatic resume/reclaim of old `RUNNING` work remains unavailable until a futur
 
 - [x] official `json.literal` is explicitly PURE;
 - [x] side-effectful `json.split` remains NEVER and republishes files on repeated execution;
-- [x] new official `json.split.plan` delegates to the real pure `split_json_document` owner;
+- [x] `json.split.plan` delegates to the real pure `split_json_document` owner;
 - [x] a 2,000-record split-plan workload is reused after cache close/reopen;
 - [x] patched owner call count proves `split_json_document` ran once across two equivalent runs;
 - [x] second run projects source/planner as CACHED where appropriate.
@@ -166,7 +133,7 @@ Automatic resume/reclaim of old `RUNNING` work remains unavailable until a futur
 
 - [x] Artifact occurrence survives registry close/reopen;
 - [x] run/node/output-port/value-path provenance persists;
-- [x] current validity can be rechecked without erasing the historical snapshot;
+- [x] current validity can be rechecked without erasing historical snapshot;
 - [x] unsupported strong-validity cases remain explicit rather than guessed;
 - [x] runtime records EXECUTED and CACHED occurrences separately;
 - [x] registry failure is supplemental/fail-open;
@@ -199,4 +166,6 @@ Automatic resume/reclaim of old `RUNNING` work remains unavailable until a futur
 - [x] support bundles describe cache decisions;
 - [x] real JSON publication semantics remain intact;
 - [x] hosted Ubuntu/Windows Python 3.10/3.13 + xyflow passed on accepted code candidate;
-- [ ] final canonical documentation/memory HEAD passes the same hosted matrix before M5 code starts.
+- [x] synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five hosted jobs in run `33625955613`.
+
+M4 is therefore resolved and promoted. Later work must preserve ADR-017..ADR-020 and the evidence boundaries in `docs/TESTING.md`.

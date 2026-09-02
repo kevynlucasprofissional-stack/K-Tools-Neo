@@ -10,223 +10,88 @@ Canonical sequencing guide: `docs/ROADMAP.md`.
 
 OpenCode, Antigravity and Codex remain paused as active writers unless the project owner explicitly re-enables them.
 
-## M0 — Platform Foundation — RESOLVED
+## M0 — Platform Foundation — RESOLVED / PROMOTED
 
-Working runtime base:
-
-- UI-independent `packages/ktools-core/`;
-- typed node/port contracts and DAG validation/execution;
-- initial Artifact model;
-- headless workflow CLI;
-- Windows/Linux hosted CI;
-- bounded imported `xcursos-runner` and `yt-dlp-tui` subsystems.
+UI-independent `ktools-core`, typed node/port contracts, deterministic DAG validation/execution, initial Artifact model, CLI, Windows/Linux CI and bounded imported application subsystems are established.
 
 ## M1 — First official Node Pack — RESOLVED
 
-`packages/ktools-json/` proves one capability owner shared by direct API and workflow use, with classified failures, deterministic output, collision safety and hosted evidence.
-
-Current official JSON nodes include:
-
-- `json.literal` — PURE;
-- `json.split.plan` — PURE planning over the real `split_json_document` implementation owner;
-- `json.split` — NEVER because file publication is a required side effect.
-
-Audit: `docs/multi-agent/handoffs/OC-001-AUDIT.md`.
+`packages/ktools-json/` proves one capability owner shared by direct API and workflow use. Current official JSON nodes include `json.literal` (PURE), `json.split.plan` (PURE) and `json.split` (NEVER because file publication is a required side effect).
 
 ## AG-001 — xyflow interaction spike — CLOSED
 
-`spikes/xyflow-editor/` remains evidence that React + `@xyflow/react` is a credible editor interaction layer while `ktools-core` remains runtime truth.
+`spikes/xyflow-editor/` remains evidence that React + `@xyflow/react` is a credible interaction layer while `ktools-core` remains execution truth.
 
 ## M2 — Durable Execution V1 — RESOLVED
 
-K-Tools has an optional injected Run Journal and stdlib SQLite persistence for ordered run/node lifecycle history.
-
-Delivered:
-
-- run/node lifecycle events and query projections;
-- explicit interruption reconciliation;
-- error/output metadata;
-- conservative JSON-safe serialization;
-- run history/detail/event query API;
-- `--journal <sqlite-db>` on core and JSON CLIs;
-- real official Node Pack success/failure evidence.
+Optional injected Run Journal + stdlib SQLite persistence provide ordered run/node lifecycle history, query projections, error/output metadata, explicit interruption reconciliation and `--journal` support.
 
 Evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
 ## M3 — Diagnostics, Structured Logging + Support Bundle — RESOLVED / PROMOTED
 
-The project has a first-class diagnostic/support layer before cache/recovery, media, browser and imported-app integration work.
+K-Tools has structured diagnostics, safe-sharing redaction, exceptions/tracebacks, decisions/metrics/batches/anomalies, subprocess capture, PowerShell evidence, automatic human/machine support reports, support bundles, Ctrl+C classification and conservative abandoned-session packaging.
 
-Spec/evidence/final report: `docs/specs/diagnostics-support-bundle-v1/`.
+Final M3 closure checkpoint `5e1e46714aaefe0827c96a415d7d58d57790a187` passed run `33557338124`.
 
-Working contracts include:
+Evidence: `docs/specs/diagnostics-support-bundle-v1/`.
 
-- structured DEBUG / INFO / WARNING / ERROR / CRITICAL events;
-- LOG / DECISION / METRIC / BATCH / ANOMALY / EXCEPTION / SUBPROCESS / LIFECYCLE kinds;
-- run/workflow/node/stage/batch correlation;
-- stdlib Python logging bridge;
-- exception traceback capture;
-- recursive share-safe redaction for common credential patterns;
-- subprocess command/duration/exit/stdout/stderr/timeout/launch-failure diagnostics;
-- real hosted PowerShell stdout/stderr evidence;
-- automatic `session.json`, `diagnostics.jsonl`, `report.json`, `report.md` and `support-bundle.zip`;
-- human execution reconstruction covering steps, lots, decisions, metrics, anomalies, subprocesses, errors, outputs and Run Journal lifecycle;
-- CLI diagnostics enabled by default with `--diagnostics-dir` and `--no-diagnostics`;
-- Ctrl+C classified as diagnostic `INTERRUPTED`;
-- conservative stale abandoned-session packaging as `ABANDONED_OR_INTERRUPTED`.
+## M4 — Artifact Lifecycle + Recovery + Semantic Cache V1 — RESOLVED / PROMOTED
 
-M3 final memory/documentation checkpoint `5e1e46714aaefe0827c96a415d7d58d57790a187` passed all five hosted jobs in run `33557338124`.
+M4 adds:
 
-## M4 — Artifact Lifecycle + Recovery + Semantic Cache V1 — IMPLEMENTATION RESOLVED / PROMOTION HEAD CI PENDING
+- local file Artifact snapshots with size, mtime-ns and SHA-256;
+- persistent Artifact occurrence/provenance via `SQLiteArtifactRegistry`;
+- versioned nodes with `CachePolicy.NEVER` default and explicit `PURE` opt-in;
+- stable semantic signatures over type/version/config/inputs/Artifact content;
+- persistent fail-open `SQLiteNodeCache`;
+- strong cached-output Artifact revalidation;
+- explicit `NODE_CACHED` / `NodeRunStatus.CACHED` lifecycle truth;
+- diagnostics for cache bypass/miss/hit/invalidation/store errors;
+- core and JSON CLI `--cache` / `--artifact-registry` surfaces;
+- real 2,000-record `json.split.plan` cache proof across SQLite close/reopen;
+- proof that side-effectful `json.split` still republishes files on repeated runs;
+- conservative restart recovery as new run + validated PURE reuse;
+- no automatic old-RUNNING continuation or `RECOVERED` without ownership evidence;
+- metadata-only retention with no automatic deletion of user outputs.
 
-Spec/evidence/final report: `docs/specs/artifact-recovery-cache-v1/`.
+Accepted code candidate `c7ae2fa3953099d0bd9377da7c2c0195e96f6175` passed all five jobs in run `33560041360`.
 
-M4 adds a conservative reusable-execution layer without treating old success as sufficient evidence for reuse.
+The synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five jobs in run `33625955613`, satisfying the final promotion gate.
 
-### Artifact validity and provenance
+Evidence/final report: `docs/specs/artifact-recovery-cache-v1/`.
 
-Local file Artifacts can be observed with:
-
-- normalized local URI/path;
-- size;
-- mtime-ns;
-- SHA-256;
-- observation timestamp.
-
-Size/mtime are quick invalidation evidence only. When they still match, SHA-256 is recomputed before strong reuse is claimed.
-
-`SQLiteArtifactRegistry` persists Artifact occurrences tied to:
-
-- current run;
-- current node;
-- output port;
-- nested output value path;
-- source `EXECUTED` or `CACHED`;
-- original Artifact identity/provenance/metadata;
-- strong snapshot or explicit unsupported/error evidence.
-
-The registry owns metadata only and does not delete user files.
-
-### Semantic cache
-
-`NodeDefinition` now has:
-
-- implementation `version`;
-- `CachePolicy.NEVER` by default;
-- explicit `CachePolicy.PURE` opt-in.
-
-A semantic cache signature depends on node type/version, canonical config and semantic inputs. Artifact inputs use content identity rather than random Artifact/run ids.
-
-`SQLiteNodeCache` persists reusable results across process boundaries. Reuse requires both a matching signature and valid output Artifacts where applicable.
-
-Cache is an optional injected optimization and is deliberately **fail-open**: cache read/write/touch/invalidation failure is diagnostic evidence and normal node execution remains authoritative where possible.
-
-### Explicit lifecycle truth
-
-A reused node records:
-
-```text
-RUN_STARTED
-NODE_CACHED
-RUN_SUCCEEDED
-```
-
-and projects `NodeRunStatus.CACHED`.
-
-There is no fabricated `NODE_STARTED` for a handler that did not run.
-
-### Real workload proof
-
-`json.split.plan` exposes the existing pure `split_json_document` capability owner without file I/O and is explicitly PURE.
-
-A hosted integration test uses 2,000 JSON records and 8-part planning, closes/reopens the SQLite cache, executes the equivalent workflow again, and proves the real implementation owner is called once total while the second source/planner results are CACHED.
-
-A separate first-party CLI test proves `json.literal -> json.split` can cache the source while `json.split` executes again and republishes its files. This preserves required side effects rather than optimizing them away.
-
-### Recovery boundary
-
-M4 does **not** claim automatic in-flight resume.
-
-Safe V1 restart behavior is:
-
-```text
-new run
-  -> recompute semantic signatures
-  -> validate completed PURE candidates
-      -> valid: CACHED reuse
-      -> invalid/unsupported: execute normally
-```
-
-It is not safe to take an old `RUNNING` row and continue it automatically because exclusive process/session ownership has not yet been proved.
-
-`RECOVERED` therefore remains unavailable. M2 explicit `INTERRUPTED` reconciliation remains authoritative for abandoned in-flight history.
-
-Accepted boundary: `docs/specs/artifact-recovery-cache-v1/ownership-recovery-boundary.md`.
-
-### CLI surfaces
-
-Core and JSON CLIs expose:
-
-```text
---journal <sqlite-db>
---cache <sqlite-db>
---artifact-registry <sqlite-db>
---diagnostics-dir <dir>
---no-diagnostics
-```
-
-All persistence/diagnostic concerns remain injected/optional rather than hidden global runtime requirements.
-
-### Accepted hosted code evidence
-
-Accepted code candidate:
-
-`c7ae2fa3953099d0bd9377da7c2c0195e96f6175`
-
-GitHub Actions run:
-
-`33560041360`
-
-All five jobs passed. Representative Ubuntu/Python 3.13 lane executed:
-
-- **63 ktools-core tests — OK**;
-- **64 ktools-json tests — OK**;
-- real PowerShell diagnostic regression — OK;
-- core CLI smoke — OK;
-- JSON workflow CLI smoke — OK;
-- generated JSON artifact verification — OK.
-
-The subsequent canonical ADR checkpoint `38c0dad7799334ac44477ecc5992d02e7bf46b04` also passed all five jobs in run `33560424024`.
-
-### Current promotion gate
-
-M4 implementation and its acceptance evidence are resolved. This document, `ROADMAP.md`, `TESTING.md` and the Engineering Journal are being synchronized into one final canonical-memory candidate.
-
-M4 becomes **RESOLVED / PROMOTED** only after that exact memory HEAD passes the same five hosted jobs.
-
-## Architecture direction now
-
-The runtime has four complementary truth/optimization concerns:
+## Runtime architecture now
 
 ```text
 WorkflowEngine
   ├─ RunJournal          -> lifecycle truth/history
   ├─ DiagnosticsSession  -> forensic/support evidence
   ├─ NodeCache           -> validated reusable PURE results
-  └─ ArtifactRegistry    -> persistent Artifact occurrence/validity provenance
+  └─ ArtifactRegistry    -> Artifact occurrence/validity provenance
 ```
 
-Rules carried forward:
+All four remain optional injected concerns rather than hidden global runtime dependencies.
 
-- no old `SUCCEEDED` row is sufficient for reuse;
-- cacheability is explicit, never inferred;
-- side effects are not skipped without a proved replay/publication contract;
-- cache failure must not become workflow failure where normal execution is possible;
-- `CACHED` is distinct from ordinary execution;
-- unfinished state is not proof of process death;
-- user output files are not automatically deleted merely because cache metadata becomes stale;
-- diagnostics is part of Definition of Done for future native/subprocess/integration capabilities.
+Carry-forward invariants:
+
+- previous success is not sufficient for reuse;
+- cacheability is explicit and capability-owned;
+- side effects are never skipped without a proved replay/publication contract;
+- cache/Artifact-registry failures remain supplemental where normal execution can proceed;
+- `CACHED` is distinct from executed success;
+- unfinished persisted state is not proof of process death;
+- user output files are not automatically deleted from metadata invalidation;
+- diagnostics is part of Definition of Done for significant native/subprocess/integration work.
+
+## Active roadmap milestone — M5 Official local Node Packs
+
+Status: **ACTIVE — DISCOVERY / SPEC GATE**.
+
+Before changing implementation code, inspect actual legacy ownership and select the first small capability that is useful, deterministic enough to characterize, weakly coupled to the old monolith and capable of proving the M0-M4 platform contracts without duplicated business logic.
+
+Current leading discovery candidate: legacy Markdown/TXT merge, because the stable monolith already contains a bounded `merge_text_files(...)` behavior with explicit input validation, separator modes, fallback decoding, output/input collision protection and atomic temporary-output replacement. This is not yet an implementation decision; it must be compared against other low-risk legacy capabilities before the M5 spec locks scope.
 
 ## Next exact action
 
-Run the complete hosted matrix on the synchronized M4 memory candidate. If all five jobs are green, mark M4 promoted, move M5 to ACTIVE and select the first official local Node Pack slice from real legacy inventory before changing implementation code.
+Inventory low-risk legacy capabilities, compare coupling/dependencies/side effects/Artifact fit, select the first M5 slice, then create a dedicated spec and characterization tests before extraction.

@@ -1,16 +1,12 @@
 # Evidence — Artifact Lifecycle + Recovery + Semantic Cache V1
 
-Status: **CODE ACCEPTED / FINAL MEMORY-HEAD CI PENDING**
+Status: **RESOLVED / PROMOTED**
 
 ## Accepted code candidate
 
-SHA:
+SHA: `c7ae2fa3953099d0bd9377da7c2c0195e96f6175`
 
-`c7ae2fa3953099d0bd9377da7c2c0195e96f6175`
-
-GitHub Actions run:
-
-`33560041360`
+GitHub Actions run: `33560041360`
 
 All five jobs passed:
 
@@ -31,49 +27,21 @@ Representative Ubuntu/Python 3.13 lane:
 
 ## Artifact validity evidence
 
-Core tests prove:
-
-- SHA-256 snapshot creation for local file Artifacts;
-- unchanged file validation;
-- missing file invalidation;
-- quick rejection when size or mtime changes;
-- same-size content mutation remains detectable even when the exact prior mtime is restored;
-- strong validation fails closed for folders/remote URIs;
-- file changes while observation/validation are detected;
-- I/O observation failures cannot become a false strong-validity claim.
-
-Content identity excludes random Artifact/run ids.
+Core tests prove SHA-256 snapshot creation, unchanged validation, missing-file invalidation, quick size/mtime invalidation, same-size content mutation detection with restored mtime, fail-closed unsupported URI/type handling, change-during-observation detection and hashing-I/O failure safety. Content identity excludes random Artifact/run ids.
 
 ## Semantic signature evidence
 
-Tests prove cache signatures change when any semantic dimension changes:
-
-- node implementation version;
-- config;
-- scalar/JSON input;
-- Artifact content.
-
-Equivalent JSON mappings are order-independent. Artifact objects with different random ids/provenance but identical content produce the same semantic input identity. Opaque inputs and non-string mapping keys fail closed rather than entering an ambiguous signature.
+Tests prove signatures change with node implementation version, config, scalar/JSON input and Artifact content. Equivalent JSON mappings are order-independent. Artifact objects with different random ids/provenance but identical content produce the same semantic identity. Opaque inputs and non-string mapping keys fail closed.
 
 ## Persistent cache evidence
 
-`SQLiteNodeCache` tests prove:
-
-- entries survive close/reopen;
-- origin run/node provenance persists;
-- last-used timestamp can be updated;
-- nested JSON/container values round-trip;
-- user JSON cannot collide with internal cache-envelope markers;
-- opaque custom objects and raw Path outputs are not cached;
-- SQLite runtime failures are normalized to CacheError;
-- invalidation removes stale entries;
-- Artifact outputs are rehydrated as Artifact values and retain strong validity snapshots.
+`SQLiteNodeCache` tests prove close/reopen persistence, origin run/node provenance, last-used timestamp, nested container round-trip, collision-safe internal envelopes, rejection of opaque/raw-Path outputs, CacheError normalization, invalidation and Artifact output rehydration with strong validity snapshots.
 
 ## Engine reuse evidence
 
-Call-count tests prove that a second equivalent PURE execution does not invoke the handler.
+Call-count tests prove a second equivalent PURE execution does not invoke the handler.
 
-Second-run journal sequence is explicitly:
+Second-run journal sequence:
 
 ```text
 RUN_STARTED
@@ -81,46 +49,35 @@ NODE_CACHED
 RUN_SUCCEEDED
 ```
 
-There is no fake `NODE_STARTED` for a reused node. SQLite projection status is `CACHED`.
+There is no fake `NODE_STARTED`; SQLite projection status is `CACHED`.
 
-Additional tests prove:
-
-- config changes cause normal execution;
-- NEVER always executes;
-- missing cached Artifact output invalidates and recomputes;
-- cache read/write failures do not fail the workflow;
-- cache-ineligible output does not turn node success into workflow failure;
-- cache diagnostics report concrete observed reasons.
+Additional tests prove config changes execute normally, NEVER always executes, missing cached Artifact output recomputes, cache failures fail open, cache-ineligible output does not convert node success into failure and diagnostics record concrete reasons.
 
 ## First-party CLI evidence
 
-Core CLI supports:
+Core and JSON CLIs support:
 
 ```text
 --cache <sqlite-db>
 --artifact-registry <sqlite-db>
 ```
 
-A regression test invokes the CLI twice with the same cache database and proves the second process/invocation projects the node as CACHED.
-
-The JSON Node Pack CLI exposes the same options.
+A regression invokes the CLI twice with the same cache database and proves the second process/invocation projects the node as CACHED.
 
 ## Real official Node Pack evidence
 
 ### Side-effect preservation
 
-`json.split` remains explicitly `CachePolicy.NEVER`.
+`json.split` remains `CachePolicy.NEVER`.
 
-A real CLI test runs the same `json.literal -> json.split` workflow twice with `overwrite=True` and persistent cache/journal:
+A real CLI test runs the same `json.literal -> json.split` workflow twice with persistent cache/journal and `overwrite=True`:
 
-- second-run `source` status = CACHED;
-- second-run `splitter` status = SUCCEEDED;
+- second-run `source` = CACHED;
+- second-run `splitter` = SUCCEEDED;
 - split output files are republished;
-- output payload remains deterministic;
-- diagnostic report records `validated-cache-hit` for source;
-- diagnostic report records `node-policy-never` for splitter.
-
-This proves the cache does not skip required publication side effects merely because upstream content is reusable.
+- output remains deterministic;
+- diagnostics records `validated-cache-hit` for source;
+- diagnostics records `node-policy-never` for splitter.
 
 ### Meaningful pure workload
 
@@ -130,65 +87,41 @@ Integration workload:
 
 - 2,000 JSON records;
 - 8-part split planning;
-- first execution computes normally;
-- cache database is closed;
-- cache database is reopened;
-- equivalent second run reuses both pure source and planner;
+- first execution computes;
+- cache database closes and reopens;
+- equivalent second run reuses pure source/planner;
 - patched implementation-owner call count remains **1** across both runs;
 - second-run source/planner statuses are CACHED;
-- second result is identical to first.
-
-This is the M4 proof that a real product transformation—not only a fixture node—benefits from semantic reuse.
+- second result equals first.
 
 ## Persistent Artifact registry evidence
 
-`SQLiteArtifactRegistry` records occurrences tied to:
+`SQLiteArtifactRegistry` records occurrences tied to current run/node/output port/nested value path, `EXECUTED`/`CACHED` source, original Artifact identity/provenance/metadata and strong snapshot or explicit unsupported/error evidence.
 
-- current run;
-- current node;
-- output port;
-- nested value path;
-- EXECUTED/CACHED source;
-- original Artifact id/provenance/metadata;
-- strong snapshot or explicit unsupported/error evidence.
-
-Tests prove:
-
-- occurrence survives registry close/reopen;
-- external file mutation changes current validity without erasing historical snapshot;
-- nested Artifacts preserve output paths;
-- unsupported remote Artifact is recorded but strong validity is `unknown`, not guessed;
-- engine first run records source EXECUTED;
-- equivalent cached second run records source CACHED for the same Artifact id;
-- both occurrences remain bound to their current run/node/port.
+Tests prove close/reopen persistence, external mutation revalidation without erasing historical snapshot, nested paths, explicit unknown validity for unsupported remote Artifact and distinct current-run EXECUTED/CACHED occurrences for the same Artifact identity.
 
 ## Recovery / ownership evidence boundary
 
 M4 does not claim automatic in-flight resume.
 
-Accepted document:
+Accepted document: `docs/specs/artifact-recovery-cache-v1/ownership-recovery-boundary.md`.
 
-`docs/specs/artifact-recovery-cache-v1/ownership-recovery-boundary.md`
-
-V1 restart recovery is:
-
-> create a new run and selectively reuse completed PURE results after signature/output validity checks.
-
-It is not:
-
-> take an old RUNNING row and continue it automatically.
-
-`RECOVERED` remains unavailable because exclusive process/session ownership has not yet been proved. M2 explicit `INTERRUPTED` reconciliation remains authoritative for incomplete old runs.
+V1 restart recovery is a new run plus selective reuse of completed PURE results after signature/output validity checks. It is not automatic continuation of an old RUNNING row. `RECOVERED` remains unavailable until exclusive process/session ownership is proved. M2 `INTERRUPTED` reconciliation remains authoritative for incomplete old runs.
 
 ## Retention / file-deletion boundary
 
-M4 cache and Artifact registry own metadata only.
+M4 cache and Artifact registry own metadata only. Invalid cache metadata may be discarded; cache/registry databases may be deleted without deleting user outputs; M4 does not automatically remove user Artifact files; temp/intermediate cleanup remains gated until explicit file ownership exists.
 
-- invalid cache metadata may be discarded;
-- cache/registry databases may be deleted without deleting user outputs;
-- M4 does not automatically remove user Artifact files;
-- automatic intermediate/temp cleanup remains gated until explicit file ownership can distinguish application-owned temporary data from user results.
+## Canonical memory promotion evidence
 
-## Final promotion gate
+The synchronized canonical-memory candidate:
 
-The accepted code candidate is green. Canonical spec/decision/journal/current-state documents are being updated after that candidate. M4 is promoted to RESOLVED only after the final documentation/memory HEAD also passes all five hosted jobs.
+`d61ddfe139855b1fe9bf310fcbcc698524f3b444`
+
+GitHub Actions run:
+
+`33625955613`
+
+Result: **success**. The exact memory candidate passed the complete five-job hosted matrix.
+
+This satisfied the final M4 promotion gate. M5 code was not started before this success.
