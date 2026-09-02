@@ -3,12 +3,13 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import Sequence
 
 from PIL import Image
 
 
 class ImagePublicationError(RuntimeError):
-    """Raised when an image output cannot be safely published."""
+    """Raised when an image/PDF output cannot be safely published."""
 
 
 def _candidate_key(path: Path) -> str:
@@ -43,11 +44,21 @@ def reserve_unique_png_path(output_dir: Path, stem: str, reserved: set[str]) -> 
         index += 1
 
 
-def _temp_png_path(output_path: Path) -> Path:
+def _temp_output_path(output_path: Path, suffix: str) -> Path:
+    destination = Path(output_path)
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ImagePublicationError(
+            f"Could not create output directory {destination.parent}: {exc}"
+        ) from exc
+    if not destination.parent.is_dir():
+        raise ImagePublicationError(f"Output parent is not a directory: {destination.parent}")
+
     fd, name = tempfile.mkstemp(
-        prefix=f".{output_path.stem}_ktools_",
-        suffix=".png",
-        dir=str(output_path.parent),
+        prefix=f".{destination.stem}_ktools_",
+        suffix=suffix,
+        dir=str(destination.parent),
     )
     os.close(fd)
     temp_path = Path(name)
@@ -57,6 +68,14 @@ def _temp_png_path(output_path: Path) -> Path:
         if temp_path.exists():
             temp_path.unlink()
     return temp_path
+
+
+def _temp_png_path(output_path: Path) -> Path:
+    return _temp_output_path(output_path, ".png")
+
+
+def _temp_pdf_path(output_path: Path) -> Path:
+    return _temp_output_path(output_path, ".pdf")
 
 
 def _cleanup(path: Path) -> None:
@@ -75,7 +94,6 @@ def _cleanup(path: Path) -> None:
 def publish_png_atomic(image: Image.Image, output_path: Path) -> Path:
     """Publish one PNG via same-directory temp + replace; the batch itself is not transactional."""
     destination = Path(output_path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
     temp_path = _temp_png_path(destination)
     try:
         image.save(temp_path, "PNG")
@@ -88,4 +106,27 @@ def publish_png_atomic(image: Image.Image, output_path: Path) -> Path:
     except Exception as exc:
         _cleanup(temp_path)
         raise ImagePublicationError(f"Could not publish PNG {destination}: {exc}") from exc
+    return destination
+
+
+def publish_pdf_atomic(pages: Sequence[Image.Image], output_path: Path) -> Path:
+    """Publish one aggregate PDF only after complete serialization succeeds."""
+    if isinstance(pages, (str, bytes)) or not pages:
+        raise ImagePublicationError("Images→PDF publication requires at least one prepared page")
+
+    destination = Path(output_path)
+    temp_path = _temp_pdf_path(destination)
+    first = pages[0]
+    rest = list(pages[1:])
+    try:
+        first.save(temp_path, "PDF", save_all=True, append_images=rest)
+        if not temp_path.exists() or temp_path.stat().st_size <= 0:
+            raise ImagePublicationError(f"PDF writer produced no output for {destination}")
+        os.replace(temp_path, destination)
+    except ImagePublicationError:
+        _cleanup(temp_path)
+        raise
+    except Exception as exc:
+        _cleanup(temp_path)
+        raise ImagePublicationError(f"Could not publish PDF {destination}: {exc}") from exc
     return destination

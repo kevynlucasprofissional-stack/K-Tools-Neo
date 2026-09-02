@@ -5,7 +5,7 @@ from typing import Sequence
 
 from ktools_core.models import Artifact
 
-from . import converter
+from . import converter, pdf_writer
 from .converter import ProgressCallback
 
 
@@ -17,5 +17,17 @@ def convert_webp_to_png(
     return converter.convert_webp_files_to_png(
         input_files,
         output_dir,
+        progress_callback=progress_callback,
+    )
+
+
+def images_to_pdf(
+    input_files: Sequence[Path],
+    output_file: Path,
+    progress_callback: ProgressCallback | None = None,
+) -> Artifact:
+    return pdf_writer.images_to_pdf(
+        input_files,
+        output_file,
         progress_callback=progress_callback,
     )

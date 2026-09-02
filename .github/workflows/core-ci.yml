@@ -98,6 +98,9 @@ jobs:
       - name: Images WebP to PNG workflow smoke
         run: python packages/ktools-images/examples/run_webp_to_png_workflow.py "${{ runner.temp }}/ktools-images-webp-smoke"
 
+      - name: Images to PDF workflow smoke
+        run: python packages/ktools-images/examples/run_images_to_pdf_workflow.py "${{ runner.temp }}/ktools-images-pdf-smoke"
+
   xyflow-spike:
     runs-on: ubuntu-latest
     defaults:

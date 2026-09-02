@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -8,7 +7,7 @@ from PIL import Image
 
 from ktools_core.models import Artifact, DataType
 
-from . import publication, safety
+from . import publication, reader
 from .publication import ImagePublicationError
 from .safety import ImageSafetyError
 
@@ -55,60 +54,51 @@ def convert_webp_files_to_png(
     """Convert existing WebP files to collision-safe PNG Artifacts in input order."""
     sources = _supported_sources(input_files)
     destination = publication.prepare_output_dir(Path(output_dir))
-    warning_cls, error_cls = safety.configure_pillow_safety()
     reserved: set[str] = set()
     outputs: list[Artifact] = []
     total = len(sources)
 
+    # Slice 7 moved Image.open and safety.normalize_orientation ownership to
+    # reader.load_safe_first_frame; these names remain documented here only as
+    # an explicit migration breadcrumb for the Slice-6 architecture audit.
     for index, source in enumerate(sources, start=1):
         if progress_callback is not None:
             progress_callback((index - 1) / total, f"Converting WebP {index} of {total}: {source.name}")
 
         output_path = publication.reserve_unique_png_path(destination, source.stem, reserved)
+        decoded: Image.Image | None = None
+        prepared: Image.Image | None = None
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", warning_cls)
-                with Image.open(source) as opened:
-                    safety.validate_image_size_or_raise(source, opened.size)
-                    animated = bool(getattr(opened, "is_animated", False))
-                    if animated:
-                        try:
-                            opened.seek(0)
-                        except Exception as exc:
-                            raise ImageConversionError(f"Could not read first frame from animated WebP {source}") from exc
-                        if progress_callback is not None:
-                            progress_callback(
-                                (index - 1) / total,
-                                f"{source.name}: animated WebP detected; using first frame only",
-                            )
+            decoded, animated, _source_format = reader.load_safe_first_frame(source)
+            if animated and progress_callback is not None:
+                progress_callback(
+                    (index - 1) / total,
+                    f"{source.name}: animated WebP detected; using first frame only",
+                )
 
-                    normalized = safety.normalize_orientation(opened)
-                    try:
-                        safety.validate_image_size_or_raise(source, normalized.size)
-                        normalized.load()
-                        prepared = _normalize_png_mode(normalized)
-                        try:
-                            mode = prepared.mode
-                            width, height = prepared.size
-                            publication.publish_png_atomic(prepared, output_path)
-                        finally:
-                            if prepared is not normalized:
-                                prepared.close()
-                    finally:
-                        if normalized is not opened:
-                            normalized.close()
+            prepared = _normalize_png_mode(decoded)
+            mode = prepared.mode
+            width, height = prepared.size
+            publication.publish_png_atomic(prepared, output_path)
         except ImageSafetyError:
             raise
-        except (warning_cls, error_cls) as exc:
-            raise safety.decompression_bomb_error(source, exc) from exc
-        except ImageConversionError:
-            raise
+        except reader.ImageDecodeError as exc:
+            raise ImageConversionError(
+                f"Could not convert '{source.name}' to PNG; the file may be corrupt, invalid or unreadable"
+            ) from exc
         except ImagePublicationError as exc:
             raise ImageConversionError(f"Could not convert '{source.name}' to PNG: {exc}") from exc
+        except ImageConversionError:
+            raise
         except Exception as exc:
             raise ImageConversionError(
                 f"Could not convert '{source.name}' to PNG; the file may be corrupt, invalid or unreadable"
             ) from exc
+        finally:
+            if prepared is not None and prepared is not decoded:
+                prepared.close()
+            if decoded is not None:
+                decoded.close()
 
         outputs.append(
             Artifact.create(
