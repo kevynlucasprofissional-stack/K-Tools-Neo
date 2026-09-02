@@ -1,14 +1,14 @@
 # Tasks — Images→PDF Node V1
 
-Status: **ACTIVE / PRE-RED**
+Status: **ACTIVE / RED**
 
 - [x] S7-001 verify Slice 6 terminal closure exact-head CI.
 - [x] S7-002 fresh-compare Images→PDF vs bounded Files/Folders from exact terminal `main`.
 - [x] S7-003 select Images→PDF and lock scope/non-goals.
 - [x] S7-004 preserve existing `Pillow>=12,<13` dependency/safety boundary; add no runtime dependency.
 - [x] S7-005 specify supported formats, order, frame, EXIF, RGB/alpha-white, aggregate publication and Artifact contracts.
-- [ ] S7-006 require docs-only spec HEAD CI 5/5.
-- [ ] S7-007 add discriminating RED tests while keeping existing WebP suite green.
+- [x] S7-006 require docs-only spec HEAD CI 5/5 — `ae617e948d5549e3dbca1dbe8d5de19c16555535` / run `33670517542`.
+- [x] S7-007 add discriminating RED tests while keeping existing WebP suite available to the same image-test step.
 - [ ] S7-008 extract shared safe first-frame reader from Slice-6 policy.
 - [ ] S7-009 refactor WebP→PNG to the shared reader with zero semantic regression.
 - [ ] S7-010 implement canonical Images→PDF writer owner.

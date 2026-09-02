@@ -1,6 +1,6 @@
 # Evidence — Images→PDF Node V1
 
-Status: **DISCOVERY ACCEPTED / SPEC GATE PENDING**
+Status: **SPEC GREEN / RED PUBLISHED**
 
 ## Prerequisite gate
 
@@ -96,6 +96,22 @@ image.files_to_pdf   (NEVER)
 
 No `IMAGE_SET` is introduced.
 
-## Next evidence gate
+## Spec gate
 
-The next accepted evidence is the exact docs-only Slice-7 spec commit passing the existing five hosted jobs without code changes. Only after that may the RED contracts be added.
+Docs-only spec commit:
+
+- HEAD `ae617e948d5549e3dbca1dbe8d5de19c16555535`;
+- run `33670517542`;
+- Ubuntu 3.10 success;
+- Ubuntu 3.13 success;
+- Windows 3.10 success;
+- Windows 3.13 success;
+- xyflow success.
+
+The spec therefore changed no product behavior and the RED gate is authorized.
+
+## RED contract
+
+`packages/ktools-images/tests/test_images_to_pdf_v1.py` defines the full target contract against the already-installable image package. The intended failure boundary is absence of the new shared reader, PDF writer, API and `image.files_to_pdf` node—not Pillow/bootstrap or prior-pack regression.
+
+The next accepted evidence is a hosted RED where prior Core/JSON/Text/PDF/Documents steps pass and the image test step fails on the missing Slice-7 product contract. After that, GREEN implementation is authorized.
