@@ -96,11 +96,9 @@ Carry-forward invariants:
 
 Status: **ACTIVE — ITERATIVE DELIVERY**.
 
-### Slice 1 — Text Node Pack V1 — IMPLEMENTATION COMPLETE / PROMOTION GATE
+### Slice 1 — Text Node Pack V1 — RESOLVED / PROMOTED
 
-Discovery compared Markdown/TXT merge, WebP→PNG and generic folder scanning. Markdown/TXT merge was selected because the stable monolith already contained a bounded stdlib-only `merge_text_files(...)` behavior with explicit input validation, separator modes, fallback decoding, output/input collision protection and atomic temporary-output replacement.
-
-Implemented candidate:
+Delivered:
 
 - `DataType.FILE_SET` exact ordered collection contract;
 - `files.literal` PURE local-file source whose cached Artifacts are strongly revalidated by M4;
@@ -112,12 +110,26 @@ Implemented candidate:
 - shared `ktools_core.local_files.path_from_file_uri()` after integration review found duplicated URI parsing;
 - root CI Text package tests + real workflow smoke.
 
-Accepted code candidate: `dbd39a1119ce1557d802a115404f01a3f797d93e`.
+RED: `1660a4dbac7efc7f21d7a96bfdebde8ffc13edd2`, run `33626957901`.
 
-Hosted run `33627879876`: Ubuntu 3.10/3.13, Windows 3.10/3.13 and xyflow all succeeded. Representative Ubuntu/Python 3.10 evidence executed 72 core + 64 JSON + 15 Text tests plus core/JSON/Text smokes.
+Accepted implementation candidate evolved through hardening to canonical-memory HEAD `31b02467cac9c9dc59733d32325728792eb83b22`, which passed run `33629673452` 5/5.
 
-Ownership boundary: the old stable GUI still contains its historical merge implementation. That copy is now explicitly compatibility debt, not the canonical place to evolve semantics. New fixes/behavior originate in `ktools-text`; later traditional-Tool/UI migration must redirect or retire the historical copy.
+Draft PR #8 was closed administratively because the connector could not transition it to Ready; replacement non-draft PR #9 used the same head/base semantics and was merged.
+
+Promotion merge commit: `958d5bf563cda21673d69865d1508831c599c006`.
+
+Post-merge `main` run `33630159514`: **success**.
+
+Ownership boundary: the old stable GUI still contains its historical merge implementation. That copy is explicitly compatibility debt, not the canonical place to evolve semantics. New fixes/behavior originate in `ktools-text`; later traditional-Tool/UI migration must redirect or retire the historical copy.
+
+Evidence/final report: `docs/specs/text-node-pack-v1/`.
+
+### Slice 2 — UNSELECTED / DISCOVERY
+
+Do not preselect the next capability by convenience. Re-inventory actual legacy owners and compare dependency/native coupling, side effects, Artifact shape, composability, diagnostics needs and one-owner migration cost before locking a spec.
+
+WebP→PNG and generic folder scanning remain candidates, not commitments. Media capabilities that introduce FFmpeg/FFprobe require the shared diagnostic subprocess boundary first.
 
 ## Next exact action
 
-Require the synchronized canonical-memory HEAD of PR #8 to pass the same five-job hosted matrix. If green: mark PR #8 ready, revalidate exact head/base and unresolved review state, merge with expected-head guard, require post-merge `main` CI green, then continue M5 by re-inventorying real legacy owners for the next slice rather than preselecting one by convenience.
+Re-inventory low-risk legacy capability owners on current `main`, compare candidates with explicit evidence, select M5 Slice 2, create its Level-2 spec/plan/tasks/evidence skeleton, then begin characterization RED before implementation.

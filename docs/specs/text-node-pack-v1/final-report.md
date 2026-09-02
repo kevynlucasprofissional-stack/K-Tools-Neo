@@ -1,6 +1,6 @@
 # Final Report — Text Node Pack V1
 
-Status: **CANDIDATE FINAL REPORT / PROMOTION CI PENDING**
+Status: **RESOLVED / PROMOTED**
 
 ## Objective
 
@@ -51,7 +51,9 @@ Refuted during integration review. A duplicate local-file URI parser existed acr
 
 RED: `1660a4dbac7efc7f21d7a96bfdebde8ffc13edd2`, run `33626957901`.
 
-Accepted code candidate: `dbd39a1119ce1557d802a115404f01a3f797d93e`, run `33627879876`, five jobs success.
+Intermediate accepted implementation candidate: `dbd39a1119ce1557d802a115404f01a3f797d93e`, run `33627879876`, five jobs success.
+
+Final canonical-memory/promotion candidate: `31b02467cac9c9dc59733d32325728792eb83b22`, run `33629673452`, five jobs success.
 
 Representative lane: 72 core + 64 JSON + 15 Text tests, all OK, followed by core/JSON/Text smokes.
 
@@ -61,10 +63,22 @@ Full evidence: `docs/specs/text-node-pack-v1/evidence.md`.
 
 M0-M4 core contracts, official JSON Node Pack and xyflow spike remain green. The integration audit removed duplicated URI parsing rather than accepting test-green architectural drift.
 
-## Remaining risk/debt
+## Ownership/debt
 
 The old stable GUI still runs its historical merge implementation. It is no longer canonical, but it has not yet been physically redirected to the package. That wiring is deliberately deferred rather than hidden; new behavior must not be implemented in the legacy copy.
 
+## Promotion
+
+Draft PR #8 was closed administratively because the connected GitHub wrapper could not transition it from Draft to Ready.
+
+Replacement non-draft PR #9 was opened from the exact same `m5-text-node-pack-v1` head and merged after the final hosted gate.
+
+Promotion merge commit: `958d5bf563cda21673d69865d1508831c599c006`.
+
+Post-merge `main` CI: run `33630159514`, **success**.
+
 ## Terminal state
 
-**Not promoted yet.** Implementation is complete and code evidence is accepted. Promotion waits only for synchronized canonical-memory exact-head CI, then PR #8 merge and post-merge main verification.
+**RESOLVIDO / PROMOVIDO.**
+
+Text Node Pack V1 is part of `main`, its canonical ownership boundary is explicit, and post-merge hosted verification is green. M5 continues iteratively with Slice 2 discovery rather than reopening Slice 1.

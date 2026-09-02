@@ -62,7 +62,7 @@ Evidence: `docs/specs/artifact-recovery-cache-v1/`.
 
 ## M5 — Official local Node Packs
 
-Status: **ACTIVE / DISCOVERY + ITERATIVE DELIVERY**
+Status: **ACTIVE / ITERATIVE DELIVERY**
 
 Migrate real legacy functionality behind one-owner capability packages.
 
@@ -73,13 +73,13 @@ Capability families:
 - Images/PDF;
 - Media.
 
-First-slice rule: inspect the actual legacy owner before extraction; characterize existing behavior; prefer a small deterministic capability with low native coupling; preserve direct Tool/API + workflow one-owner architecture; use first-class Artifacts where the file contract warrants it; classify PURE versus side-effectful behavior explicitly; integrate diagnostics at the real boundary.
+Slice rule: inspect the actual legacy owner before extraction; characterize existing behavior; prefer a bounded capability whose native/dependency risk is explicit; preserve direct Tool/API + workflow one-owner architecture; use first-class Artifacts where the file contract warrants it; classify PURE versus side-effectful behavior explicitly; integrate diagnostics at the real boundary.
 
 ### Slice 1 — Text Node Pack V1
 
-Status: **IMPLEMENTATION COMPLETE / PROMOTION GATE**
+Status: **RESOLVED / PROMOTED**
 
-Delivered candidate:
+Delivered:
 
 - ordered `FILE_SET` contract without inventing an unnecessary collection class;
 - minimal `files.literal` source, PURE with M4 strong output revalidation;
@@ -92,17 +92,30 @@ Delivered candidate:
 - centralized local-file URI interpretation in `ktools-core` after integration audit;
 - root CI Text tests and real workflow output verification.
 
-Accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed all five jobs in run `33627879876`.
+Final promotion candidate `31b02467cac9c9dc59733d32325728792eb83b22` passed all five jobs in run `33629673452`.
 
-Promotion remains gated on synchronized canonical-memory exact-head CI, PR #8 merge and post-merge `main` verification.
+Replacement promotion PR #9 merged the same candidate after draft PR #8 was closed administratively.
 
-Canonical owner after promotion: `packages/ktools-text`. The historical GUI copy remains temporary compatibility debt and must not receive independent semantic evolution.
+Promotion merge commit `958d5bf563cda21673d69865d1508831c599c006` passed post-merge `main` run `33630159514`.
 
-### Next M5 slice
+Canonical owner: `packages/ktools-text`. The historical GUI copy remains explicit compatibility debt and must not receive independent semantic evolution.
 
-Status: **UNSELECTED / DISCOVERY AFTER TEXT PROMOTION**
+### Slice 2 — UNSELECTED / DISCOVERY
 
-Do not choose the next capability merely because it is easy to name. Re-inspect actual legacy owners and compare dependency/native coupling, side effects, Artifact shape, composability and one-owner migration cost. WebP→PNG and generic folder scanning remain candidates rather than commitments.
+Status: **ACTIVE DISCOVERY**
+
+Re-inspect actual legacy owners and compare candidates on:
+
+- existing behavior clarity;
+- dependency/native coupling;
+- side-effect and publication semantics;
+- Artifact/typed-port shape;
+- cacheability and validity requirements;
+- diagnostic boundary requirements;
+- direct Tool/API + workflow composition value;
+- migration cost and duplicate-owner risk.
+
+WebP→PNG and generic folder scanning remain candidates rather than commitments.
 
 Media rule: create one shared FFmpeg/FFprobe process boundary before broad audio/video nodes. It must use M3 subprocess diagnostics and explicit M4 Artifact/cache semantics.
 
@@ -166,6 +179,6 @@ Keep CI green, classify dependencies/licenses, remove duplicate legacy ownership
 
 ## Execution rule
 
-Take the first unresolved milestone whose prerequisites are satisfied, create/update an explicit spec, work through evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure, then advance while capacity remains.
+Take the first unresolved milestone/slice whose prerequisites are satisfied, create/update an explicit spec, work through evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure, then advance while capacity remains.
 
 Every significant runtime/subprocess/integration capability after M3 includes diagnostics in Definition of Done. Every cacheable capability justifies purity, semantic identity and output validity explicitly.

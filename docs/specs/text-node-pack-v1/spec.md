@@ -1,6 +1,6 @@
 # Spec — Text Node Pack V1
 
-Status: **IMPLEMENTATION COMPLETE / CANONICAL MEMORY CI PENDING**
+Status: **RESOLVED / PROMOTED**
 Milestone: M5 — first local Node Pack slice
 Owner/implementer: ChatGPT Solo Development Mode
 
@@ -10,7 +10,7 @@ Migrate the existing Markdown/TXT merge behavior out of the legacy CustomTkinter
 
 The first delivered behavior is the real legacy operation historically implemented by `merge_text_files(...)` in `K Tools Neo - Versão Estável 2.py`.
 
-After successful promotion, that legacy function remains a **characterization/compatibility source**, not the canonical place to evolve behavior. The canonical implementation owner becomes `packages/ktools-text/`.
+After successful promotion, that legacy function remains a **characterization/compatibility source**, not the canonical place to evolve behavior. The canonical implementation owner is `packages/ktools-text/`.
 
 ## Why this slice first
 
@@ -45,7 +45,7 @@ For supported usage, the stable monolith establishes:
 - input order is preserved;
 - progress callback is supplementary and must not own semantics.
 
-The new package may classify invalid unsupported direct-API values more explicitly, but valid legacy behavior must remain byte-equivalent unless an intentional difference is documented and tested.
+The new package may classify invalid unsupported direct-API values more explicitly, but valid legacy behavior remains byte-equivalent unless an intentional difference is documented and tested.
 
 ## Package boundary
 
@@ -155,7 +155,7 @@ With an injected ArtifactRegistry, the normal M4 runtime persists the output occ
 
 Integration review discovered a platform-level duplication after behavior had already gone GREEN: M4 cache identity and the new Text adapter each contained independent `file:// URI → Path` parsing.
 
-That duplication is removed before promotion.
+That duplication was removed before promotion.
 
 `ktools_core.local_files.path_from_file_uri()` is now the single V1 owner for local file URI interpretation:
 
@@ -168,16 +168,16 @@ Platform/capability-specific callers translate `LocalFileUriError` into their ow
 
 ## Publication safety
 
-The writer must and now does:
+The writer:
 
-- never use an input path as output;
-- create output parent when needed;
-- write UTF-8 text;
-- use same-directory temporary output;
-- replace final output only after successful complete write;
-- replace an existing non-input destination on success, matching characterized legacy `os.replace` behavior;
-- clean partial temporary output after handled failure where possible;
-- preserve a previously valid destination when failure occurs before final replacement.
+- never uses an input path as output;
+- creates output parent when needed;
+- writes UTF-8 text;
+- uses same-directory temporary output;
+- replaces final output only after successful complete write;
+- replaces an existing non-input destination on success, matching characterized legacy `os.replace` behavior;
+- cleans partial temporary output after handled failure where possible;
+- preserves a previously valid destination when failure occurs before final replacement.
 
 ## Diagnostics
 
@@ -189,7 +189,7 @@ Domain-specific diagnostics may be added later only when they add operational fa
 
 ## Canonical ownership and legacy compatibility debt
 
-After promotion, canonical Markdown/TXT merge evolution belongs to:
+Canonical Markdown/TXT merge evolution belongs to:
 
 `packages/ktools-text/src/ktools_text/`
 
@@ -262,16 +262,18 @@ This satisfies the one-owner architecture at the evolution/contract level withou
 ### F — hosted regression
 
 - [x] root CI installs `ktools-text`;
-- [x] Text pack suite runs on Ubuntu/Windows Python 3.10/3.13 on the accepted code candidate;
+- [x] Text pack suite runs on Ubuntu/Windows Python 3.10/3.13;
 - [x] existing core/JSON tests remain green;
 - [x] existing JSON CLI/workflow smoke remains green;
-- [x] new Text workflow smoke proves a real merged file and exact content;
+- [x] Text workflow smoke proves a real merged file and exact content;
 - [x] xyflow spike remains green;
-- [ ] final synchronized canonical-memory HEAD passes the same hosted matrix before PR #8 merge.
+- [x] final synchronized canonical-memory HEAD passed the same hosted matrix;
+- [x] promotion PR merged;
+- [x] post-merge `main` CI passed.
 
-## Accepted code evidence
+## Promotion evidence
 
-Accepted code candidate:
+Intermediate accepted code candidate:
 
 `dbd39a1119ce1557d802a115404f01a3f797d93e`
 
@@ -279,7 +281,15 @@ Hosted run:
 
 `33627879876`
 
-Result: five of five jobs succeeded.
+Final canonical-memory/promotion candidate:
+
+`31b02467cac9c9dc59733d32325728792eb83b22`
+
+Hosted run:
+
+`33629673452`
+
+Both runs passed five of five jobs.
 
 Representative Ubuntu/Python 3.10 evidence:
 
@@ -291,7 +301,15 @@ Representative Ubuntu/Python 3.10 evidence:
 - Text workflow: success;
 - generated `merged.md` exact content `Alpha\n\nBeta\n\n`: success.
 
-Equivalent package/test/smoke boundaries also passed on Ubuntu/Python 3.13 and Windows/Python 3.10/3.13; xyflow remained green.
+Draft PR #8 was closed administratively after the connected wrapper could not transition it to Ready. Replacement non-draft PR #9 preserved the same candidate and was merged.
+
+Promotion merge commit:
+
+`958d5bf563cda21673d69865d1508831c599c006`
+
+Post-merge `main` run:
+
+`33630159514` — success.
 
 Full evidence: `docs/specs/text-node-pack-v1/evidence.md`.
 
@@ -308,15 +326,8 @@ Full evidence: `docs/specs/text-node-pack-v1/evidence.md`.
 - replacing the entire legacy GUI in this slice;
 - physically deleting the historical GUI merge implementation before the traditional surface is migrated.
 
-## Promotion rule
+## Terminal state
 
-The legacy owner is not considered migrated merely because a new copy exists.
+**RESOLVIDO / PROMOVIDO.**
 
-V1 is promoted only after:
-
-1. supported behavior is characterized and proved equivalent;
-2. direct API and workflow use the same canonical package owner;
-3. remaining historical GUI ownership is explicitly redirected, deprecated or otherwise classified so it is not treated as a second canonical evolution path;
-4. exact accepted code passes hosted Windows/Linux evidence;
-5. synchronized canonical state/decision/journal/evidence documentation passes the same exact-head hosted gate;
-6. PR #8 is merged with exact-head protection and post-merge `main` CI is green.
+All V1 acceptance and promotion gates are satisfied. Continue M5 with a fresh evidence-driven Slice 2 discovery; do not reopen Text Slice 1 unless a regression or explicit scope extension appears.

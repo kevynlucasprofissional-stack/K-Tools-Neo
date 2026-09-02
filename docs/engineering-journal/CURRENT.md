@@ -5,7 +5,7 @@ Historical Foundation/research entries H-001..H-007 and E-001..E-003 are preserv
 This file tracks active/recent engineering knowledge that should influence the next implementation cycles.
 
 ## H-008 — One-owner capability architecture works with real product behavior
-Status: **VALIDATED** — JSON split proves direct API and workflow nodes can share one implementation owner with byte-identical behavior.
+Status: **VALIDATED** — JSON split and Text merge prove direct API and workflow nodes can share one implementation owner with equivalent behavior.
 
 ## H-009 — Durable execution should be injected, not mandatory database state
 Status: **VALIDATED FOR V1** — `WorkflowEngine` accepts optional RunJournal; Memory/SQLite consume the same contract.
@@ -44,7 +44,7 @@ Status: **VALIDATED FOR M4 V1** — default NEVER; explicit PURE only; cache-sto
 Status: **VALIDATED** — handler call-count + journal sequence prove `NODE_CACHED` without fake `NODE_STARTED`.
 
 ## H-021 — Real cache proof should separate pure computation from publication side effects
-Status: **VALIDATED WITH JSON NODE PACK** — `json.split.plan` caches pure transformation; `json.split` remains NEVER and republishes files.
+Status: **VALIDATED WITH OFFICIAL NODE PACKS** — pure planner/source nodes can cache while side-effectful publication nodes remain NEVER.
 
 ## H-022 — Artifact occurrence provenance and cache provenance are related but distinct
 Status: **VALIDATED FOR V1** — current run gets EXECUTED/CACHED occurrence while original Artifact provenance is preserved.
@@ -80,23 +80,32 @@ Status: **RESOLVED / SERIALIZATION HARDENING** — explicit container envelopes 
 Status: **RESOLVED / USEFUL RED** — run `33626957901` reached checkout/setup/editable installs and failed only on the intentionally absent FILE_SET/files.literal contracts. Existing tests and xyflow stayed green at that boundary.
 
 ## E-009 — Duplicate local-file URI parser survived GREEN until integration audit
-Status: **RESOLVED / REFACTOR LESSON** — behavior was green but architecture still had two platform-boundary implementations. `path_from_file_uri` was centralized before promotion; final code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed run `33627879876` 5/5.
+Status: **RESOLVED / REFACTOR LESSON** — behavior was green but architecture still had two platform-boundary implementations. `path_from_file_uri` was centralized before promotion.
+
+## E-010 — Draft PR state can be an administrative blocker without invalidating a green candidate
+Status: **RESOLVED / PROCESS LESSON** — PR #8 could not be transitioned from Draft because the connected wrapper's GraphQL operation was broken. The candidate was not mutated to work around the connector. #8 was closed administratively and replacement non-draft PR #9 reused the same tested head and was merged.
 
 ## M4 closure
 
-M4 synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five hosted jobs in run `33625955613`. M4 is resolved/promoted.
+M4 synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five hosted jobs in run `33625955613`. Formal promotion `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` passed run `33626260487`. M4 is resolved/promoted.
 
-## M5 Slice 1 closure candidate
+## M5 Slice 1 closure
 
-Text Node Pack V1 accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed all five hosted jobs in run `33627879876`.
+Text Node Pack V1 RED: `1660a4dbac7efc7f21d7a96bfdebde8ffc13edd2`, run `33626957901`.
+
+Intermediate accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed all five hosted jobs in run `33627879876`.
+
+Final canonical-memory/promotion candidate `31b02467cac9c9dc59733d32325728792eb83b22` passed all five hosted jobs in run `33629673452`.
+
+Promotion PR #9 merged that candidate as `958d5bf563cda21673d69865d1508831c599c006`.
+
+Post-merge `main` run `33630159514` succeeded.
 
 Representative Ubuntu/Python 3.10 evidence: 72 core + 64 JSON + 15 Text tests, followed by core CLI, JSON workflow/artifact and Text workflow/exact-content smokes.
 
-Technical acceptance is complete. Remaining gate is synchronized canonical-memory exact-head CI, PR #8 promotion/merge and post-merge `main` verification.
+Terminal state: **RESOLVED / PROMOTED**.
 
-## Next journal focus — M5
-
-After Text Slice 1 promotion:
+## Next journal focus — M5 Slice 2 discovery
 
 1. re-inventory low-risk legacy capability owners rather than assuming the next feature;
 2. characterize behavior at the current owner boundary;

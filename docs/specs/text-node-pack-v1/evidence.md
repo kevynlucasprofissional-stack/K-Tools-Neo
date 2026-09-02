@@ -1,6 +1,6 @@
 # Evidence — Text Node Pack V1
 
-Status: **CODE ACCEPTED / CANONICAL MEMORY CI PENDING**
+Status: **RESOLVED / PROMOTED**
 
 ## Candidate selection
 
@@ -42,19 +42,15 @@ Hardening added direct↔workflow byte equivalence, real source-file cache inval
 
 Integration review then found a real duplication not exposed by green behavior tests: both M4 cache identity and the Text adapter independently parsed `file://` URIs. The duplicate was removed by `dbd39a1119ce1557d802a115404f01a3f797d93e`, introducing `ktools_core.local_files.path_from_file_uri()` as the shared owner.
 
-## Accepted code candidate
+## Accepted implementation evidence
 
-HEAD: `dbd39a1119ce1557d802a115404f01a3f797d93e`.
+Intermediate accepted code candidate: `dbd39a1119ce1557d802a115404f01a3f797d93e`.
 
-Hosted run: `33627879876`.
+Hosted run: `33627879876` — all five jobs succeeded.
 
-All five jobs succeeded:
+Canonical-memory/promotion candidate: `31b02467cac9c9dc59733d32325728792eb83b22`.
 
-- Ubuntu / Python 3.10 — success;
-- Ubuntu / Python 3.13 — success;
-- Windows / Python 3.10 — success;
-- Windows / Python 3.13 — success;
-- xyflow spike — success.
+Hosted run: `33629673452` — all five jobs succeeded on Ubuntu/Windows Python 3.10/3.13 plus xyflow.
 
 Representative Ubuntu/Python 3.10 evidence:
 
@@ -87,12 +83,22 @@ Tests prove:
 
 ## Ownership evidence/boundary
 
-Canonical merge owner after promotion: `packages/ktools-text/src/ktools_text/`.
+Canonical merge owner: `packages/ktools-text/src/ktools_text/`.
 
 `K Tools Neo - Versão Estável 2.py` remains an old stable GUI/runtime path and still contains historical merge logic. It is explicitly frozen as compatibility debt for this capability: new semantics/bug fixes originate in `ktools-text`. A later GUI-adapter slice must redirect/remove the historical copy.
 
 This is not presented as physical code deletion; it is an explicit owner boundary with remaining debt tracked in `KNOWN_ISSUES.md`.
 
-## Pending promotion evidence
+## Promotion evidence
 
-The synchronized canonical-memory commit created from this evidence must itself pass the same five-job hosted matrix before PR #8 can be marked ready/merged.
+Draft PR #8 could not be transitioned to Ready by the connected wrapper and was closed administratively without code changes.
+
+Replacement non-draft PR #9 used the same `m5-text-node-pack-v1` head and was merged.
+
+Promotion merge commit: `958d5bf563cda21673d69865d1508831c599c006`.
+
+Post-merge `main` run: `33630159514`.
+
+Result: **success**.
+
+Therefore Text Node Pack V1 satisfies implementation, hosted exact-head, ownership, merge and post-merge promotion evidence.
