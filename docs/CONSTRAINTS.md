@@ -22,5 +22,6 @@
 
 ## Delivery constraints
 
-- Feature work occurs on isolated branches/PRs.
+- While `docs/SOLO_DEVELOPMENT_MODE.md` and `docs/multi-agent/MAIN_ONLY_POLICY.md` are active, normal feature work lands directly on `main` with exact-head revalidation and hosted quality gates. Temporary branches/PRs are exceptions for destructive isolation, external contribution requirements, permission constraints, or an explicit project-owner decision.
+- Never force-push over human or concurrent work; if `main` moves, re-read/revalidate the new head before material writes.
 - Root-level CI must validate code owned by the monorepo; nested `.github/workflows` inside imported app directories are not sufficient as monorepo CI.
