@@ -64,40 +64,48 @@ Terminal closure `e3a3934aada29e185de7da18cf413ceaa3c299e8` passed run `33651923
 
 Status: **RESOLVED / PROMOTED**
 
+Delivered `file.literal: -> FILE` PURE, shared local-file Artifact construction, `ktools_pdf.splitter.split_pdf_into_parts`, `pdf.split.parts: FILE -> FILE_SET` version 1 NEVER, balanced contiguous part planning, non-overwriting naming, per-part atomic publication, explicit partial-set failure semantics, output PDF Artifacts with strong nested snapshots, direct/workflow equivalence, cached-source/publication proof and hosted split→merge composition without PDF_SET.
+
+Terminal closure `a26dfcee626eedc27366dfec93be68503343941a` passed run `33656157870` 5/5.
+
+### Slice 4 — Text Split Node V1
+
+Status: **RESOLVED / PROMOTED**
+
 Delivered:
 
-- `file.literal: -> FILE`, version 1, PURE;
-- shared local-file Artifact construction with `files.literal`;
-- `ktools_pdf.splitter.split_pdf_into_parts` as one split owner;
-- `pdf.split.parts: FILE -> FILE_SET`, version 1, NEVER;
-- balanced contiguous part planning with clamp to page count;
-- non-overwriting collision-safe part naming;
-- per-part atomic publication and explicit partial-set failure contract;
-- output PDF Artifacts with provenance/page-range metadata + strong nested snapshots;
-- direct/workflow equivalence;
-- cached source + required publication proof;
-- real hosted `file.literal -> pdf.split.parts -> pdf.merge.files` composition on every Python lane;
-- explicit decision to keep FILE_SET with typed PDF members rather than invent PDF_SET.
+- split-specific decode order `utf-8-sig`, `utf-8`, `cp1252`, `latin-1` without altering existing Text Merge decode semantics;
+- pure balanced line-unit planner;
+- `split_text_file_into_parts` as one canonical split owner;
+- UTF-8 output publication with collision-safe naming;
+- per-part atomic publication + explicit partial-set failure contract;
+- direct API + `text.split.parts: FILE -> FILE_SET`, version 1, NEVER;
+- FILE Artifact MIME/provenance/chunk metadata + nested strong snapshots;
+- cached `file.literal` without skipped split publication;
+- direct/workflow byte equivalence;
+- hosted `file.literal -> text.split.parts -> text.merge.files` composition in all Python lanes.
 
 Evidence:
 
-- spec `a09d600924aa66d031cc2bcc2f59feb04bdf0704` / `33652921999`;
-- RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831`;
-- GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159`, 5/5;
-- technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424`, 5/5 including split→merge smoke.
+- spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa` / run `33656954591`;
+- RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e` / run `33657352636`;
+- GREEN `87558e8194692c045bdd95780fe05beb0f436e3a` / run `33657882057`, 5/5;
+- hardened candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23` / run `33660594733`, 5/5 including Text split→merge smoke.
 
-Canonical owner: `packages/ktools-pdf`. Stable-GUI PDF merge/split remain compatibility debt.
+Canonical owner: `packages/ktools-text`. Stable-GUI Text merge/split remain compatibility debt.
 
-### Slice 4 — FRESH DISCOVERY GATE
+### Slice 5 — FRESH DISCOVERY GATE
 
-Status: **PENDING TERMINAL SLICE-3 CI**
+Status: **PENDING TERMINAL SLICE-4 CI**
 
-After the Slice-3 memory closure itself is green, re-inspect remaining actual owners and compare:
+After the Slice-4 memory closure itself is green, re-inspect remaining real owners and compare:
 
+- mixed Document Split orchestration;
 - Images→PDF;
 - WebP→PNG;
-- mixed Document Split;
 - bounded Files/Folders operations.
+
+Document Split now has a sequencing advantage because both primitive branches are canonical, but this is a hypothesis, not a selection. Inspect and characterize its actual dispatch, aggregation, output/progress/error semantics before choosing it.
 
 Decision dimensions:
 
@@ -110,9 +118,7 @@ Decision dimensions:
 - composition value;
 - duplicate-owner migration cost.
 
-Do not select merely to maximize node count.
-
-A likely sequencing advantage now exists for mixed Document Split because both canonical Text and PDF primitives are available, but that hypothesis must be compared against the other candidates rather than assumed.
+Image rule: if an image capability is selected, specify Pillow version/decompression-bomb policy, EXIF orientation, alpha/background semantics and animation behavior before implementation.
 
 Media rule: before broad audio/video nodes, establish one shared FFmpeg/FFprobe process boundary using M3 subprocess diagnostics and explicit M4 Artifact/cache semantics.
 
@@ -143,6 +149,6 @@ Status: **CONTINUOUS + FINAL RELEASE GATE** — CI, licenses, duplicate-owner re
 
 ## Execution rule
 
-Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery → spec → evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure.
+Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery -> spec -> evidence -> RED -> GREEN -> REFACTOR -> regression -> hosted evidence -> memory closure.
 
-Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly. Every file cardinality remains honest; avoid collection conventions that hide singular semantics.
+Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly. Every file cardinality remains honest; avoid collection conventions that hide singular semantics. Every multi-output capability states its transaction boundary explicitly.

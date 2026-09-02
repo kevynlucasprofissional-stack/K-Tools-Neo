@@ -12,11 +12,11 @@ Next: design root jobs/path filters for imported applications before imported-ap
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN / REDUCED BY M5 SLICES 1–3
+Status: OPEN / REDUCED BY M5 SLICES 1–4
 
 `K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file with many capability implementations embedded beside presentation/runtime concerns.
 
-M5 has now extracted canonical owners for Markdown/TXT merge, PDF merge and balanced PDF split, proving the incremental migration pattern. Many image, document, filesystem and media utilities remain in the monolith.
+M5 has now extracted canonical owners for Markdown/TXT merge, balanced Markdown/TXT split, PDF merge and balanced PDF split. Many image, mixed-document, filesystem and media utilities remain in the monolith.
 
 Invariant: extract capability-by-capability behind tested node contracts rather than performing a broad monolith rewrite.
 
@@ -24,7 +24,7 @@ Invariant: extract capability-by-capability behind tested node contracts rather 
 
 Status: RESOLVED
 
-Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text and PDF capabilities plus ordered `files.literal` and single `file.literal` source contracts.
+Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text/PDF capabilities plus ordered `files.literal` and single `file.literal` source contracts.
 
 ## KI-004 — Workflow/run/artifact persistence is absent
 
@@ -60,9 +60,13 @@ Future CI failures must be classified from their actual first failing step rathe
 
 Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-`packages/ktools-text` is the canonical evolution owner for Markdown/TXT merge, but `K Tools Neo - Versão Estável 2.py` still executes its historical implementation.
+`packages/ktools-text` is now the canonical evolution owner for both Markdown/TXT merge and balanced Markdown/TXT split. `K Tools Neo - Versão Estável 2.py` still executes historical implementations of both behaviors.
 
-Invariant: new behavior/bug fixes originate in `ktools-text`; the historical copy is frozen until traditional Tool/UI migration redirects/removes it.
+Impact: direct edits to the legacy copies could drift from the tested package semantics.
+
+Invariant: new Text merge/split behavior and bug fixes originate in `ktools-text`; historical implementations are compatibility paths only.
+
+Next: when traditional Text Tool surfaces are migrated to platform workflows, redirect them to `ktools-text` and remove/reduce duplicate owners.
 
 ## KI-009 — Legacy stable GUI is not yet wired to canonical PDF Node Pack
 
@@ -74,13 +78,13 @@ Impact: direct edits to the old copies could drift from the tested package behav
 
 Invariant: new PDF merge/split behavior and bug fixes originate in `ktools-pdf`; historical implementations are compatibility paths only.
 
-Next: when traditional PDF Tool surfaces are migrated to platform workflows, redirect them to `ktools-pdf` and remove/reduce duplicate owners. Do not block bounded capability extraction on a full GUI rewrite.
+Next: when traditional PDF Tool surfaces are migrated to platform workflows, redirect them to `ktools-pdf` and remove/reduce duplicate owners.
 
 ## KI-010 — Shared temp-then-promote patterns exist across file-producing packs
 
 Status: OPEN / OBSERVE BEFORE ABSTRACTING
 
-Text and PDF writers use temporary output before final publication, and PDF split reuses the PDF atomic writer across multiple outputs. Their write/finalization/collision contracts remain materially different across domains.
+Text and PDF writers use temporary output before final publication, and both splitters reuse their pack-specific atomic writers across multiple outputs. Their write/finalization/collision contracts remain materially different across domains.
 
 Do not create a generic core publication abstraction merely because several implementations use temporary files. Re-evaluate only after another file-producing pack proves a stable cross-domain API for allocation, cleanup, collision policy and promotion without leaking writer-specific semantics.
 
@@ -88,7 +92,7 @@ Do not create a generic core publication abstraction merely because several impl
 
 Status: OPEN / EXPLICIT V1 BOUNDARY
 
-`pdf.split.parts` is atomic per produced PDF but not all-or-nothing across the entire output set. If publication of a later part fails, previously published parts may remain.
+Both `pdf.split.parts` and `text.split.parts` are atomic per produced file but not all-or-nothing across the entire output set. If publication of a later part fails, previously published parts may remain.
 
 This is intentional and tested. The failed destination must not be partial or falsely claimed successful.
 
@@ -98,6 +102,17 @@ Revisit set-wide transaction/rollback only if a real workflow requires it and fi
 
 Status: OPEN / DESIGN WATCH
 
-`FILE_SET` can contain typed PDF Artifacts and already proves `pdf.split.parts -> pdf.merge.files` composition. No `PDF_SET` exists.
+`FILE_SET` can contain typed PDF or Text-file Artifacts and already proves PDF split→merge and Text split→merge composition. No `PDF_SET` or text-specific collection type exists.
 
-Revisit only when graph-time element-type rejection or catalog/UI behavior demonstrates a concrete safety/product need that member-level Artifact typing cannot satisfy.
+Revisit only when graph-time element-type rejection or catalog/UI behavior demonstrates a concrete safety/product need that member-level Artifact typing/runtime validation cannot satisfy.
+
+## KI-013 — Mixed Document Split orchestration is still legacy-only
+
+Status: OPEN / NEXT-CANDIDATE BOUNDARY
+
+The historical mixed Document Split now delegates conceptually to two capabilities that both have canonical package owners:
+
+- PDF split -> `ktools-pdf`;
+- Markdown/TXT split -> `ktools-text`.
+
+However, the mixed dispatcher/aggregation/progress/error contract itself has not yet been extracted. Do not implement a new mixed node by copying either primitive algorithm; characterize the orchestration boundary first.

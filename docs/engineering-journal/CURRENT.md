@@ -77,16 +77,22 @@ Status: **ACCEPTED PDF V1 SAFETY BOUNDARY** — protected/encrypted PDFs fail cl
 Status: **ACTIVE DESIGN WATCH** — Text/PDF writers differ materially; revisit only after another file-producing pack proves a stable common abstraction.
 
 ## H-032 — Singular cardinality should not be encoded as a one-item collection convention
-Status: **VALIDATED IN PDF SPLIT V1** — `file.literal: -> FILE` plus `pdf.split.parts: FILE -> FILE_SET` keeps graph semantics honest and avoids runtime singleton assertions masquerading as type safety.
+Status: **VALIDATED IN PDF SPLIT V1** — `file.literal: -> FILE` plus split `FILE -> FILE_SET` keeps graph semantics honest.
 
 ## H-033 — Typed Artifact members can postpone domain-specific collection types
-Status: **VALIDATED FOR CURRENT PDF COMPOSITION** — FILE_SET containing PDF Artifacts composes split→merge across hosted Windows/Linux lanes without PDF_SET. Introduce specialized collections only when graph-time member typing proves necessary.
+Status: **VALIDATED FOR CURRENT PDF/TEXT COMPOSITION** — FILE_SET containing domain-typed/member-metadata Artifacts composes split→merge across hosted Windows/Linux lanes without specialized collection types.
 
 ## H-034 — Multi-output publication needs an explicit transaction boundary
-Status: **VALIDATED / SAFETY BOUNDARY** — PDF split is atomic per part, not all-or-nothing across the set. Earlier completed outputs may remain after a later failure; the failing output must not be partial or falsely claimed.
+Status: **VALIDATED / SAFETY BOUNDARY** — PDF and Text split are atomic per part, not all-or-nothing across the set. Earlier completed outputs may remain after a later failure; the failing output must not be partial or falsely claimed.
 
 ## H-035 — Composition tests are stronger than isolated contract tests for cardinality decisions
-Status: **VALIDATED** — hosted `FILE -> FILE_SET -> PDF` split→merge proved source cardinality, member Artifact typing, publication and downstream consumption together.
+Status: **VALIDATED** — hosted FILE→FILE_SET→single-output split→merge workflows prove source cardinality, member Artifact flow, publication and downstream consumption together.
+
+## H-036 — Similar file formats may require intentionally different decode policies
+Status: **VALIDATED IN TEXT SPLIT V1** — Text Merge and Text Split have different legacy fallback orders. Deduplication is not allowed to silently erase caller-specific semantics.
+
+## H-037 — Extract primitives before extracting an orchestrator
+Status: **VALIDATED AS M5 SEQUENCING RULE** — mixed Document Split becomes a cleaner dispatch/aggregation problem only after PDF Split and Text Split have canonical owners.
 
 ## E-004 — Correct output-collision guard can make non-isolated smoke red
 Status: **CLASSIFIED** — fix isolation, not safety behavior.
@@ -110,10 +116,13 @@ Status: **RESOLVED / REFACTOR LESSON**.
 Status: **RESOLVED / USEFUL RED** — `29a90cb7c2085b22d0cf3e345b39fecb6c050b76`, run `33648993271`, reached intentionally red PDF tests after dependencies and prior suites passed.
 
 ## E-011 — PDF Split RED isolated the intended missing product contracts
-Status: **RESOLVED / USEFUL RED** — `e43f01db3473aa693382325e70fc7e1c17d1943d`, run `33653225831`, kept Core/JSON/Text and existing PDF Merge green while the new suite failed on missing `file.literal`, split API/node and shared owner.
+Status: **RESOLVED / USEFUL RED** — `e43f01db3473aa693382325e70fc7e1c17d1943d`, run `33653225831`, kept prior boundaries green while the new suite failed on missing single-file/split contracts.
 
 ## E-012 — Multi-output failure semantics cannot be inferred from atomic single-output writer tests
-Status: **RESOLVED / TEST-DESIGN LESSON** — Slice 3 added a forced second-part publication failure proving earlier completed output retention, failed-destination absence and temp cleanup.
+Status: **RESOLVED / TEST-DESIGN LESSON** — forced later-part failures prove earlier completed output retention, failed-destination absence and temp cleanup.
+
+## E-013 — Text Split RED isolated product absence and preserved merge compatibility
+Status: **RESOLVED / USEFUL RED** — `14a950d8d1b23412d7ba27dace66759d8ae2b37e`, run `33657352636`, failed at new Text Split contracts while the existing Text Merge behavior remained the compatibility baseline.
 
 ## M5 Slice 1 closure
 
@@ -135,18 +144,30 @@ RED `e43f01db3473aa693382325e70fc7e1c17d1943d` / `33653225831` discriminated at 
 
 GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925` / `33653824159` passed 5/5.
 
-Hardened technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424` passed 5/5, including hosted split→merge in Ubuntu/Windows Python 3.10/3.13.
+Hardened technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e` / `33654265424` passed 5/5. Terminal memory closure `a26dfcee626eedc27366dfec93be68503343941a` / `33656157870` passed 5/5.
 
-Result pending only this memory-closure HEAD gate: **Slice 3 RESOLVED / PROMOTED**. `packages/ktools-pdf` is canonical for balanced PDF split; stable GUI merge/split copies are compatibility debt.
+Result: **Slice 3 RESOLVED / PROMOTED**. `packages/ktools-pdf` is canonical for balanced PDF split; stable GUI merge/split copies are compatibility debt.
 
-## Next journal focus — M5 Slice 4
+## M5 Slice 4 closure
 
-After the Slice-3 closure HEAD is green:
+Spec gate `e6b4f5c207a39fe70820939d8c7972833e6cc9fa` passed `33656954591` 5/5.
 
-1. re-inventory remaining legacy owners from the exact terminal main;
-2. compare Images→PDF, WebP→PNG, mixed Document Split and bounded Files/Folders operations;
-3. specifically test the hypothesis that Document Split is now a low-duplication orchestration slice because Text/PDF primitives exist — do not assume it without inspecting its non-PDF behavior and output/error contract;
-4. if an image capability is selected, specify Pillow version/decompression-bomb policy, EXIF orientation, alpha/background semantics and animation behavior before implementation;
-5. preserve one-owner direct API + workflow architecture and explicit publication/cache policy;
+RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e` / `33657352636` discriminated at Text Split product absence.
+
+GREEN `87558e8194692c045bdd95780fe05beb0f436e3a` / `33657882057` passed 5/5.
+
+Hardened technical candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23` / `33660594733` passed 5/5, including hosted Text split→merge in Ubuntu/Windows Python 3.10/3.13.
+
+Result pending only this synchronized memory-closure HEAD gate: **Slice 4 RESOLVED / PROMOTED**. `packages/ktools-text` is canonical for balanced Text split; stable GUI merge/split copies are compatibility debt.
+
+## Next journal focus — M5 Slice 5
+
+After the Slice-4 closure HEAD is green:
+
+1. inspect the exact mixed Document Split dispatcher/aggregation/progress/error behavior now that both primitive splitters are canonical;
+2. compare it against Images→PDF, WebP→PNG and bounded Files/Folders work rather than preselecting by convenience;
+3. if Document Split wins, implement it as orchestration over `ktools-text` + `ktools-pdf`, never as a new copy of either split algorithm;
+4. if an image capability wins, specify Pillow version/decompression-bomb policy, EXIF orientation, alpha/background semantics and animation behavior before implementation;
+5. preserve one-owner direct API + workflow architecture and explicit publication/cache/transaction policy;
 6. do not generalize FILE_SET, atomic publication or domain collection types without new evidence;
 7. if FFmpeg/FFprobe enters scope later, establish the shared diagnostic process boundary before broad media nodes.

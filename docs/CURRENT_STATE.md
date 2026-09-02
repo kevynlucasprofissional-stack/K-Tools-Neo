@@ -60,7 +60,9 @@ Carry-forward invariants:
 - shared platform boundaries such as local file URI resolution live in core rather than being recopied per pack;
 - user output files are not automatically deleted merely because metadata/cache is invalidated;
 - singular and collection cardinality remain explicit (`FILE` is not a one-item `FILE_SET` convention);
-- domain-specific collection types are introduced only when a real graph-time requirement proves them necessary.
+- domain-specific collection types are introduced only when a real graph-time requirement proves them necessary;
+- multi-output publication must state whether its transaction boundary is per output or set-wide;
+- compatibility copies in the legacy GUI are frozen once a canonical package owner is promoted.
 
 ## M5 — Official local Node Packs — ACTIVE / ITERATIVE DELIVERY
 
@@ -68,7 +70,7 @@ Carry-forward invariants:
 
 `packages/ktools-text/` is canonical for Markdown/TXT merge. FILE_SET, `files.literal`, characterized merge behavior, Artifact provenance, source invalidation and hosted Text workflow smoke are proved.
 
-Promotion merge `958d5bf563cda21673d69865d1508831c599c006`, run `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388`, run `33631040505`.
+Promotion `958d5bf563cda21673d69865d1508831c599c006`, run `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388`, run `33631040505`.
 
 ### Slice 2 — PDF Merge Node Pack V1 — RESOLVED / PROMOTED
 
@@ -80,48 +82,54 @@ Terminal closure `e3a3934aada29e185de7da18cf413ceaa3c299e8`, run `33651923578`, 
 
 ### Slice 3 — PDF Split Node V1 — RESOLVED / PROMOTED
 
-`packages/ktools-pdf/` is now canonical for balanced PDF split as well as merge.
+`packages/ktools-pdf/` is canonical for balanced PDF split as well as merge.
+
+Delivered `file.literal: -> FILE` PURE, shared local-file Artifact construction, `splitter.split_pdf_into_parts`, `pdf.split.parts: FILE -> FILE_SET` version 1 NEVER, balanced contiguous partitioning with clamp, collision-safe naming, per-part atomic writes, explicit partial-set failure semantics, PDF Artifact provenance/page-range metadata, nested strong snapshots, cache/publication proof, direct/workflow equivalence and hosted split→merge composition without PDF_SET.
+
+Terminal closure `a26dfcee626eedc27366dfec93be68503343941a`, run `33656157870`, 5/5.
+
+### Slice 4 — Text Split Node V1 — RESOLVED / PROMOTED
+
+`packages/ktools-text/` is now canonical for balanced Markdown/TXT split as well as merge.
 
 Delivered:
 
-- `file.literal: -> FILE`, version 1, PURE;
-- shared single/multi local-file Artifact construction;
-- `splitter.split_pdf_into_parts` as the single split implementation owner;
-- direct API + thin `pdf.split.parts` adapter;
-- `pdf.split.parts: FILE -> FILE_SET`, version 1, NEVER;
-- balanced contiguous partitioning with page-count clamp;
-- collision-safe `{stem}_parte_XX_de_YY.pdf` publication;
-- per-part atomic writes and explicit partial-set failure semantics;
-- protected/corrupt/empty fail-closed behavior;
-- PDF Artifact provenance, MIME and page-range metadata;
+- split-specific legacy decode policy `utf-8-sig -> utf-8 -> cp1252 -> latin-1` without changing Text Merge decoding;
+- pure `split_text_balanced(...)` line-unit planner;
+- `split_text_file_into_parts(...)` as one split owner;
+- UTF-8 output normalization and collision-safe naming;
+- reusable Text-pack atomic text-content publication;
+- direct API + thin `text.split.parts` adapter;
+- `text.split.parts: FILE -> FILE_SET`, version 1, NEVER;
+- FILE Artifact MIME/provenance/chunk metadata;
 - nested ArtifactRegistry strong snapshots;
-- proof that cached `file.literal` does not suppress required split publication;
-- direct/workflow equivalence;
-- real `file.literal -> pdf.split.parts -> pdf.merge.files` hosted composition without introducing PDF_SET.
+- cached `file.literal` + required re-publication proof;
+- forced later-part failure boundary;
+- direct/workflow byte equivalence;
+- ordered `file.literal -> text.split.parts -> text.merge.files` composition;
+- hosted Text split→merge smoke in every Python lane.
 
 Evidence chain:
 
-- spec `a09d600924aa66d031cc2bcc2f59feb04bdf0704`, run `33652921999`, 5/5;
-- RED `e43f01db3473aa693382325e70fc7e1c17d1943d`, run `33653225831`, discriminating at new PDF split contracts;
-- GREEN `88e8c1a37eeb08528bb060b4bdadb5f7b5f6a925`, run `33653824159`, 5/5;
-- hardened technical candidate `cb25cad6e6d60377d07a0c4d761700d7785f0c1e`, run `33654265424`, 5/5 including split→merge smoke on every Python lane.
+- spec `e6b4f5c207a39fe70820939d8c7972833e6cc9fa`, run `33656954591`, 5/5;
+- RED `14a950d8d1b23412d7ba27dace66759d8ae2b37e`, run `33657352636`, discriminating at Text Split product contracts;
+- GREEN `87558e8194692c045bdd95780fe05beb0f436e3a`, run `33657882057`, 5/5;
+- hardened candidate `0630e63d87ae1c452c3d886a2dbab8d994bb3b23`, run `33660594733`, 5/5 including Text split→merge smoke.
 
-ADR: `docs/decisions/ADR-025-PDF-SPLIT-NODE-V1.md`.
-Evidence/final report: `docs/specs/pdf-split-node-v1/`.
+ADR: `docs/decisions/ADR-026-TEXT-SPLIT-NODE-V1.md`.
+Evidence/final report: `docs/specs/text-split-node-v1/`.
 
-Historical stable-GUI PDF merge/split implementations remain frozen compatibility debt; semantic evolution belongs to `ktools-pdf`.
+Historical stable-GUI Text merge/split implementations remain frozen compatibility debt; semantic evolution belongs to `ktools-text`.
 
-### Slice 4 — PENDING FRESH DISCOVERY
+### Slice 5 — PENDING FRESH DISCOVERY
 
-Do not preselect by node count. Re-inspect remaining owners after PDF split is terminal-green. Current candidate set includes:
+Both primitive branches used by the historical mixed Document Split are now canonical:
 
-- Images→PDF;
-- WebP→PNG;
-- mixed Document Split now that Text/PDF primitives are canonical;
-- bounded Files/Folders operations.
+- PDF split -> `ktools-pdf`;
+- Markdown/TXT split -> `ktools-text`.
 
-Compare behavior clarity, dependency/security boundary, side effects, Artifact/typed-port shape, diagnostics needs, composition value and duplicate-owner migration cost.
+Fresh discovery should therefore compare mixed Document Split orchestration against Images→PDF, WebP→PNG and bounded Files/Folders work. Do not assume Document Split automatically wins; inspect its real dispatch, aggregation, progress, naming and failure contract first.
 
 ## Next exact action
 
-Require this Slice-3 memory-closure HEAD itself to pass the standard 5-job hosted CI gate. If green, begin Slice 4 fresh discovery from that exact terminal `main` state, then continue spec → RED → GREEN → REFACTOR → hosted evidence → memory closure.
+Require this Slice-4 synchronized memory-closure HEAD itself to pass the standard 5-job hosted CI gate. If green, begin Slice 5 discovery from that exact terminal `main` state and continue discovery -> spec -> RED -> GREEN -> REFACTOR -> hosted evidence -> memory closure.
