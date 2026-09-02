@@ -202,7 +202,7 @@ Fresh discovery selected WebP→PNG over Images→PDF and bounded Files/Folders 
 Spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293`; RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304`; GREEN `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076`; terminal memory closure `9b9fc57bd4bfb28d7e23637651a30182ce6f8828` / `33668942264`, 5/5.
 Result: **RESOLVED / PROMOTED**. `ktools-images` owns Pillow safety/EXIF/frame policy and WebP→PNG; the stable GUI copy is compatibility debt.
 
-## M5 Slice 7 closure candidate
+## M5 Slice 7 closure
 
 Fresh discovery selected Images→PDF over bounded Files/Folders only after Slice 6 made the image decode/safety boundary reusable and bounded.
 
@@ -210,16 +210,15 @@ Spec `ae617e948d5549e3dbca1dbe8d5de19c16555535` / `33670517542`, 5/5.
 RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / `33671061268` preserved prior packs and all old WebP tests while isolating missing reader/PDF contracts.
 GREEN `309863ac475330448e6fc44dbdf305482528689e` / `33671740134`, 5/5.
 Ownership hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118`, 5/5.
+Synchronized memory closure `c3585f5b7f478f53e1c5ef63f72a7b49fbb0cdea` / `33674308145`, 5/5.
 
 Architecture result: `ktools_images.reader` owns guarded Pillow decode/safety/frame/EXIF for both WebP→PNG and Images→PDF; Images→PDF owns RGB/alpha-white/page-order/aggregate-PDF semantics; `image.files_to_pdf: FILE_SET -> PDF` is v1 NEVER; output is one strongly snapshotted PDF Artifact.
 
-Result pending only the synchronized memory-closure HEAD gate: **TECHNICALLY RESOLVED / MEMORY-CLOSURE CI PENDING**.
+Result: **RESOLVED / PROMOTED**.
 
 ## Next journal focus — M5 Slice 8
 
-Only after Slice 7 is terminally promoted:
-
-1. re-open exact terminal `main` and inventory unresolved capability owners;
+1. re-open the exact terminal Slice-7 `main` and inventory unresolved capability owners;
 2. fresh-compare bounded Files/Folders, the smallest useful Media capability and any remaining bounded image/document utility;
 3. for Files/Folders, reconcile overlapping traversal/report semantics before implementation;
 4. for Media, establish one FFmpeg/FFprobe process boundary tied to M3 diagnostics and M4 Artifact/cache contracts before broad audio/video extraction;

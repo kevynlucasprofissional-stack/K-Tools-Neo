@@ -119,9 +119,9 @@ Terminal memory closure `9b9fc57bd4bfb28d7e23637651a30182ce6f8828`, run `3366894
 ADR: `docs/decisions/ADR-028-IMAGE-SAFETY-WEBP-PNG-V1.md`.
 The stable GUI WebP→PNG path is compatibility debt.
 
-### Slice 7 — Images→PDF Node V1 — TECHNICALLY RESOLVED / MEMORY-CLOSURE GATE
+### Slice 7 — Images→PDF Node V1 — RESOLVED / PROMOTED
 
-Fresh terminal-main discovery compared Images→PDF and bounded Files/Folders and selected Images→PDF only after the Slice-6 image foundation made its remaining contract bounded. Files/Folders remains deferred pending a dedicated cross-platform traversal/result contract.
+Fresh terminal-main discovery compared Images→PDF and bounded Files/Folders and selected Images→PDF only after the Slice-6 image foundation made its remaining contract bounded. Files/Folders remained deferred pending a dedicated cross-platform traversal/result contract.
 
 Delivered:
 
@@ -144,22 +144,21 @@ Evidence:
 - spec `ae617e948d5549e3dbca1dbe8d5de19c16555535`, run `33670517542`, 5/5;
 - discriminating RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db`, run `33671061268`;
 - GREEN `309863ac475330448e6fc44dbdf305482528689e`, run `33671740134`, 5/5;
-- hardened/audited technical HEAD `1d9afc40bb7adbb511a1869d25b18058782bcbad`, run `33672387118`, 5/5.
+- hardened/audited technical HEAD `1d9afc40bb7adbb511a1869d25b18058782bcbad`, run `33672387118`, 5/5;
+- synchronized terminal memory closure `c3585f5b7f478f53e1c5ef63f72a7b49fbb0cdea`, run `33674308145`, 5/5.
 
 ADR: `docs/decisions/ADR-029-IMAGES-TO-PDF-NODE-V1.md`.
 Evidence/final report: `docs/specs/images-to-pdf-node-v1/`.
 
-The legacy stable GUI Images→PDF implementation is now compatibility debt; semantic evolution belongs to `ktools-images`.
+The legacy stable GUI Images→PDF implementation is compatibility debt; semantic evolution belongs to `ktools-images`.
 
-Promotion is intentionally not claimed until this synchronized memory-closure HEAD itself passes the standard five hosted jobs.
+### Slice 8 — FRESH DISCOVERY / ACTIVE
 
-### Slice 8 — PENDING FRESH DISCOVERY
+Slice 7's terminal prerequisite is satisfied. No next capability is preselected.
 
-Do not preselect the next capability before Slice 7 is terminally promoted.
+Fresh-inspect from the exact terminal mainline at minimum:
 
-At minimum fresh-inspect:
-
-- bounded Files/Folders operations, including the overlapping legacy traversal/report owners and unresolved root/hidden/recursion/symlink-reparse/ordering/permission-error/result-schema semantics;
+- bounded Files/Folders operations, including overlapping legacy traversal/report owners and unresolved root/hidden/recursion/symlink-reparse/ordering/permission-error/result-schema semantics;
 - the smallest useful Media capability whose FFmpeg/FFprobe boundary can be specified against M3 diagnostics and M4 Artifact/cache rules;
 - any remaining image/document utility only if it has a clearer bounded contract and stronger composition value than those candidates.
 
@@ -167,4 +166,4 @@ Do not create a generic filesystem abstraction, generic media framework or cross
 
 ## Next exact action
 
-Publish the synchronized Slice-7 memory closure and require that exact HEAD to pass Ubuntu/Windows × Python 3.10/3.13 plus xyflow. If 5/5, terminally mark Slice 7 **RESOLVED / PROMOTED**, record the closure run, revalidate the terminal docs-only HEAD, and only then begin Slice 8 fresh discovery.
+Require this terminal Slice-7 documentation HEAD itself to pass Ubuntu/Windows × Python 3.10/3.13 plus xyflow. If green, treat Slice 7 as fully closed without another memory mutation and begin Slice 8 fresh discovery from that exact HEAD by inventorying unresolved legacy owners and ranking bounded candidates on behavior clarity, dependency/security risk, publication/cardinality/cache semantics, composition value and duplicate-owner reduction.

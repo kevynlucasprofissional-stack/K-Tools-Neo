@@ -101,7 +101,7 @@ Canonical owner: `packages/ktools-images`. Stable-GUI WebP→PNG is compatibilit
 
 ### Slice 7 — Shared Image Reader + Images→PDF V1
 
-Status: **TECHNICALLY RESOLVED / MEMORY-CLOSURE GATE**
+Status: **RESOLVED / PROMOTED**
 
 Fresh terminal-main discovery compared Images→PDF with bounded Files/Folders. Images→PDF won because the Slice-6 safety foundation reduced the remaining surface to a bounded aggregate-image/PDF contract, while Files/Folders still had overlapping legacy traversal/report owners with unresolved cross-platform semantics.
 
@@ -126,18 +126,17 @@ Evidence:
 - spec `ae617e948d5549e3dbca1dbe8d5de19c16555535` / `33670517542`, 5/5;
 - RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / `33671061268`;
 - GREEN `309863ac475330448e6fc44dbdf305482528689e` / `33671740134`, 5/5;
-- audited hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118`, 5/5.
+- audited hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118`, 5/5;
+- synchronized terminal memory closure `c3585f5b7f478f53e1c5ef63f72a7b49fbb0cdea` / `33674308145`, 5/5.
 
 ADR: `docs/decisions/ADR-029-IMAGES-TO-PDF-NODE-V1.md`.
-Canonical owner remains `packages/ktools-images`; stable-GUI Images→PDF becomes compatibility debt.
-
-Promotion rule: this synchronized memory-closure HEAD must itself pass Ubuntu/Windows × Python 3.10/3.13 plus xyflow before the slice is terminally marked RESOLVED / PROMOTED.
+Canonical owner remains `packages/ktools-images`; stable-GUI Images→PDF is compatibility debt.
 
 ### Slice 8 — FRESH DISCOVERY GATE
 
-Status: **BLOCKED ONLY BY SLICE-7 TERMINAL MEMORY CI**
+Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 
-After Slice 7 is terminally promoted, inspect exact `main` and compare at minimum:
+Inspect exact terminal `main` and compare at minimum:
 
 - bounded Files/Folders operations;
 - the smallest useful Media capability;

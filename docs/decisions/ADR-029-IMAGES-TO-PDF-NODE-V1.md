@@ -1,6 +1,6 @@
 # ADR-029 — Shared Image Reader + Images→PDF V1
 
-Status: **ACCEPTED / TECHNICALLY PROVED FOR M5 SLICE 7**
+Status: **ACCEPTED / PROVED / PROMOTED FOR M5 SLICE 7**
 
 ## Decision
 
@@ -117,6 +117,7 @@ Images→PDF was selected over bounded Files/Folders after fresh terminal-main d
 - Slice-7 spec gate `ae617e948d5549e3dbca1dbe8d5de19c16555535` / run `33670517542`, 5/5;
 - discriminating RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / run `33671061268`;
 - GREEN implementation `309863ac475330448e6fc44dbdf305482528689e` / run `33671740134`, 5/5;
-- ownership hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / run `33672387118`, 5/5.
+- ownership hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / run `33672387118`, 5/5;
+- synchronized memory closure `c3585f5b7f478f53e1c5ef63f72a7b49fbb0cdea` / run `33674308145`, 5/5.
 
-Terminal promotion additionally requires the synchronized Slice-7 memory-closure HEAD itself to pass the standard five hosted jobs.
+The explicit terminal promotion condition is satisfied. M5 Slice 7 is **RESOLVED / PROMOTED**.
