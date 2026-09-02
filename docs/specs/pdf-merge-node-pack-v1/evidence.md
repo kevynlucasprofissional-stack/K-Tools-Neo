@@ -1,6 +1,6 @@
 # Evidence — PDF Merge Node Pack V1
 
-Status: **TECHNICAL CANDIDATE ACCEPTED / FINAL MEMORY CI PENDING**
+Status: **RESOLVED / PROMOTED**
 
 ## Slice selection
 
@@ -33,15 +33,7 @@ This is accepted as a product RED, not a packaging/runner failure.
 Implementation commit: `cdce28caa6e7cc8b62cf2f55e32559a2ff8cfd25`.
 Run: `33649227197`.
 
-All five hosted jobs succeeded:
-
-- Ubuntu / Python 3.10;
-- Ubuntu / Python 3.13;
-- Windows / Python 3.10;
-- Windows / Python 3.13;
-- xyflow.
-
-The four Python lanes installed `ktools-pdf`, passed core/JSON/Text/PDF suites and existing smokes.
+All five hosted jobs succeeded: Ubuntu/Windows Python 3.10/3.13 plus xyflow. The four Python lanes installed `ktools-pdf`, passed core/JSON/Text/PDF suites and existing smokes.
 
 ## Hardening / accepted technical candidate
 
@@ -91,10 +83,16 @@ There is no subprocess/native boundary, so M3 engine lifecycle diagnostics are s
 
 ## Ownership boundary
 
-Canonical evolution owner after final closure: `packages/ktools-pdf/`.
+Canonical evolution owner: `packages/ktools-pdf/`.
 
 The old stable GUI still contains historical PDF merge code. It is compatibility debt, not a second semantic owner. Future PDF merge changes originate in `ktools-pdf`; later Tool/UI migration must redirect or retire the old path.
 
-## Pending promotion evidence
+## Final memory promotion evidence
 
-The synchronized memory commit created from this evidence must itself pass the same five-job hosted matrix. That final run will close P-013 and move Slice 2 to RESOLVED / PROMOTED.
+Synchronized memory candidate: `8600b0adda1bba2a460da9fee8f45b7a02b41f9b`.
+Run: `33650661761`.
+Result: **5/5 success**.
+
+Every Python lane again installed all four Python packages, passed core/JSON/Text/PDF tests, core/JSON/Text/PDF smokes and PDF reopen verification; xyflow also passed.
+
+Result: M5 Slice 2 satisfies its terminal promotion gate.

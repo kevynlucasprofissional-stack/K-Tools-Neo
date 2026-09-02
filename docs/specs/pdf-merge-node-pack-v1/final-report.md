@@ -1,6 +1,6 @@
 # Final Report — PDF Merge Node Pack V1
 
-Status: **CANDIDATE FINAL REPORT / FINAL MEMORY CI PENDING**
+Status: **RESOLVED / PROMOTED**
 
 ## Objective
 
@@ -15,27 +15,16 @@ Migrate the bounded legacy PDF merge behavior into the platform using one canoni
 
 ## Discovery
 
-PDF merge was selected after comparing PDF split, Images→PDF, WebP→PNG and mixed document split. The selected slice is bounded, depends on pure-Python `pypdf`, produces one PDF Artifact and avoids introducing image/native-process complexity prematurely.
+PDF merge was selected after comparing PDF split, Images→PDF, WebP→PNG and mixed document split. It is bounded, depends on pure-Python `pypdf`, produces one PDF Artifact and avoids introducing image/native-process complexity prematurely.
 
-## Hypotheses / results
+## Hypotheses and results
 
-### H1 — FILE_SET is sufficient for ordered PDF merge V1
-Validated. Runtime member validation distinguishes FILE/PDF Artifacts without introducing premature `PDF_SET` covariance.
-
-### H2 — publication must remain NEVER
-Validated. The requested destination must be produced/replaced on every run; cached metadata cannot substitute for that side effect. Upstream `files.literal` can still be independently CACHED.
-
-### H3 — pypdf should be a package dependency, not installed from capability code
-Validated. Hosted RED installed `pypdf 6.16.2` through package metadata before reaching PDF tests.
-
-### H4 — semantic PDF equivalence is the correct deterministic oracle
-Validated. Generated pages with distinct dimensions prove source/page ordering after reopen without requiring incidental byte-for-byte writer identity.
-
-### H5 — a pack-local URI parser or page loop in the adapter is unnecessary
-Validated. URI conversion is reused from `ktools-core`; reader/page-copy/publication remain in the PDF package owner, and the adapter delegates to `writer.merge_pdf_files`.
-
-### H6 — encrypted PDF support should expand dependencies automatically
-Rejected for V1. Protected/encrypted inputs fail closed. No implicit cryptography/decryption policy is introduced without a dedicated requirement.
+- **FILE_SET is sufficient for ordered PDF merge V1 — validated.** Runtime member validation distinguishes FILE/PDF Artifacts without premature `PDF_SET`.
+- **Publication must remain NEVER — validated.** Cached source may be reused, but requested destination publication always executes.
+- **Dependency installation belongs to package/bootstrap — validated.** Hosted RED installed pypdf from metadata before PDF behavior failed.
+- **Semantic PDF equivalence is the right deterministic oracle — validated.** Reopened generated fixtures prove page order/structure without incidental binary identity.
+- **Adapter should not own URI/reader/page-copy logic — validated.** Core owns URI parsing; PDF reader/writer own domain behavior.
+- **Encrypted-PDF support should expand automatically — rejected for V1.** Protected inputs fail closed without implicit cryptography/decryption policy.
 
 ## Implemented
 
@@ -61,26 +50,20 @@ Initial GREEN: `cdce28caa6e7cc8b62cf2f55e32559a2ff8cfd25`, run `33649227197`, fi
 
 Accepted technical candidate: `a370028b9dbb2c44981a3c7e05d176ce7e54b71c`, run `33649789491`, five jobs success including PDF workflow smoke/verification in every Python lane.
 
+Synchronized memory candidate: `8600b0adda1bba2a460da9fee8f45b7a02b41f9b`, run `33650661761`, five jobs success.
+
 Full evidence: `docs/specs/pdf-merge-node-pack-v1/evidence.md`.
 
 ## Integration audit
 
-- no duplicate local URI parser;
-- no reader/writer/page-copy algorithm in node adapter;
-- package dependency is explicit;
-- publication remains side-effectful/NEVER;
-- progress surface from the legacy contract is preserved;
-- direct single-Path misuse is rejected explicitly;
-- Text/PDF temp-publication similarity is observed but not abstracted prematurely because their writer contracts differ.
+No duplicate local URI parser or reader/page-copy algorithm exists in the adapter. Package dependency is explicit. Publication remains side-effectful/NEVER. Progress surface from the characterized legacy contract is preserved. Text/PDF temp-publication similarity is recorded for observation rather than prematurely abstracted.
 
 ## Remaining debt
 
-The stable GUI still invokes historical PDF merge logic. `ktools-pdf` becomes the canonical evolution owner after final closure; GUI rewiring is a later Tool-surface migration.
-
-PDF split, image→PDF, WebP→PNG, OCR/compression and encrypted-PDF decryption remain outside V1.
+The stable GUI still invokes historical PDF merge logic. `ktools-pdf` is canonical; GUI rewiring is a later Tool-surface migration. PDF split, image→PDF, WebP→PNG, OCR/compression and encrypted-PDF decryption remain outside V1.
 
 ## Terminal state
 
-**TECHNICALLY RESOLVED; canonical-memory promotion pending.**
+**RESOLVED / PROMOTED.**
 
-The only remaining gate is the synchronized documentation/memory HEAD passing the same five-job hosted matrix. After that, mark Slice 2 RESOLVED / PROMOTED and select Slice 3 through fresh discovery.
+All implementation, hosted regression, audit and synchronized-memory gates are satisfied. M5 may advance to fresh Slice 3 discovery.
