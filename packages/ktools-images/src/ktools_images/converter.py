@@ -58,9 +58,6 @@ def convert_webp_files_to_png(
     outputs: list[Artifact] = []
     total = len(sources)
 
-    # Slice 7 moved Image.open and safety.normalize_orientation ownership to
-    # reader.load_safe_first_frame; these names remain documented here only as
-    # an explicit migration breadcrumb for the Slice-6 architecture audit.
     for index, source in enumerate(sources, start=1):
         if progress_callback is not None:
             progress_callback((index - 1) / total, f"Converting WebP {index} of {total}: {source.name}")

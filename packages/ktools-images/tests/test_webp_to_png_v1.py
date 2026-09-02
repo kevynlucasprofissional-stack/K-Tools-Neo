@@ -17,7 +17,7 @@ from ktools_core.local_files import path_from_file_uri
 from ktools_core.models import Artifact, CachePolicy, DataType, WorkflowDefinition, WorkflowEdge, WorkflowNode
 from ktools_core.registry import NodeRegistry
 
-from ktools_images import api, converter, node, publication, safety
+from ktools_images import api, converter, node, publication, reader, safety
 from ktools_images.converter import ImageConversionError, convert_webp_files_to_png
 from ktools_images.node import WEBP_TO_PNG_NODE_TYPE_ID, register_nodes
 from ktools_images.safety import ImageSafetyError
@@ -328,6 +328,7 @@ class WebpToPngV1Tests(unittest.TestCase):
         api_source = inspect.getsource(api)
         node_source = inspect.getsource(node)
         converter_source = inspect.getsource(converter)
+        reader_source = inspect.getsource(reader)
 
         self.assertIn("converter.convert_webp_files_to_png", api_source)
         self.assertIn("converter.convert_webp_files_to_png", node_source)
@@ -343,8 +344,13 @@ class WebpToPngV1Tests(unittest.TestCase):
         for token in forbidden_in_adapter:
             self.assertNotIn(token, api_source)
             self.assertNotIn(token, node_source)
-        self.assertIn("Image.open", converter_source)
-        self.assertIn("safety.normalize_orientation", converter_source)
+
+        self.assertIn("reader.load_safe_first_frame", converter_source)
+        self.assertNotIn("Image.open(", converter_source)
+        self.assertNotIn("warnings.simplefilter", converter_source)
+        self.assertNotIn("exif_transpose(", converter_source)
+        self.assertIn("Image.open", reader_source)
+        self.assertIn("safety.normalize_orientation", reader_source)
         self.assertIn("publication.publish_png_atomic", converter_source)
 
     def test_workflow_bad_source_is_bound_to_convert_node(self) -> None:
