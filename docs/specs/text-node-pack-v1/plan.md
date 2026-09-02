@@ -1,45 +1,53 @@
 # Plan — Text Node Pack V1
 
-Status: **ACTIVE**
+Status: **IMPLEMENTATION COMPLETE / PROMOTION GATE**
 
-## Phase 1 — characterize before extraction
+## Phase 1 — characterize before extraction — COMPLETE
 
-1. Pin legacy valid behavior for `read_text_with_fallback`, `merge_text_files`, output suffix normalization, separator bytes and output replacement.
-2. Add failing characterization/contract tests in the new package.
-3. Add failing core tests for FILE_SET type compatibility.
+1. Pinned legacy behavior for decoding, merge bytes, suffix normalization and replacement.
+2. Added failing characterization/contract tests.
+3. Added failing FILE_SET core tests.
 
-## Phase 2 — minimum core contract
+## Phase 2 — minimum core contract — COMPLETE
 
-1. Add `DataType.FILE_SET` only; do not invent a collection class.
-2. Keep compatibility exact in V1.
-3. Re-run all core tests including M4 semantic-cache list/Artifact behavior.
+1. Added `DataType.FILE_SET` without inventing a collection class.
+2. Kept V1 compatibility exact.
+3. Regressed M0-M4 core behavior.
+4. Added `files.literal` as the minimal ordered local-file source.
 
-## Phase 3 — package owner
+## Phase 3 — package owner — COMPLETE
 
-1. Create `ktools-text` packaging skeleton.
-2. Implement small classified error taxonomy.
-3. Implement decoding helper preserving legacy supported order.
-4. Implement pure formatting/render owner.
-5. Implement safe filesystem writer with same-directory temporary publication.
-6. Expose direct API.
+1. Created `packages/ktools-text`.
+2. Added classified Text merge error boundary.
+3. Preserved legacy decoding order.
+4. Added pure block/merged render surfaces.
+5. Added streaming safe writer with same-directory temp publication.
+6. Exposed direct API.
 
-## Phase 4 — workflow adapter
+## Phase 4 — workflow adapter — COMPLETE
 
-1. Register `text.merge.files` with `files: FILE_SET -> file: FILE`.
-2. Validate runtime Artifact sequence and local text-file constraints.
-3. Delegate to the shared writer.
-4. Return current-run output Artifact.
-5. Mark node `NEVER`.
+1. Registered `text.merge.files` with `files: FILE_SET -> file: FILE`.
+2. Validated ordered Artifact input/local-file constraints.
+3. Delegated to shared writer.
+4. Returned current-run FILE Artifact.
+5. Kept publication node `NEVER`.
+6. Centralized `file:// URI → Path` interpretation in `ktools-core` after integration audit found duplicate logic.
 
-## Phase 5 — evidence
+## Phase 5 — evidence — CODE COMPLETE
 
-1. Prove direct/node byte equivalence.
-2. Prove repeated node execution is not cache-skipped.
-3. Prove ArtifactRegistry occurrence/strong snapshot.
-4. Add root CI install/test + text workflow smoke.
-5. Run hosted Windows/Linux matrix and xyflow.
-6. Audit single-owner status and update canonical memory.
+1. Direct/node byte equivalence proved.
+2. Repeated merge execution proved not cache-skipped.
+3. ArtifactRegistry occurrence/strong snapshot proved.
+4. `files.literal` cache validity/mutation invalidation proved.
+5. Root CI installs/tests Text and runs a real text workflow smoke.
+6. Accepted code candidate passed Windows/Linux Python 3.10/3.13 + xyflow.
+7. Single-owner decision recorded: `ktools-text` is canonical; legacy GUI implementation is temporary compatibility debt.
 
-## Abort/reopen conditions
+## Remaining promotion sequence
 
-Reopen design before implementation if characterization shows the legacy function depends materially on hidden UI state or if FILE_SET requires broader covariance/runtime semantics than the current M4 container behavior can safely support.
+1. Commit synchronized canonical memory.
+2. Require exact-head hosted matrix green.
+3. Mark PR #8 ready and perform final exact-head review.
+4. Merge with expected-head guard.
+5. Require post-merge `main` CI green.
+6. Continue M5 with a new capability slice chosen from actual legacy ownership evidence.

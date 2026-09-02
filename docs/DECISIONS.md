@@ -102,7 +102,7 @@ Reason:
 - Artifact provenance requires a durable run/node identity boundary;
 - recovery/cache should build on recorded execution state rather than create a second parallel state model.
 
-M2 implemented and hosted-tested this boundary. Full resume and semantic cache remain later milestones.
+M2 implemented and hosted-tested this boundary.
 
 ## ADR-010 — RunJournal is the runtime contract; SQLite is a persistence implementation
 
@@ -127,19 +127,13 @@ Consequences:
 - `SQLiteRunJournal` provides durable history/query projections without making a database mandatory for every consumer;
 - future UI/transports may consume the same logical event model without redefining engine state.
 
-Evidence: M2 hosted runs recorded in `docs/specs/durable-execution-v1/evidence.md`.
-
 ## ADR-011 — Ordered events are execution history; run/node tables are V1 query projections
 
 Status: **ACCEPTED FOR V1**
 
 Durable events preserve the logical ordered history. `runs` and `node_runs` are query-friendly projections updated in the same SQLite transaction as each event.
 
-This is deliberately **not** a claim of full event sourcing. K-Tools does not yet promise replay-to-rebuild, schema-event migrations or distributed event consumers.
-
-Reason: this gives future UI/history/recovery logic stable ordered facts while keeping common history queries simple.
-
-Implementation rule: later cache/artifact/recovery state must extend these run/node identities rather than introduce a disconnected execution-history model.
+This is deliberately **not** a claim of full event sourcing.
 
 ## ADR-012 — Interrupted execution is distinct from Failed and reconciliation is explicit in V1
 
@@ -151,8 +145,6 @@ A run left `RUNNING` because a process/session disappeared is not a normal busin
 
 It does **not** execute automatically when a database is opened because another live process may still legitimately own a `RUNNING` record. Automatic recovery requires a future process/session ownership or lease model.
 
-Implementation rule: do not implement automatic resume by treating every old `RUNNING` record as abandoned.
-
 ## ADR-013 — Durable output metadata uses an explicit serialization allow-list
 
 Status: **PROVED / ACCEPTED**
@@ -160,8 +152,6 @@ Status: **PROVED / ACCEPTED**
 Journal serialization explicitly supports JSON-like structures and approved K-Tools runtime types such as `Artifact`, paths, enums and dates. Unknown custom Python objects degrade to qualified type-only metadata and are marked non-serializable.
 
 Do not persist arbitrary `repr()`, dataclass internals, object attributes or generic custom `to_dict()` results merely for observability.
-
-Reason: runtime observability should not unexpectedly reflect opaque object internals/secrets into durable local history, and persistence must remain deterministic enough for later cache/signature work.
 
 ## ADR-014 — Diagnostics is a first-class cross-cutting platform contract
 
@@ -171,8 +161,6 @@ Diagnostics must be built before broad cache/recovery, media, browser and import
 
 `WorkflowEngine` therefore accepts an optional `DiagnosticsSession` independently of `RunJournal`.
 
-The separation is intentional:
-
 ```text
                 WorkflowEngine
                  ↙          ↘
@@ -180,42 +168,23 @@ The separation is intentional:
      lifecycle truth     forensic/support evidence
 ```
 
-Run Journal owns durable execution-state facts. Diagnostics owns richer support evidence such as operational logs, decisions, metrics, batches, anomalies, tracebacks, subprocess stdout/stderr references and a shareable support bundle.
-
-Diagnostics must not mutate or redefine journal state.
-
-Implementation rule: significant future runtime/subprocess/integration capabilities after M3 include diagnostic integration in Definition of Done.
+Run Journal owns durable execution-state facts. Diagnostics owns richer support evidence and must not mutate/redefine journal state.
 
 ## ADR-015 — Share-safe diagnostics are the default; diagnostic reports do not claim root cause
 
 Status: **ACCEPTED / SECURITY AND SUPPORT INVARIANT**
 
-A support bundle is intended to be shareable with a developer or AI assistant, so collection must be useful without becoming an indiscriminate secret dump.
+Required default behavior includes recognized credential redaction, no wholesale environment snapshot, no arbitrary unknown-object repr/reflection, bounded structured strings, redacted child-process output and concise operational decisions without private chain-of-thought.
 
-Required default behavior:
-
-- recognized credential/token/password/cookie/authorization patterns are redacted;
-- environment variables are not snapshotted wholesale;
-- unknown Python objects are not serialized through arbitrary `repr()` or reflection;
-- large structured strings are bounded;
-- raw child-process output is redacted before inclusion in the shareable bundle;
-- operational decisions may record concise reason/evidence, but private chain-of-thought is never captured.
-
-The generated `diagnosticHotspots` list is derived from recorded warnings/errors/anomalies. It is explicitly **not** an automatic root-cause diagnosis.
-
-Reason: a diagnostic system that leaks credentials or fabricates certainty creates a larger failure than the bug it is intended to diagnose.
+`diagnosticHotspots` summarizes recorded facts; it is not automatic causal diagnosis.
 
 ## ADR-016 — Abnormal diagnostic-session recovery requires staleness evidence
 
 Status: **ACCEPTED FOR V1**
 
-A diagnostics directory with an event stream but no final report can result from a crash, forced termination or machine shutdown, but absence of a report alone does not prove that the owner process is dead.
+A diagnostics directory with an event stream but no final report can result from abnormal termination, but absence of a report alone does not prove that the owner process is dead.
 
-`recover_abandoned_sessions()` therefore does not recover fresh sessions by default. It requires a minimum staleness age; an age of zero is allowed only when the caller independently knows no live process owns the session.
-
-Recovered sessions become `ABANDONED_OR_INTERRUPTED`, preserve the last durable event, and are packaged without inferring the root cause.
-
-This is intentionally conservative until a future process/session lease model can establish ownership more strongly.
+`recover_abandoned_sessions()` therefore requires staleness unless the caller independently knows no live process owns the session.
 
 ## ADR-017 — Semantic cache is explicit opt-in and fail-open
 
@@ -223,9 +192,7 @@ Status: **PROVED / ACCEPTED FOR M4 V1**
 
 Every node defaults to `CachePolicy.NEVER`. Only a capability owner may explicitly mark a versioned node `PURE` when equivalent semantic inputs/config produce deterministic outputs and skipping the handler has no required external side effect.
 
-`NodeCache` is an optional injected optimization. Read/write/touch/invalidation failures are diagnostic evidence and fall back to normal execution where possible rather than turning a valid workflow into a cache-induced failure.
-
-Implementation rule: future Node Packs must justify `PURE`; never infer cacheability merely because code appears deterministic.
+`NodeCache` is an optional injected optimization. Cache failures fall back to normal execution where possible.
 
 ## ADR-018 — Cached execution is a distinct lifecycle fact
 
@@ -233,17 +200,13 @@ Status: **PROVED / ACCEPTED**
 
 If a handler is skipped because a prior output is substituted, the journal records `NODE_CACHED` and projects `NodeRunStatus.CACHED`.
 
-A cached node does not emit `NODE_STARTED` and is not rewritten as ordinary `SUCCEEDED` execution.
-
-Reason: the history must preserve whether computation actually ran. UI/history can later display reuse without reconstructing it heuristically from diagnostics.
+A cached node does not emit `NODE_STARTED` and is not rewritten as ordinary executed success.
 
 ## ADR-019 — Strong reusable file validity requires content identity
 
 Status: **PROVED / ACCEPTED FOR LOCAL FILE V1**
 
 For reusable local file Artifacts, size and mtime are quick invalidation evidence but are not sufficient to claim equality. If quick fields still match, K-Tools recomputes SHA-256 before reuse.
-
-Regression evidence changes file content while preserving size and restoring the exact previous mtime; the digest still invalidates the candidate.
 
 Folders and remote URIs remain without strong V1 validity until dedicated contracts exist.
 
@@ -257,32 +220,60 @@ M4 recovery means starting a new run and selectively substituting validated comp
 
 It does not mean taking an old `RUNNING` row and continuing it automatically. `RECOVERED` remains unavailable until a later process/session ownership contract proves atomic acquisition, liveness/takeover and side-effect replay/idempotency.
 
-M2 `INTERRUPTED` reconciliation remains the authoritative treatment for abandoned in-flight history.
+Retention rule: M4 cache/Artifact-registry stores own metadata only. K-Tools does not automatically delete user output Artifacts.
 
-Retention rule: M4 cache/Artifact-registry stores own metadata only. K-Tools does not automatically delete user output Artifacts; automatic temp/intermediate cleanup requires explicit file-ownership evidence first.
+## ADR-021 — FILE_SET is an ordered exact collection contract in V1
+
+Status: **PROVED / ACCEPTED IN M5 TEXT SLICE**
+
+`DataType.FILE_SET` represents an ordered list/tuple of FILE Artifacts for workflow composition.
+
+V1 static compatibility is exact FILE_SET→FILE_SET. FILE and FILE_SET are not interchangeable, and collections are not smuggled through JSON/ANY merely for convenience.
+
+No dedicated collection class is introduced because M4 semantic-signature and Artifact traversal already handle list/tuple containers recursively while preserving list order.
+
+`files.literal` is the minimal built-in local source for this contract. It is `PURE`: it publishes no external side effect, and M4 strong Artifact revalidation prevents a cached FILE_SET from silently surviving missing/changed source files.
+
+Reopen covariance or richer collection semantics only when a real capability requires them.
+
+## ADR-022 — Text merge publication remains NEVER; ktools-text is the canonical owner
+
+Status: **PROVED / ACCEPTED FOR TEXT NODE PACK V1**
+
+`text.merge.files` is `NEVER` even though its formatting is deterministic.
+
+Reason: the node's required behavior includes publishing/replacing the configured destination. Returning a cached Artifact reference would not perform that required side effect.
+
+Canonical evolution owner for Markdown/TXT merge behavior is `packages/ktools-text/src/ktools_text/`. Direct API and workflow adapter both delegate to `writer.merge_text_files`, and byte-equivalence tests prove they do not own separate merge algorithms.
+
+The stable legacy GUI still contains a historical implementation. It is explicitly compatibility debt, not a second canonical owner. New semantics and bug fixes must originate in `ktools-text`; a later traditional-Tool/UI migration must redirect or retire the historical copy.
+
+This permits incremental migration without pretending a full GUI rewrite occurred in this slice.
+
+## ADR-023 — Local file URI interpretation belongs to ktools-core
+
+Status: **PROVED / ACCEPTED**
+
+M5 integration review found duplicate `file:// URI → Path` parsing in M4 cache identity and the Text adapter despite green behavior tests.
+
+`ktools_core.local_files.path_from_file_uri()` now owns the cross-platform V1 policy: ordinary local file URIs and `localhost` are accepted; remote/UNC authorities are rejected.
+
+Capability-specific layers translate the generic `LocalFileUriError` into their own public error taxonomy.
+
+Reason: local file identity/URI interpretation is a platform boundary shared by Artifact validity and file-based Node Packs, not business logic each pack should independently reimplement.
 
 ## Research and audit records
 
-Source-based workflow-platform comparative study:
+Source-based workflow-platform comparative study: `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
 
-`docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`
+Audited xyflow spike: `docs/multi-agent/handoffs/AG-001-AUDIT.md`.
 
-Audited xyflow spike:
+Audited first official Node Pack: `docs/multi-agent/handoffs/OC-001-AUDIT.md`.
 
-`docs/multi-agent/handoffs/AG-001-AUDIT.md`
+Durable Execution V1 evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
-Audited first official Node Pack:
+Diagnostics + Support Bundle V1 evidence: `docs/specs/diagnostics-support-bundle-v1/evidence.md`.
 
-`docs/multi-agent/handoffs/OC-001-AUDIT.md`
+Artifact Lifecycle + Recovery + Semantic Cache V1 evidence: `docs/specs/artifact-recovery-cache-v1/evidence.md`.
 
-Durable Execution V1 evidence:
-
-`docs/specs/durable-execution-v1/evidence.md`
-
-Diagnostics + Support Bundle V1 evidence:
-
-`docs/specs/diagnostics-support-bundle-v1/evidence.md`
-
-Artifact Lifecycle + Recovery + Semantic Cache V1 evidence:
-
-`docs/specs/artifact-recovery-cache-v1/evidence.md`
+Text Node Pack V1 evidence: `docs/specs/text-node-pack-v1/evidence.md`.

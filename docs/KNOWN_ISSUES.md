@@ -8,37 +8,39 @@ Status: OPEN / CLASSIFIED
 
 Impact: upstream/subtree test suites can drift after integration unless root CI explicitly invokes them.
 
-Next: design root jobs/path filters for imported applications after the core foundation lands.
+Next: design root jobs/path filters for imported applications before their adapter milestone is promoted.
 
-## KI-002 — Legacy GUI owns large amounts of business logic
+## KI-002 — Legacy GUI still contains large amounts of business logic
+
+Status: OPEN / REDUCED BY M5 SLICE 1
+
+`K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file.
+
+M5 Text Node Pack V1 extracts the canonical Markdown/TXT merge capability, proving the migration pattern, but many other utilities are still embedded in the monolith.
+
+Next: continue capability-by-capability extraction under explicit specs rather than broad monolith rewrite.
+
+## KI-003 — No real K-Tools utility node integrated
+
+Status: RESOLVED
+
+Historical foundation-only condition. `packages/ktools-json` is the first official real Node Pack and M5 adds `text.merge.files` plus `files.literal` composition support.
+
+## KI-004 — Workflow/run/artifact persistence absent
+
+Status: RESOLVED
+
+Historical condition. M2 provides durable Run Journal/SQLite execution history; M4 provides persistent Artifact registry, semantic cache and strong local-file validity.
+
+Automatic continuation of old in-flight RUNNING work remains deliberately ownership-gated, but persistence itself is implemented.
+
+## KI-005 — Production visual workflow editor is absent
 
 Status: OPEN
 
-`K Tools Neo - Versão Estável 2.py` is a large monolithic GUI/application file. Capability logic is not yet cleanly separable from presentation.
+The audited xyflow spike exists and remains green, but no production canvas/palette/inspector/run UI exists yet.
 
-Next: inventory functions and extract the first low-risk capability pack behind node contracts.
-
-## KI-003 — No real K-Tools utility node is integrated yet
-
-Status: OPEN
-
-Foundation nodes are intentionally deterministic fixtures (`text.literal`, `text.concat`, etc.). They prove graph contracts, not product utility coverage.
-
-## KI-004 — Workflow/run/artifact persistence is absent
-
-Status: OPEN
-
-The first engine runs in memory. Restart/recovery, cache and artifact lifecycle are not implemented.
-
-The workflow-platform source study strengthens the priority of a Run Journal + Artifact persistence before expensive media workflows become a primary visual-editor path. See `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
-
-## KI-005 — Visual workflow editor is absent
-
-Status: OPEN
-
-No canvas/palette/inspector/run UI exists yet.
-
-Research now identifies `@xyflow/react` as the preferred implementation for the first UI spike, while `ktools-core` remains the workflow/runtime authority. Desktop-host integration and target-environment performance remain unproved.
+`@xyflow/react` is the preferred interaction layer subject to the later Runtime Contract API and production-editor gate.
 
 ## KI-006 — No adapter boundary to imported apps yet
 
@@ -50,25 +52,16 @@ XCursos and YouTube remain standalone subsystems until adapter contracts are spe
 
 Status: RESOLVED
 
-Historical symptom:
+Historical runs failed before product steps because of the account/spending state. After the material environment change, exact-head hosted jobs reached product boundaries and succeeded. Future CI failures are classified from their actual first failing step rather than carrying forward this incident.
 
-- runs `33327645359` and `33327842478` created the matrix but failed before checkout/setup/install/test;
-- the GitHub UI later exposed the reason: recent account payments had failed or the spending limit needed to be increased.
+## KI-008 — Legacy stable GUI is not yet wired to canonical Text Node Pack
 
-Classification: external GitHub Actions account/billing job-start failure; not a K-Tools product failure.
+Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-Material environment change:
+`packages/ktools-text` is the canonical owner for Markdown/TXT merge evolution, but `K Tools Neo - Versão Estável 2.py` still executes its historical implementation.
 
-- repository changed from private to public;
-- GitHub repository API confirmed `visibility: public`.
+Impact: the old GUI can drift if someone changes the historical copy directly.
 
-Resolution evidence:
+Invariant until migration: new behavior/bug fixes must originate in `ktools-text`; the legacy copy is frozen as an old compatibility path.
 
-- exact-head run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131` completed successfully;
-- Ubuntu 3.10: success;
-- Ubuntu 3.13: success;
-- Windows 3.10: success;
-- Windows 3.13: success;
-- each matrix path reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
-
-Result: the historical job-start blocker is closed. Future CI failures must be classified from their actual first failing step rather than carried forward from the billing incident.
+Next: when the traditional Tool surface is migrated to the platform runtime, redirect the GUI/tool path to `ktools-text` and remove or reduce the historical duplicate. Do not block Text Node Pack V1 promotion on a full GUI rewrite.
