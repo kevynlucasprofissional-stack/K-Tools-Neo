@@ -63,6 +63,9 @@ jobs:
       - name: Image node pack tests
         run: python -m unittest discover -s packages/ktools-images/tests -v
 
+      - name: Filesystem node pack tests
+        run: python -m unittest discover -s packages/ktools-filesystem/tests -v
+
       - name: Core CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
 
