@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-documents"
+version = "0.1.0"
+description = "Official K-Tools mixed document orchestration node pack"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "K-Tools Neo" }]
+dependencies = [
+  "ktools-core>=0.1.0",
+  "ktools-text>=0.1.0",
+  "ktools-pdf>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
