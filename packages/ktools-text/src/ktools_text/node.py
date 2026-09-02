@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
-from urllib.request import url2pathname
 
+from ktools_core.local_files import LocalFileUriError, path_from_file_uri
 from ktools_core.models import Artifact, CachePolicy, DataType, NodeDefinition, PortDefinition
 from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
-from .capability import TextMergeError
 from . import writer
+from .capability import TextMergeError
 
 NODE_TYPE_ID = "text.merge.files"
 
@@ -35,15 +33,10 @@ def _artifact_path(artifact: Artifact) -> Path:
         raise TextMergeError(
             f"text.merge.files requires FILE Artifacts, got {artifact.type.value}"
         )
-    parsed = urlparse(artifact.uri)
-    if parsed.scheme.lower() != "file":
-        raise TextMergeError("text.merge.files supports only local file:// Artifacts")
-    if parsed.netloc not in {"", "localhost"}:
-        raise TextMergeError("text.merge.files does not support UNC/network file URIs in V1")
-    raw_path = url2pathname(unquote(parsed.path))
-    if os.name == "nt" and len(raw_path) >= 3 and raw_path[0] in {"/", "\\"} and raw_path[2] == ":":
-        raw_path = raw_path[1:]
-    return Path(raw_path).resolve()
+    try:
+        return path_from_file_uri(artifact.uri)
+    except LocalFileUriError as exc:
+        raise TextMergeError(f"text.merge.files received an unsupported Artifact URI: {exc}") from exc
 
 
 def _merge_files_handler(
