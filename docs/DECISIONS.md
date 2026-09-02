@@ -261,6 +261,46 @@ M2 `INTERRUPTED` reconciliation remains the authoritative treatment for abandone
 
 Retention rule: M4 cache/Artifact-registry stores own metadata only. K-Tools does not automatically delete user output Artifacts; automatic temp/intermediate cleanup requires explicit file-ownership evidence first.
 
+## ADR-021 — FILE_SET is an ordered exact collection contract in V1
+
+Status: **PROVED / ACCEPTED IN M5 TEXT SLICE**
+
+`DataType.FILE_SET` represents an ordered list/tuple of FILE Artifacts for workflow composition.
+
+V1 static compatibility is exact FILE_SET→FILE_SET. FILE and FILE_SET are not interchangeable, and collections are not smuggled through JSON/ANY merely for convenience.
+
+No dedicated collection object is introduced because M4 semantic-signature and Artifact-registry traversal already handle list/tuple containers recursively while preserving list order.
+
+`files.literal` is the minimal built-in local source for the contract. It is `PURE` because it has no publication side effect; M4 cached-output validation rechecks the emitted file Artifacts, so missing/changed files prevent stale reuse.
+
+Reopen covariance/richer collection semantics only when a real capability requires them.
+
+## ADR-022 — Text merge publication remains NEVER; ktools-text is the canonical owner
+
+Status: **PROVED / ACCEPTED FOR TEXT NODE PACK V1**
+
+`text.merge.files` remains `CachePolicy.NEVER` even though its formatting is deterministic.
+
+Reason: the node's contract includes publishing/replacing the requested destination. Substituting a prior Artifact would skip the required side effect.
+
+Canonical evolution owner for Markdown/TXT merge behavior is `packages/ktools-text/src/ktools_text/`. Direct API and workflow adapter both delegate to `writer.merge_text_files`, and equivalent executions are byte-identical.
+
+The stable legacy GUI still contains its historical implementation. It is explicitly compatibility debt, not a second canonical evolution owner. New semantics and bug fixes must originate in `ktools-text`; a later traditional-Tool/UI migration must redirect or retire the historical copy.
+
+This allows incremental extraction without falsely claiming a full GUI rewrite occurred in this slice.
+
+## ADR-023 — Local file URI interpretation belongs to ktools-core
+
+Status: **PROVED / ACCEPTED**
+
+M5 integration review found duplicate `file:// URI → Path` parsing in M4 cache identity and the Text adapter despite green behavior tests.
+
+`ktools_core.local_files.path_from_file_uri()` now owns the cross-platform V1 policy: ordinary local file URIs and `file://localhost/...` are accepted; remote/UNC authorities are rejected.
+
+Capability-specific callers translate `LocalFileUriError` into their own public error taxonomy.
+
+Reason: file URI interpretation is a shared Artifact/platform boundary, not business logic each Node Pack should reimplement.
+
 ## Research and audit records
 
 Source-based workflow-platform comparative study:
@@ -286,3 +326,7 @@ Diagnostics + Support Bundle V1 evidence:
 Artifact Lifecycle + Recovery + Semantic Cache V1 evidence:
 
 `docs/specs/artifact-recovery-cache-v1/evidence.md`
+
+Text Node Pack V1 evidence:
+
+`docs/specs/text-node-pack-v1/evidence.md`

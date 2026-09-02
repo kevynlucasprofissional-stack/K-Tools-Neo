@@ -54,6 +54,8 @@ Code candidate `c7ae2fa3953099d0bd9377da7c2c0195e96f6175` passed run `3356004136
 
 Canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed run `33625955613`, satisfying the promotion gate.
 
+Formal promotion `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` also passed its hosted matrix in run `33626260487`.
+
 Evidence: `docs/specs/artifact-recovery-cache-v1/`.
 
 ---
@@ -72,6 +74,35 @@ Capability families:
 - Media.
 
 First-slice rule: inspect the actual legacy owner before extraction; characterize existing behavior; prefer a small deterministic capability with low native coupling; preserve direct Tool/API + workflow one-owner architecture; use first-class Artifacts where the file contract warrants it; classify PURE versus side-effectful behavior explicitly; integrate diagnostics at the real boundary.
+
+### Slice 1 — Text Node Pack V1
+
+Status: **IMPLEMENTATION COMPLETE / PROMOTION GATE**
+
+Delivered candidate:
+
+- ordered `FILE_SET` contract without inventing an unnecessary collection class;
+- minimal `files.literal` source, PURE with M4 strong output revalidation;
+- `packages/ktools-text/` capability/writer/direct API/node adapter;
+- characterized Markdown/TXT decoding (`utf-8-sig`, UTF-8, latin-1), separator and publication behavior;
+- `text.merge.files: FILE_SET -> FILE`, NEVER because publication/replacement is a required side effect;
+- byte-identical direct API/workflow output under equivalent config;
+- first-class output Artifact + ArtifactRegistry proof;
+- source-file mutation invalidates cached FILE_SET source output;
+- centralized local-file URI interpretation in `ktools-core` after integration audit;
+- root CI Text tests and real workflow output verification.
+
+Accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed all five jobs in run `33627879876`.
+
+Promotion remains gated on synchronized canonical-memory exact-head CI, PR #8 merge and post-merge `main` verification.
+
+Canonical owner after promotion: `packages/ktools-text`. The historical GUI copy remains temporary compatibility debt and must not receive independent semantic evolution.
+
+### Next M5 slice
+
+Status: **UNSELECTED / DISCOVERY AFTER TEXT PROMOTION**
+
+Do not choose the next capability merely because it is easy to name. Re-inspect actual legacy owners and compare dependency/native coupling, side effects, Artifact shape, composability and one-owner migration cost. WebP→PNG and generic folder scanning remain candidates rather than commitments.
 
 Media rule: create one shared FFmpeg/FFprobe process boundary before broad audio/video nodes. It must use M3 subprocess diagnostics and explicit M4 Artifact/cache semantics.
 

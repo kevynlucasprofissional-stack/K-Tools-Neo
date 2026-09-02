@@ -54,6 +54,7 @@ from .journal import (
     to_json_safe,
     utc_now_iso,
 )
+from .local_files import LocalFileUriError, path_from_file_uri
 from .models import (
     Artifact,
     CachePolicy,
@@ -91,6 +92,7 @@ __all__ = [
     "DiagnosticLogHandler",
     "DiagnosticSeverity",
     "DiagnosticsSession",
+    "LocalFileUriError",
     "MemoryRunJournal",
     "NodeCache",
     "NodeDefinition",
@@ -123,6 +125,7 @@ __all__ = [
     "decode_cached_outputs",
     "encode_cached_outputs",
     "is_type_compatible",
+    "path_from_file_uri",
     "recover_abandoned_sessions",
     "redact_command",
     "redact_text",

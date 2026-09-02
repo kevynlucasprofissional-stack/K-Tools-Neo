@@ -3,15 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping
-from urllib.parse import unquote, urlparse
-from urllib.request import url2pathname
 
+from .local_files import LocalFileUriError, path_from_file_uri
 from .models import Artifact, CachePolicy, DataType, NodeDefinition
 
 
@@ -33,20 +31,6 @@ class CacheSignatureUnsupported(TypeError):
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
-
-
-def _path_from_file_uri(uri: str) -> Path:
-    parsed = urlparse(uri)
-    if parsed.scheme.lower() != "file":
-        raise UnsupportedArtifactError(
-            f"Strong V1 validity supports only file:// URIs, got: {parsed.scheme or 'no scheme'}"
-        )
-    if parsed.netloc not in {"", "localhost"}:
-        raise UnsupportedArtifactError("Network/UNC file URI validity is not supported in V1")
-    raw_path = url2pathname(unquote(parsed.path))
-    if os.name == "nt" and len(raw_path) >= 3 and raw_path[0] in {"/", "\\"} and raw_path[2] == ":":
-        raw_path = raw_path[1:]
-    return Path(raw_path).resolve()
 
 
 def _sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
@@ -116,7 +100,10 @@ def snapshot_artifact(artifact: Artifact) -> ArtifactSnapshot:
     if artifact.type is DataType.FOLDER:
         raise UnsupportedArtifactError("Directory Artifact strong validity is not supported in V1")
     try:
-        path = _path_from_file_uri(artifact.uri)
+        try:
+            path = path_from_file_uri(artifact.uri)
+        except LocalFileUriError as exc:
+            raise UnsupportedArtifactError(str(exc)) from exc
         if not path.exists():
             raise ArtifactSnapshotError(f"Artifact file does not exist: {path}")
         if not path.is_file():

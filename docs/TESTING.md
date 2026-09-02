@@ -18,7 +18,7 @@ A green job proves only the commands that job actually reached and completed.
 
 `.github/workflows/core-ci.yml` validates two surfaces.
 
-### Python runtime + official JSON Node Pack
+### Python runtime + official JSON/Text Node Packs
 
 Matrix:
 
@@ -33,13 +33,17 @@ Each matrix job performs:
 2. Python setup;
 3. editable install of `packages/ktools-core`;
 4. editable install of `packages/ktools-json`;
-5. complete core unit/contract suite;
-6. complete JSON Node Pack suite;
-7. core CLI smoke;
-8. JSON workflow CLI smoke;
-9. generated JSON-part verification.
+5. editable install of `packages/ktools-text`;
+6. complete core unit/contract suite;
+7. complete JSON Node Pack suite;
+8. complete Text Node Pack suite;
+9. core CLI smoke;
+10. JSON workflow CLI smoke;
+11. generated JSON-part verification;
+12. Text workflow smoke;
+13. exact generated Text artifact verification.
 
-Because suites are discovered from the repository, the matrix exercises Durable Execution, Diagnostics/Support Bundle and M4 Artifact/Cache contracts together, including SQLite lifecycle, safe redaction, support reports, subprocess failure boundaries, semantic cache reuse/invalidation and persistent Artifact observations.
+Because suites are discovered from the repository, the matrix exercises Durable Execution, Diagnostics/Support Bundle and M4 Artifact/Cache contracts together, including SQLite lifecycle, safe redaction, support reports, subprocess failure boundaries, semantic cache reuse/invalidation and persistent Artifact observations. M5 additionally exercises FILE_SET and the official Text Node Pack.
 
 ### xyflow spike
 
@@ -189,6 +193,48 @@ When diagnostics is active, cache decisions must leave concise operational facts
 - cache read/write/touch/invalidation failure.
 
 Do not store private chain-of-thought. Record decision + concrete observed reason.
+
+## Text Node Pack V1 evidence expectations
+
+A claim that Markdown/TXT merge is migrated behind the platform requires all applicable layers below.
+
+### FILE_SET contract
+
+- explicit ordered `DataType.FILE_SET` exists;
+- FILE_SET→FILE_SET validates while FILE and FILE_SET do not silently coerce;
+- `files.literal` preserves configured order and emits FILE Artifacts;
+- `files.literal` is PURE only because it has no publication side effect and M4 revalidates cached file outputs;
+- changing a source file invalidates the cached source result and forces execution.
+
+### Legacy behavior characterization
+
+- `utf-8-sig`/UTF-8/latin-1 reading order is proved;
+- `completo`, `simples` and `nenhum` exact bytes are proved;
+- input ordering and output suffix normalization are proved;
+- output/input collision is rejected;
+- output parent creation is covered;
+- existing destination replacement happens only after complete temp output;
+- handled mid-operation failure preserves the previous destination and cleans temp output where possible.
+
+### One-owner direct/workflow proof
+
+- direct API and node adapter both delegate to the same writer;
+- equivalent direct/workflow executions are byte-identical;
+- adapter does not reimplement decoding/formatting/publication;
+- shared platform `file://` interpretation is reused rather than copied into a pack.
+
+### M4 integration
+
+- `text.merge.files` is NEVER because publication/replacement is required;
+- output is a first-class FILE Artifact with current run/node provenance;
+- ArtifactRegistry records an EXECUTED occurrence with a strong snapshot;
+- a cached upstream `files.literal` does not cause the merge publication node to be skipped.
+
+### Hosted promotion
+
+Root CI must install and test `ktools-text` on Ubuntu/Windows × Python 3.10/3.13 and execute a real Text workflow smoke with exact output assertion. The existing xyflow job must remain green.
+
+Accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed run `33627879876`. Representative Ubuntu/Python 3.10 evidence: 72 core tests + 64 JSON tests + 15 Text tests, all OK, followed by core CLI, JSON workflow/artifact and Text workflow/exact-content smokes.
 
 ## Recovery / ownership evidence boundary
 

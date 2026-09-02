@@ -8,37 +8,41 @@ Status: OPEN / CLASSIFIED
 
 Impact: upstream/subtree test suites can drift after integration unless root CI explicitly invokes them.
 
-Next: design root jobs/path filters for imported applications after the core foundation lands.
+Next: design root jobs/path filters for imported applications after the core foundation lands / before imported-app adapters are promoted.
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN
+Status: OPEN / REDUCED BY M5 SLICE 1
 
-`K Tools Neo - Versão Estável 2.py` is a large monolithic GUI/application file. Capability logic is not yet cleanly separable from presentation.
+`K Tools Neo - Versão Estável 2.py` is a large monolithic GUI/application file. Capability logic is not yet cleanly separable from presentation across the whole application.
 
-Next: inventory functions and extract the first low-risk capability pack behind node contracts.
+M5 Text Node Pack V1 extracts the canonical Markdown/TXT merge capability and proves a migration pattern, but many other utilities remain embedded in the monolith.
+
+Next: continue capability-by-capability extraction behind node contracts rather than broad monolith rewrite.
 
 ## KI-003 — No real K-Tools utility node is integrated yet
 
-Status: OPEN
+Status: RESOLVED
 
-Foundation nodes are intentionally deterministic fixtures (`text.literal`, `text.concat`, etc.). They prove graph contracts, not product utility coverage.
+Historical foundation condition. `packages/ktools-json/` is the first official real Node Pack, and M5 Slice 1 adds `text.merge.files` plus the `files.literal` ordered-file source contract.
 
 ## KI-004 — Workflow/run/artifact persistence is absent
 
-Status: OPEN
+Status: RESOLVED
 
-The first engine runs in memory. Restart/recovery, cache and artifact lifecycle are not implemented.
+Historical foundation condition. M2 implements durable run/node history with RunJournal + SQLite. M4 implements persistent Artifact occurrence/validity observations and semantic cache.
 
-The workflow-platform source study strengthens the priority of a Run Journal + Artifact persistence before expensive media workflows become a primary visual-editor path. See `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
+Automatic continuation of old in-flight RUNNING work remains deliberately ownership-gated; this is a recovery-safety boundary, not absence of persistence.
+
+The workflow-platform source study remains relevant sequencing evidence. See `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
 
 ## KI-005 — Visual workflow editor is absent
 
 Status: OPEN
 
-No canvas/palette/inspector/run UI exists yet.
+No production canvas/palette/inspector/run UI exists yet.
 
-Research now identifies `@xyflow/react` as the preferred implementation for the first UI spike, while `ktools-core` remains the workflow/runtime authority. Desktop-host integration and target-environment performance remain unproved.
+Research and the audited spike identify `@xyflow/react` as the preferred implementation layer, while `ktools-core` remains the workflow/runtime authority. Desktop-host integration and target-environment performance remain unproved.
 
 ## KI-006 — No adapter boundary to imported apps yet
 
@@ -72,3 +76,15 @@ Resolution evidence:
 - each matrix path reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
 
 Result: the historical job-start blocker is closed. Future CI failures must be classified from their actual first failing step rather than carried forward from the billing incident.
+
+## KI-008 — Legacy stable GUI is not yet wired to canonical Text Node Pack
+
+Status: OPEN / EXPLICIT COMPATIBILITY DEBT
+
+`packages/ktools-text` is the canonical evolution owner for Markdown/TXT merge, but `K Tools Neo - Versão Estável 2.py` still executes its historical implementation.
+
+Impact: the old GUI can drift if someone changes the historical copy directly.
+
+Invariant until migration: new behavior/bug fixes must originate in `ktools-text`; the historical copy is frozen as an old compatibility path.
+
+Next: when the traditional Tool surface is migrated to the platform runtime, redirect the GUI/tool path to `ktools-text` and remove or reduce the historical duplicate. Do not disguise this debt, but do not block Text Node Pack V1 on a full GUI rewrite.

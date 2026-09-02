@@ -52,6 +52,18 @@ Status: **VALIDATED FOR V1** — current run gets EXECUTED/CACHED occurrence whi
 ## H-023 — Restart recovery is a new run until ownership is proved
 Status: **ACCEPTED SAFETY BOUNDARY** — old RUNNING work is not auto-reclaimed; RECOVERED remains gated.
 
+## H-024 — Multi-file workflows need an honest ordered type
+Status: **VALIDATED IN M5 TEXT SLICE** — `FILE_SET` is preferable to smuggling an ordered Artifact sequence through JSON/ANY. Exact V1 compatibility was enough; no new collection object was required because M4 traversal already handles list/tuple Artifact containers.
+
+## H-025 — A source can be PURE while downstream publication remains NEVER
+Status: **VALIDATED IN M5 TEXT SLICE** — `files.literal` is reusable only while its output FILE Artifacts remain strongly valid; `text.merge.files` still executes because publication/replacement of the requested destination is required behavior.
+
+## H-026 — Green behavior tests do not prove architectural single ownership
+Status: **VALIDATED / AUDIT LESSON** — integration review found duplicate `file:// URI → Path` logic across M4 and Text despite green tests. The parser was centralized in `ktools-core.local_files` and regression-tested.
+
+## H-027 — Legacy source of truth can become characterization source before UI rewiring
+Status: **ACCEPTED MIGRATION BOUNDARY** — equivalence/evidence allows `ktools-text` to become the canonical evolution owner while the old stable GUI copy remains temporarily as explicitly frozen compatibility debt. Full GUI rewiring is a later surface migration, not a prerequisite for extracting the capability contract.
+
 ## E-004 — Correct output-collision guard can make non-isolated smoke red
 Status: **CLASSIFIED** — fix test isolation, not safety behavior.
 
@@ -64,21 +76,34 @@ Status: **RESOLVED / TEST-DESIGN LESSON** — preserve pre-change observation wh
 ## E-007 — Internal cache markers can collide with legitimate user JSON
 Status: **RESOLVED / SERIALIZATION HARDENING** — explicit container envelopes + regression tests.
 
+## E-008 — M5 RED proved contract absence rather than packaging failure
+Status: **RESOLVED / USEFUL RED** — run `33626957901` reached checkout/setup/editable installs and failed only on the intentionally absent FILE_SET/files.literal contracts. Existing tests and xyflow stayed green at that boundary.
+
+## E-009 — Duplicate local-file URI parser survived GREEN until integration audit
+Status: **RESOLVED / REFACTOR LESSON** — behavior was green but architecture still had two platform-boundary implementations. `path_from_file_uri` was centralized before promotion; final code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed run `33627879876` 5/5.
+
 ## M4 closure
 
 M4 synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five hosted jobs in run `33625955613`. M4 is resolved/promoted.
 
+## M5 Slice 1 closure candidate
+
+Text Node Pack V1 accepted code candidate `dbd39a1119ce1557d802a115404f01a3f797d93e` passed all five hosted jobs in run `33627879876`.
+
+Representative Ubuntu/Python 3.10 evidence: 72 core + 64 JSON + 15 Text tests, followed by core CLI, JSON workflow/artifact and Text workflow/exact-content smokes.
+
+Technical acceptance is complete. Remaining gate is synchronized canonical-memory exact-head CI, PR #8 promotion/merge and post-merge `main` verification.
+
 ## Next journal focus — M5
 
-M5 is active in discovery/spec mode. Before implementation:
+After Text Slice 1 promotion:
 
-1. inventory low-risk legacy capability owners;
+1. re-inventory low-risk legacy capability owners rather than assuming the next feature;
 2. characterize behavior at the current owner boundary;
-3. prefer one-input/one-output or otherwise simple deterministic file operations before native media work;
+3. compare dependency/native coupling, side effects, Artifact shape, composability and migration cost;
 4. decide Artifact contracts explicitly rather than returning naked paths by habit;
 5. classify transformation and publication separately where that yields honest PURE/NEVER semantics;
 6. integrate diagnostics at file/native boundaries;
 7. preserve direct Tool/API + workflow one-owner architecture;
-8. if FFmpeg/FFprobe enters scope, establish the shared diagnostic subprocess boundary first.
-
-Leading discovery candidate is legacy Markdown/TXT merge because `merge_text_files(...)` is already a bounded real behavior in the stable monolith. It must still be compared against other low-risk candidates before scope is locked.
+8. avoid broad GUI rewrites while capability extraction is still proving boundaries;
+9. if FFmpeg/FFprobe enters scope, establish the shared diagnostic subprocess boundary first.

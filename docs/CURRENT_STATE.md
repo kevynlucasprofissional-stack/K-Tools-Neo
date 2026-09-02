@@ -59,6 +59,8 @@ Accepted code candidate `c7ae2fa3953099d0bd9377da7c2c0195e96f6175` passed all fi
 
 The synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five jobs in run `33625955613`, satisfying the final promotion gate.
 
+Formal promotion commit `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` also passed its five-job matrix in run `33626260487`.
+
 Evidence/final report: `docs/specs/artifact-recovery-cache-v1/`.
 
 ## Runtime architecture now
@@ -73,6 +75,11 @@ WorkflowEngine
 
 All four remain optional injected concerns rather than hidden global runtime dependencies.
 
+Typed file composition now includes:
+
+- `FILE` for one file Artifact;
+- `FILE_SET` for an ordered list/tuple of FILE Artifacts.
+
 Carry-forward invariants:
 
 - previous success is not sufficient for reuse;
@@ -82,16 +89,35 @@ Carry-forward invariants:
 - `CACHED` is distinct from executed success;
 - unfinished persisted state is not proof of process death;
 - user output files are not automatically deleted from metadata invalidation;
-- diagnostics is part of Definition of Done for significant native/subprocess/integration work.
+- diagnostics is part of Definition of Done for significant native/subprocess/integration work;
+- direct Tool/API and workflow routes share one capability owner rather than duplicate business logic.
 
 ## Active roadmap milestone — M5 Official local Node Packs
 
-Status: **ACTIVE — DISCOVERY / SPEC GATE**.
+Status: **ACTIVE — ITERATIVE DELIVERY**.
 
-Before changing implementation code, inspect actual legacy ownership and select the first small capability that is useful, deterministic enough to characterize, weakly coupled to the old monolith and capable of proving the M0-M4 platform contracts without duplicated business logic.
+### Slice 1 — Text Node Pack V1 — IMPLEMENTATION COMPLETE / PROMOTION GATE
 
-Current leading discovery candidate: legacy Markdown/TXT merge, because the stable monolith already contains a bounded `merge_text_files(...)` behavior with explicit input validation, separator modes, fallback decoding, output/input collision protection and atomic temporary-output replacement. This is not yet an implementation decision; it must be compared against other low-risk legacy capabilities before the M5 spec locks scope.
+Discovery compared Markdown/TXT merge, WebP→PNG and generic folder scanning. Markdown/TXT merge was selected because the stable monolith already contained a bounded stdlib-only `merge_text_files(...)` behavior with explicit input validation, separator modes, fallback decoding, output/input collision protection and atomic temporary-output replacement.
+
+Implemented candidate:
+
+- `DataType.FILE_SET` exact ordered collection contract;
+- `files.literal` PURE local-file source whose cached Artifacts are strongly revalidated by M4;
+- `packages/ktools-text/` as the canonical evolution owner;
+- legacy-compatible Markdown/TXT decoding, separators and publication behavior;
+- `text.merge.files: FILE_SET -> FILE`, cache policy NEVER because publication/replacement is required;
+- first-class output Artifact provenance and ArtifactRegistry integration;
+- source-file mutation invalidation for cached `files.literal` output;
+- shared `ktools_core.local_files.path_from_file_uri()` after integration review found duplicated URI parsing;
+- root CI Text package tests + real workflow smoke.
+
+Accepted code candidate: `dbd39a1119ce1557d802a115404f01a3f797d93e`.
+
+Hosted run `33627879876`: Ubuntu 3.10/3.13, Windows 3.10/3.13 and xyflow all succeeded. Representative Ubuntu/Python 3.10 evidence executed 72 core + 64 JSON + 15 Text tests plus core/JSON/Text smokes.
+
+Ownership boundary: the old stable GUI still contains its historical merge implementation. That copy is now explicitly compatibility debt, not the canonical place to evolve semantics. New fixes/behavior originate in `ktools-text`; later traditional-Tool/UI migration must redirect or retire the historical copy.
 
 ## Next exact action
 
-Inventory low-risk legacy capabilities, compare coupling/dependencies/side effects/Artifact fit, select the first M5 slice, then create a dedicated spec and characterization tests before extraction.
+Require the synchronized canonical-memory HEAD of PR #8 to pass the same five-job hosted matrix. If green: mark PR #8 ready, revalidate exact head/base and unresolved review state, merge with expected-head guard, require post-merge `main` CI green, then continue M5 by re-inventorying real legacy owners for the next slice rather than preselecting one by convenience.

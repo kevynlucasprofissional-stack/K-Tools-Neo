@@ -14,6 +14,7 @@ class DataType(str, Enum):
     JSON = "json"
     URL = "url"
     FILE = "file"
+    FILE_SET = "file_set"
     FOLDER = "folder"
     AUDIO = "audio"
     VIDEO = "video"
