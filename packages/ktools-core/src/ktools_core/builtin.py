@@ -48,6 +48,17 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
     )
     registry.register(
         NodeDefinition(
+            type_id="file.literal",
+            title="Arquivo",
+            category="Files",
+            outputs={"file": PortDefinition(DataType.FILE)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
+        ),
+        _file_literal,
+    )
+    registry.register(
+        NodeDefinition(
             type_id="files.literal",
             title="Arquivos",
             category="Files",
@@ -102,6 +113,42 @@ def _number_literal(
     return {"number": value}
 
 
+def _local_file_artifact(
+    raw_path: Any,
+    context: NodeExecutionContext,
+    *,
+    config_label: str,
+    source_index: int | None = None,
+) -> Artifact:
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise TypeError(f"{config_label} must be a non-empty string")
+    path = Path(raw_path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"local file path does not exist: {path}")
+    if not path.is_file():
+        raise ValueError(f"local file path is not a file: {path}")
+    metadata: dict[str, Any] = {"name": path.name}
+    if source_index is not None:
+        metadata["sourceIndex"] = source_index
+    return Artifact.create(
+        type=DataType.FILE,
+        uri=path.as_uri(),
+        produced_by=f"{context.run_id}/{context.node_id}",
+        metadata=metadata,
+    )
+
+
+def _file_literal(
+    _inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    artifact = _local_file_artifact(
+        config.get("path"),
+        context,
+        config_label="file.literal config.path",
+    )
+    return {"file": artifact}
+
+
 def _files_literal(
     _inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
 ) -> dict[str, Any]:
@@ -109,23 +156,15 @@ def _files_literal(
     if not isinstance(raw_paths, (list, tuple)) or not raw_paths:
         raise TypeError("files.literal config.paths must be a non-empty list of local file paths")
 
-    artifacts: list[Artifact] = []
-    for index, raw_path in enumerate(raw_paths):
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            raise TypeError(f"files.literal config.paths[{index}] must be a non-empty string")
-        path = Path(raw_path).expanduser().resolve()
-        if not path.exists():
-            raise FileNotFoundError(f"files.literal path does not exist: {path}")
-        if not path.is_file():
-            raise ValueError(f"files.literal path is not a file: {path}")
-        artifacts.append(
-            Artifact.create(
-                type=DataType.FILE,
-                uri=path.as_uri(),
-                produced_by=f"{context.run_id}/{context.node_id}",
-                metadata={"name": path.name, "sourceIndex": index},
-            )
+    artifacts = [
+        _local_file_artifact(
+            raw_path,
+            context,
+            config_label=f"files.literal config.paths[{index}]",
+            source_index=index,
         )
+        for index, raw_path in enumerate(raw_paths)
+    ]
     return {"files": artifacts}
 
 

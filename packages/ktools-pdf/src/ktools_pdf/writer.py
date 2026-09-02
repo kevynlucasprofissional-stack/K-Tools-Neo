@@ -53,7 +53,10 @@ def _cleanup(path: Path) -> None:
 
 def write_pdf_writer_atomic(pdf_writer: PdfWriter, output_file: Path) -> None:
     output = Path(output_file)
-    output.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise PdfMergeError(f"Failed to prepare PDF output directory {output.parent}: {exc}") from exc
     fd, temp_name = tempfile.mkstemp(
         prefix=f".{output.stem}_ktools_",
         suffix=".tmp",
@@ -70,7 +73,7 @@ def write_pdf_writer_atomic(pdf_writer: PdfWriter, output_file: Path) -> None:
         raise
     except Exception as exc:
         _cleanup(temp_path)
-        raise PdfMergeError(f"Failed to publish merged PDF {output}: {exc}") from exc
+        raise PdfMergeError(f"Failed to publish PDF {output}: {exc}") from exc
 
 
 def merge_pdf_files(

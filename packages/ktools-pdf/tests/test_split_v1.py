@@ -12,10 +12,11 @@ from ktools_core.builtin import register_builtin_nodes
 from ktools_core.cache_store import SQLiteNodeCache
 from ktools_core.engine import WorkflowEngine
 from ktools_core.journal import MemoryRunJournal, RunEventType
+from ktools_core.local_files import path_from_file_uri
 from ktools_core.models import Artifact, CachePolicy, DataType, WorkflowDefinition, WorkflowEdge, WorkflowNode
 from ktools_core.registry import NodeRegistry
 
-from ktools_pdf import api, node
+from ktools_pdf import PdfMergeError, api, node
 from ktools_pdf.node import register_nodes
 
 SPLIT_NODE_TYPE_ID = "pdf.split.parts"
@@ -135,12 +136,12 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
 
         for bad_source in (self.root / "missing.pdf", directory, text):
             with self.subTest(source=bad_source):
-                with self.assertRaises(Exception):
+                with self.assertRaises(PdfMergeError):
                     split_api()(bad_source, self.root / "bad-source", 2)
 
         for bad_parts in (0, 1, True, 2.5, "2"):
             with self.subTest(parts=bad_parts):
-                with self.assertRaises(Exception):
+                with self.assertRaises(PdfMergeError):
                     split_api()(valid, self.root / "bad-parts", bad_parts)
 
         empty = self.root / "empty.pdf"
@@ -163,7 +164,7 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
 
         for bad_pdf in (empty, encrypted):
             with self.subTest(pdf=bad_pdf.name):
-                with self.assertRaises(Exception):
+                with self.assertRaises(PdfMergeError):
                     split_api()(bad_pdf, self.root / "protected", 2)
 
     def test_progress_is_supplemental_and_reaches_completion(self) -> None:
@@ -171,7 +172,12 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
         make_pdf(source, [(101, 201), (102, 202), (103, 203)])
         events: list[tuple[float, str]] = []
 
-        outputs = split_api()(source, self.root / "progress", 2, lambda value, message: events.append((value, message)))
+        outputs = split_api()(
+            source,
+            self.root / "progress",
+            2,
+            lambda value, message: events.append((value, message)),
+        )
 
         self.assertEqual(len(outputs), 2)
         self.assertTrue(events)
@@ -223,12 +229,12 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
 
         with SQLiteNodeCache(cache_path) as cache:
             first = WorkflowEngine(self._registry(), cache=cache).execute(workflow)
-        first_names = [Path(item.uri).name for item in first.node_outputs["split"]["files"]]
+        first_names = [path_from_file_uri(item.uri).name for item in first.node_outputs["split"]["files"]]
 
         journal = MemoryRunJournal()
         with SQLiteNodeCache(cache_path) as cache:
             second = WorkflowEngine(self._registry(), cache=cache, journal=journal).execute(workflow)
-        second_names = [Path(item.uri).name for item in second.node_outputs["split"]["files"]]
+        second_names = [path_from_file_uri(item.uri).name for item in second.node_outputs["split"]["files"]]
 
         pairs = [(event.node_id, event.event_type) for event in journal.events]
         self.assertIn(("source", RunEventType.NODE_CACHED), pairs)
@@ -245,7 +251,7 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
         result = WorkflowEngine(self._registry()).execute(
             self._split_workflow(source, self.root / "workflow", 3)
         )
-        workflow_paths = [Path(item.uri.removeprefix("file://")) for item in result.node_outputs["split"]["files"]]
+        workflow_paths = [path_from_file_uri(item.uri) for item in result.node_outputs["split"]["files"]]
 
         self.assertEqual([dims(path) for path in direct], [dims(path) for path in workflow_paths])
 
@@ -257,7 +263,11 @@ class PdfSplitV1CharacterizationTests(unittest.TestCase):
             id="split-merge",
             nodes=(
                 WorkflowNode(id="source", type="file.literal", config={"path": str(source)}),
-                WorkflowNode(id="split", type=SPLIT_NODE_TYPE_ID, config={"output_dir": str(self.root / "parts"), "parts": 3}),
+                WorkflowNode(
+                    id="split",
+                    type=SPLIT_NODE_TYPE_ID,
+                    config={"output_dir": str(self.root / "parts"), "parts": 3},
+                ),
                 WorkflowNode(id="merge", type="pdf.merge.files", config={"output_path": str(merged)}),
             ),
             edges=(
