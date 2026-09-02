@@ -62,11 +62,14 @@ jobs:
         run: python -c "import os,json; d='oc001-split-out'; assert [f for f in os.listdir(d) if f.endswith('.json')], 'no parts written'; assert json.load(open(os.path.join(d,'records_parte_01_de_02.json'))), 'part invalid'"
         working-directory: ${{ runner.temp }}
 
-      - name: Text workflow smoke
+      - name: Text merge workflow smoke
         run: python packages/ktools-text/examples/run_merge_workflow.py "${{ runner.temp }}/ktools-text-smoke/merged.md"
 
-      - name: Verify Text workflow smoke artifact
+      - name: Verify Text merge workflow smoke artifact
         run: python -c "from pathlib import Path; p=Path(r'${{ runner.temp }}')/'ktools-text-smoke'/'merged.md'; assert p.read_text(encoding='utf-8') == 'Alpha\n\nBeta\n\n', p.read_text(encoding='utf-8')"
+
+      - name: Text split to merge workflow smoke
+        run: python packages/ktools-text/examples/run_split_merge_workflow.py "${{ runner.temp }}/ktools-text-split-smoke"
 
       - name: PDF merge workflow smoke
         run: python packages/ktools-pdf/examples/run_merge_workflow.py "${{ runner.temp }}/ktools-pdf-smoke/merged.pdf"
