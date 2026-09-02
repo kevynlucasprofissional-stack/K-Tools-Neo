@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
 from typing import Callable, Sequence
 
 from pypdf import PdfWriter
 
+from ktools_core.local_files import cleanup_local_path, replace_temp_output, same_local_path, temporary_sibling_path
 from ktools_core.models import Artifact, DataType
 
 from .errors import PDFMergeError
@@ -20,16 +19,6 @@ def ensure_pdf_extension(path: Path) -> Path:
     return output.with_suffix(".pdf") if output.suffix.lower() != ".pdf" else output
 
 
-def _safe_resolved_key(path: Path) -> str:
-    try:
-        return str(Path(path).expanduser().resolve()).lower()
-    except Exception:
-        try:
-            return str(Path(path).absolute()).lower()
-        except Exception:
-            return str(path).lower()
-
-
 def _normalize_inputs(input_files: Sequence[Path]) -> list[Path]:
     if not input_files:
         raise PDFMergeError("Nenhum PDF foi selecionado.")
@@ -37,40 +26,21 @@ def _normalize_inputs(input_files: Sequence[Path]) -> list[Path]:
 
 
 def _ensure_output_not_in_inputs(output: Path, inputs: Sequence[Path]) -> None:
-    output_key = _safe_resolved_key(output)
-    input_keys = {_safe_resolved_key(path) for path in inputs}
-    if output_key in input_keys:
+    if any(same_local_path(output, path) for path in inputs):
         raise PDFMergeError(
             "O PDF final não pode ser um dos arquivos de entrada. Escolha outro nome ou outra pasta de saída."
         )
 
 
-def _cleanup(path: Path) -> None:
-    try:
-        path.unlink(missing_ok=True)
-    except TypeError:
-        if path.exists():
-            path.unlink()
-    except OSError:
-        pass
-
-
 def _write_pdf_writer_atomic(pdf_writer: PdfWriter, output_file: Path) -> None:
     output = Path(output_file)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(
-        prefix=f".{output.stem}_ktools_",
-        suffix=".tmp",
-        dir=str(output.parent),
-    )
-    os.close(fd)
-    temp_path = Path(temp_name)
+    temp_path = temporary_sibling_path(output, suffix=".tmp")
     try:
         with temp_path.open("wb") as handle:
             pdf_writer.write(handle)
-        os.replace(str(temp_path), str(output))
+        replace_temp_output(temp_path, output)
     except Exception:
-        _cleanup(temp_path)
+        cleanup_local_path(temp_path)
         raise
 
 

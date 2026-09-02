@@ -37,9 +37,7 @@ class PdfMergeCharacterizationTests(unittest.TestCase):
         first = self._pdf("first.pdf", [101, 102])
         second = self._pdf("second.pdf", [201])
         output = self.root / "merged.pdf"
-
         artifact = api.merge_pdf_files([first, second], output)
-
         self.assertTrue(output.exists())
         self.assertEqual(self._widths(output), [101, 102, 201])
         self.assertEqual(artifact.metadata["sourceCount"], 2)
@@ -78,7 +76,6 @@ class PdfMergeCharacterizationTests(unittest.TestCase):
         with path.open("wb") as handle:
             writer.write(handle)
         writer.close()
-
         with self.assertRaisesRegex(PDFMergeError, "(?i)proteg|criptograf|senha"):
             api.merge_pdf_files([path], self.root / "out.pdf")
 
@@ -92,12 +89,11 @@ class PdfMergeCharacterizationTests(unittest.TestCase):
         source = self._pdf("source.pdf", [100])
         output = self._pdf("existing.pdf", [777])
         before = output.read_bytes()
-        with patch("ktools_pdf.writer.os.replace", side_effect=OSError("forced replace failure")):
-            with self.assertRaises(Exception):
+        with patch("ktools_pdf.writer.replace_temp_output", side_effect=OSError("forced replace failure")):
+            with self.assertRaises(PDFMergeError):
                 api.merge_pdf_files([source], output)
         self.assertEqual(output.read_bytes(), before)
-        leftovers = list(self.root.glob(".*_ktools_*"))
-        self.assertEqual(leftovers, [])
+        self.assertEqual(list(self.root.glob(".*_ktools_*")), [])
 
 
 if __name__ == "__main__":

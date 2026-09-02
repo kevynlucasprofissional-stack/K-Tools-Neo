@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
 from typing import Callable, Sequence
 
+from ktools_core.local_files import cleanup_local_path, replace_temp_output, same_local_path, temporary_sibling_path
 from ktools_core.models import Artifact, DataType
 
 from .capability import TextDocument, TextMergeError, VALID_SEPARATOR_MODES, render_document_block
@@ -26,16 +25,6 @@ def read_text_with_fallback(path: Path) -> str:
     if last_error is not None:
         raise last_error
     return path.read_text(encoding="utf-8")
-
-
-def _safe_resolved_key(path: Path) -> str:
-    try:
-        return str(path.expanduser().resolve()).lower()
-    except Exception:
-        try:
-            return str(path.absolute()).lower()
-        except Exception:
-            return str(path).lower()
 
 
 def _normalize_inputs(input_files: Sequence[Path]) -> list[Path]:
@@ -63,34 +52,11 @@ def _normalize_output(output_file: Path) -> Path:
 
 
 def _ensure_output_not_in_inputs(output: Path, inputs: Sequence[Path]) -> None:
-    output_key = _safe_resolved_key(output)
-    input_keys = {_safe_resolved_key(item) for item in inputs}
-    if output_key in input_keys:
+    if any(same_local_path(output, item) for item in inputs):
         raise TextMergeError(
             "O arquivo final não pode ser um dos arquivos de entrada. "
             "Escolha outro nome ou outra pasta de saída."
         )
-
-
-def _temp_output_path(output: Path) -> Path:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    fd, name = tempfile.mkstemp(
-        prefix=f".{output.stem}_ktools_",
-        suffix=output.suffix,
-        dir=str(output.parent),
-    )
-    os.close(fd)
-    return Path(name)
-
-
-def _cleanup(path: Path) -> None:
-    try:
-        path.unlink(missing_ok=True)
-    except TypeError:  # Python compatibility guard
-        if path.exists():
-            path.unlink()
-    except OSError:
-        pass
 
 
 def merge_text_files(
@@ -111,7 +77,7 @@ def merge_text_files(
     _ensure_output_not_in_inputs(output, inputs)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    temp_output = _temp_output_path(output)
+    temp_output = temporary_sibling_path(output)
     total = len(inputs)
     try:
         with temp_output.open("w", encoding="utf-8", newline="\n") as handle:
@@ -129,9 +95,9 @@ def merge_text_files(
                         separator_mode,
                     )
                 )
-        os.replace(str(temp_output), str(output))
+        replace_temp_output(temp_output, output)
     except Exception:
-        _cleanup(temp_output)
+        cleanup_local_path(temp_output)
         raise
 
     mime_type = "text/markdown" if output.suffix.lower() == ".md" else "text/plain"
