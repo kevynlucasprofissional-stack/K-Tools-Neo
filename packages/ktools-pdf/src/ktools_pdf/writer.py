@@ -23,8 +23,8 @@ def _path_key(path: Path) -> str:
 
 
 def _normalize_inputs(input_files: Sequence[Path]) -> list[Path]:
-    if not input_files:
-        raise PdfMergeError("At least one PDF input is required")
+    if isinstance(input_files, (str, bytes, Path)) or not input_files:
+        raise PdfMergeError("PDF merge requires a non-empty ordered sequence of input paths")
     return [validate_pdf_path(Path(path)) for path in input_files]
 
 

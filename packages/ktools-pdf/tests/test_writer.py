@@ -62,6 +62,27 @@ class PdfMergeWriterCharacterizationTests(unittest.TestCase):
         self.assertEqual(artifact.metadata["totalPages"], 3)
         self.assertEqual(dimensions(output), [(101.0, 201.0), (102.0, 202.0), (301.0, 401.0)])
 
+    def test_progress_callback_is_preserved_by_direct_api(self) -> None:
+        first = self.root / "first.pdf"
+        second = self.root / "second.pdf"
+        make_pdf(first, [(101, 201)])
+        make_pdf(second, [(301, 401)])
+        events: list[tuple[float, str]] = []
+
+        merge_pdf_files([first, second], self.root / "merged.pdf", lambda value, message: events.append((value, message)))
+
+        self.assertGreaterEqual(len(events), 3)
+        self.assertEqual(events[0][0], 0.0)
+        self.assertEqual(events[-1][0], 1.0)
+        self.assertIn("first.pdf", events[0][1])
+        self.assertIn("2 pages", events[-1][1])
+
+    def test_single_path_is_not_silently_treated_as_a_path_sequence(self) -> None:
+        source = self.root / "source.pdf"
+        make_pdf(source, [(100, 100)])
+        with self.assertRaises(PdfMergeError):
+            merge_pdf_files(source, self.root / "out.pdf")  # type: ignore[arg-type]
+
     def test_empty_missing_directory_and_non_pdf_inputs_are_rejected(self) -> None:
         directory = self.root / "folder"
         directory.mkdir()
