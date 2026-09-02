@@ -57,6 +57,12 @@ jobs:
       - name: Documents node pack tests
         run: python -m unittest discover -s packages/ktools-documents/tests -v
 
+      - name: Install Pillow image RED fixture dependency
+        run: python -m pip install "Pillow>=12,<13"
+
+      - name: Image node pack tests
+        run: python -m unittest discover -s packages/ktools-images/tests -v
+
       - name: Core CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
 
