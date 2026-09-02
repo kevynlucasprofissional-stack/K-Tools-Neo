@@ -56,6 +56,12 @@ jobs:
         run: python -c "import os,json; d='oc001-split-out'; assert [f for f in os.listdir(d) if f.endswith('.json')], 'no parts written'; assert json.load(open(os.path.join(d,'records_parte_01_de_02.json'))), 'part invalid'"
         working-directory: ${{ runner.temp }}
 
+      - name: Text workflow smoke
+        run: python packages/ktools-text/examples/run_merge_workflow.py "${{ runner.temp }}/ktools-text-smoke/merged.md"
+
+      - name: Verify Text workflow smoke artifact
+        run: python -c "from pathlib import Path; p=Path(r'${{ runner.temp }}')/'ktools-text-smoke'/'merged.md'; assert p.read_text(encoding='utf-8') == 'Alpha\n\nBeta\n\n', p.read_text(encoding='utf-8')"
+
   xyflow-spike:
     runs-on: ubuntu-latest
     defaults:

@@ -5,7 +5,9 @@ import unittest
 from pathlib import Path
 
 from ktools_core.builtin import register_builtin_nodes
+from ktools_core.cache_store import SQLiteNodeCache
 from ktools_core.engine import WorkflowEngine, WorkflowValidationError
+from ktools_core.journal import MemoryRunJournal, RunEventType
 from ktools_core.models import (
     Artifact,
     CachePolicy,
@@ -97,6 +99,26 @@ class FileSetTypeContractTests(unittest.TestCase):
 
 
 class FilesLiteralNodeTests(unittest.TestCase):
+    @staticmethod
+    def _workflow(paths: list[str]) -> WorkflowDefinition:
+        return WorkflowDefinition(
+            id="files-literal",
+            nodes=(
+                WorkflowNode(
+                    id="source",
+                    type="files.literal",
+                    config={"paths": paths},
+                ),
+            ),
+            edges=(),
+        )
+
+    @staticmethod
+    def _registry() -> NodeRegistry:
+        registry = NodeRegistry()
+        register_builtin_nodes(registry)
+        return registry
+
     def test_files_literal_validates_and_preserves_configured_order(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -105,40 +127,54 @@ class FilesLiteralNodeTests(unittest.TestCase):
             first.write_text("first", encoding="utf-8")
             second.write_text("second", encoding="utf-8")
 
-            registry = NodeRegistry()
-            register_builtin_nodes(registry)
+            registry = self._registry()
             definition = registry.definition("files.literal")
             self.assertEqual(definition.outputs["files"].type, DataType.FILE_SET)
             self.assertIs(definition.cache_policy, CachePolicy.PURE)
 
-            workflow = WorkflowDefinition(
-                id="files-literal",
-                nodes=(
-                    WorkflowNode(
-                        id="source",
-                        type="files.literal",
-                        config={"paths": [str(second), str(first)]},
-                    ),
-                ),
-                edges=(),
+            result = WorkflowEngine(registry).execute(
+                self._workflow([str(second), str(first)])
             )
-            result = WorkflowEngine(registry).execute(workflow)
             files = result.node_outputs["source"]["files"]
-            self.assertEqual([Path(item.uri.removeprefix("file://")).name for item in files], ["second.txt", "first.md"])
+            self.assertEqual([Path(item.uri).name for item in files], ["second.txt", "first.md"])
             self.assertTrue(all(isinstance(item, Artifact) for item in files))
             self.assertTrue(all(item.produced_by == f"{result.run_id}/source" for item in files))
 
     def test_files_literal_rejects_missing_or_empty_paths(self) -> None:
-        registry = NodeRegistry()
-        register_builtin_nodes(registry)
         for paths in ([], ["definitely-missing-ktools-file.txt"]):
-            workflow = WorkflowDefinition(
-                id="bad-files",
-                nodes=(WorkflowNode(id="source", type="files.literal", config={"paths": paths}),),
-                edges=(),
-            )
             with self.assertRaises(Exception):
-                WorkflowEngine(registry).execute(workflow)
+                WorkflowEngine(self._registry()).execute(self._workflow(list(paths)))
+
+    def test_files_literal_cache_revalidates_real_file_content(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.md"
+            source.write_text("initial", encoding="utf-8")
+            workflow = self._workflow([str(source)])
+            cache_path = root / "cache.sqlite3"
+
+            with SQLiteNodeCache(cache_path) as cache:
+                WorkflowEngine(self._registry(), cache=cache).execute(workflow)
+
+            second_journal = MemoryRunJournal()
+            with SQLiteNodeCache(cache_path) as cache:
+                WorkflowEngine(
+                    self._registry(), journal=second_journal, cache=cache
+                ).execute(workflow)
+            self.assertTrue(
+                any(event.event_type is RunEventType.NODE_CACHED for event in second_journal.events)
+            )
+
+            source.write_text("changed-content-longer", encoding="utf-8")
+            third_journal = MemoryRunJournal()
+            with SQLiteNodeCache(cache_path) as cache:
+                WorkflowEngine(
+                    self._registry(), journal=third_journal, cache=cache
+                ).execute(workflow)
+            third_types = [event.event_type for event in third_journal.events]
+            self.assertIn(RunEventType.NODE_STARTED, third_types)
+            self.assertIn(RunEventType.NODE_SUCCEEDED, third_types)
+            self.assertNotIn(RunEventType.NODE_CACHED, third_types)
 
 
 if __name__ == "__main__":
