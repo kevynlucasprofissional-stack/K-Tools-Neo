@@ -38,28 +38,9 @@ Evidence: `docs/specs/diagnostics-support-bundle-v1/`.
 
 ## M4 — Artifact Lifecycle + Recovery + Semantic Cache V1 — RESOLVED / PROMOTED
 
-M4 adds:
+M4 adds local file Artifact snapshots with SHA-256 validity, persistent Artifact occurrence/provenance, versioned explicit cache policy, stable semantic signatures, persistent fail-open SQLite cache, cached-output revalidation, explicit CACHED lifecycle truth, cache diagnostics, CLI cache/Artifact-registry surfaces and conservative restart recovery as new run + validated PURE reuse.
 
-- local file Artifact snapshots with size, mtime-ns and SHA-256;
-- persistent Artifact occurrence/provenance via `SQLiteArtifactRegistry`;
-- versioned nodes with `CachePolicy.NEVER` default and explicit `PURE` opt-in;
-- stable semantic signatures over type/version/config/inputs/Artifact content;
-- persistent fail-open `SQLiteNodeCache`;
-- strong cached-output Artifact revalidation;
-- explicit `NODE_CACHED` / `NodeRunStatus.CACHED` lifecycle truth;
-- diagnostics for cache bypass/miss/hit/invalidation/store errors;
-- core and JSON CLI `--cache` / `--artifact-registry` surfaces;
-- real 2,000-record `json.split.plan` cache proof across SQLite close/reopen;
-- proof that side-effectful `json.split` still republishes files on repeated runs;
-- conservative restart recovery as new run + validated PURE reuse;
-- no automatic old-RUNNING continuation or `RECOVERED` without ownership evidence;
-- metadata-only retention with no automatic deletion of user outputs.
-
-Accepted code candidate `c7ae2fa3953099d0bd9377da7c2c0195e96f6175` passed all five jobs in run `33560041360`.
-
-The synchronized canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed all five jobs in run `33625955613`, satisfying the final promotion gate.
-
-Formal promotion commit `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` also passed its five-job matrix in run `33626260487`.
+Accepted code candidate `c7ae2fa3953099d0bd9377da7c2c0195e96f6175` passed run `33560041360`; canonical-memory candidate `d61ddfe139855b1fe9bf310fcbcc698524f3b444` passed run `33625955613`; formal promotion `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` passed run `33626260487`.
 
 Evidence/final report: `docs/specs/artifact-recovery-cache-v1/`.
 
@@ -75,10 +56,7 @@ WorkflowEngine
 
 All four remain optional injected concerns rather than hidden global runtime dependencies.
 
-Typed file composition now includes:
-
-- `FILE` for one file Artifact;
-- `FILE_SET` for an ordered list/tuple of FILE Artifacts.
+Typed file composition includes `FILE` for one file Artifact and `FILE_SET` for an ordered list/tuple of FILE Artifacts.
 
 Carry-forward invariants:
 
@@ -90,7 +68,8 @@ Carry-forward invariants:
 - unfinished persisted state is not proof of process death;
 - user output files are not automatically deleted from metadata invalidation;
 - diagnostics is part of Definition of Done for significant native/subprocess/integration work;
-- direct Tool/API and workflow routes share one capability owner rather than duplicate business logic.
+- direct Tool/API and workflow routes share one capability owner rather than duplicate business logic;
+- shared platform boundaries such as local `file://` interpretation stay in `ktools-core` rather than being recopied per pack.
 
 ## Active roadmap milestone — M5 Official local Node Packs
 
@@ -98,38 +77,44 @@ Status: **ACTIVE — ITERATIVE DELIVERY**.
 
 ### Slice 1 — Text Node Pack V1 — RESOLVED / PROMOTED
 
-Delivered:
-
-- `DataType.FILE_SET` exact ordered collection contract;
-- `files.literal` PURE local-file source whose cached Artifacts are strongly revalidated by M4;
-- `packages/ktools-text/` as the canonical evolution owner;
-- legacy-compatible Markdown/TXT decoding, separators and publication behavior;
-- `text.merge.files: FILE_SET -> FILE`, cache policy NEVER because publication/replacement is required;
-- first-class output Artifact provenance and ArtifactRegistry integration;
-- source-file mutation invalidation for cached `files.literal` output;
-- shared `ktools_core.local_files.path_from_file_uri()` after integration review found duplicated URI parsing;
-- root CI Text package tests + real workflow smoke.
+`packages/ktools-text/` is canonical for Markdown/TXT merge. `FILE_SET`, `files.literal`, byte-equivalent supported merge behavior, Artifact provenance, cache/source invalidation and hosted Text workflow smoke are proven.
 
 RED: `1660a4dbac7efc7f21d7a96bfdebde8ffc13edd2`, run `33626957901`.
+Promotion merge: `958d5bf563cda21673d69865d1508831c599c006`, post-merge run `33630159514` success.
+Final memory closure: `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388`, run `33631040505` success.
 
-Accepted implementation candidate evolved through hardening to canonical-memory HEAD `31b02467cac9c9dc59733d32325728792eb83b22`, which passed run `33629673452` 5/5.
-
-Draft PR #8 was closed administratively because the connector could not transition it to Ready; replacement non-draft PR #9 used the same head/base semantics and was merged.
-
-Promotion merge commit: `958d5bf563cda21673d69865d1508831c599c006`.
-
-Post-merge `main` run `33630159514`: **success**.
-
-Ownership boundary: the old stable GUI still contains its historical merge implementation. That copy is explicitly compatibility debt, not the canonical place to evolve semantics. New fixes/behavior originate in `ktools-text`; later traditional-Tool/UI migration must redirect or retire the historical copy.
+Historical GUI merge code remains explicit compatibility debt; semantic evolution belongs to `ktools-text`.
 
 Evidence/final report: `docs/specs/text-node-pack-v1/`.
 
-### Slice 2 — UNSELECTED / DISCOVERY
+### Slice 2 — PDF Merge Node Pack V1 — IMPLEMENTATION ACCEPTED / FINAL MEMORY CI PENDING
 
-Do not preselect the next capability by convenience. Re-inventory actual legacy owners and compare dependency/native coupling, side effects, Artifact shape, composability, diagnostics needs and one-owner migration cost before locking a spec.
+Selected after comparing bounded PDF/image/document owners.
 
-WebP→PNG and generic folder scanning remain candidates, not commitments. Media capabilities that introduce FFmpeg/FFprobe require the shared diagnostic subprocess boundary first.
+Implemented:
+
+- explicit `packages/ktools-pdf/` dependency boundary with `pypdf>=5,<7`;
+- checked reader + `PdfMergeError` taxonomy;
+- ordered page merge and same-directory atomic publication;
+- direct API with progress callback forwarding;
+- `pdf.merge.files: FILE_SET -> PDF`, version 1, NEVER;
+- output PDF Artifact with source/page metadata and run/node provenance;
+- ArtifactRegistry strong snapshot;
+- proof that cached `files.literal` does not skip PDF publication;
+- generated fixture PDFs for semantic direct/workflow equivalence;
+- real root-CI PDF workflow smoke + reopen/page-order verification;
+- local URI parsing reused from `ktools-core`;
+- encrypted PDFs fail closed in V1 without implicit cryptography/decryption policy.
+
+Spec gate: `081dac1380361761bf38e2914db495138e4c9b76`, run `33631531313` green.
+RED: `29a90cb7c2085b22d0cf3e345b39fecb6c050b76`, run `33648993271` reached PDF tests after dependencies and existing suites passed.
+Initial GREEN: `cdce28caa6e7cc8b62cf2f55e32559a2ff8cfd25`, run `33649227197` 5/5.
+Accepted technical candidate: `a370028b9dbb2c44981a3c7e05d176ce7e54b71c`, run `33649789491` 5/5 including PDF smoke in all Python lanes.
+
+Canonical owner after final closure: `packages/ktools-pdf/`. The stable GUI copy remains compatibility debt, not an independent semantic owner.
+
+Evidence/final report: `docs/specs/pdf-merge-node-pack-v1/`.
 
 ## Next exact action
 
-Re-inventory low-risk legacy capability owners on current `main`, compare candidates with explicit evidence, select M5 Slice 2, create its Level-2 spec/plan/tasks/evidence skeleton, then begin characterization RED before implementation.
+Run the five-job hosted matrix on the synchronized PDF Slice 2 memory-closure HEAD. If green, mark PDF Merge V1 RESOLVED / PROMOTED, then re-inventory remaining legacy owners and select M5 Slice 3 through evidence rather than convenience.

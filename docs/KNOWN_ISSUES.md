@@ -8,15 +8,15 @@ Status: OPEN / CLASSIFIED
 
 Impact: upstream/subtree test suites can drift after integration unless root CI explicitly invokes them.
 
-Next: design root jobs/path filters for imported applications after the core foundation lands / before imported-app adapters are promoted.
+Next: design root jobs/path filters for imported applications before imported-app adapters are promoted.
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN / REDUCED BY M5 SLICE 1
+Status: OPEN / REDUCED BY M5 SLICES 1–2
 
-`K Tools Neo - Versão Estável 2.py` is a large monolithic GUI/application file. Capability logic is not yet cleanly separable from presentation across the whole application.
+`K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file with many capability implementations embedded beside presentation/runtime concerns.
 
-M5 Text Node Pack V1 extracts the canonical Markdown/TXT merge capability and proves a migration pattern, but many other utilities remain embedded in the monolith.
+M5 now extracts canonical Markdown/TXT merge and PDF merge package owners, proving the incremental migration pattern, but many utilities remain in the monolith.
 
 Next: continue capability-by-capability extraction behind node contracts rather than broad monolith rewrite.
 
@@ -24,17 +24,15 @@ Next: continue capability-by-capability extraction behind node contracts rather 
 
 Status: RESOLVED
 
-Historical foundation condition. `packages/ktools-json/` is the first official real Node Pack, and M5 Slice 1 adds `text.merge.files` plus the `files.literal` ordered-file source contract.
+Historical foundation condition. `packages/ktools-json/` is the first real pack; M5 adds Text and PDF capabilities plus the ordered `files.literal` source contract.
 
 ## KI-004 — Workflow/run/artifact persistence is absent
 
 Status: RESOLVED
 
-Historical foundation condition. M2 implements durable run/node history with RunJournal + SQLite. M4 implements persistent Artifact occurrence/validity observations and semantic cache.
+M2 implements durable run/node history with RunJournal + SQLite. M4 implements persistent Artifact occurrence/validity observations and semantic cache.
 
-Automatic continuation of old in-flight RUNNING work remains deliberately ownership-gated; this is a recovery-safety boundary, not absence of persistence.
-
-The workflow-platform source study remains relevant sequencing evidence. See `docs/research/WORKFLOW_PLATFORM_REFERENCE_STUDY.md`.
+Automatic continuation of old in-flight RUNNING work remains ownership-gated; this is a deliberate recovery-safety boundary, not missing persistence.
 
 ## KI-005 — Visual workflow editor is absent
 
@@ -42,7 +40,7 @@ Status: OPEN
 
 No production canvas/palette/inspector/run UI exists yet.
 
-Research and the audited spike identify `@xyflow/react` as the preferred implementation layer, while `ktools-core` remains the workflow/runtime authority. Desktop-host integration and target-environment performance remain unproved.
+Research and the audited spike identify `@xyflow/react` as the preferred implementation layer while `ktools-core` remains runtime authority. Desktop-host integration and target-environment performance remain unproved.
 
 ## KI-006 — No adapter boundary to imported apps yet
 
@@ -54,28 +52,9 @@ XCursos and YouTube remain standalone subsystems until adapter contracts are spe
 
 Status: RESOLVED
 
-Historical symptom:
+Historical runs `33327645359` and `33327842478` failed before product steps because GitHub UI reported account payment/spending-limit state. After the repository became public, run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131` reached and passed checkout/setup/install/tests/smoke on Ubuntu/Windows.
 
-- runs `33327645359` and `33327842478` created the matrix but failed before checkout/setup/install/test;
-- the GitHub UI later exposed the reason: recent account payments had failed or the spending limit needed to be increased.
-
-Classification: external GitHub Actions account/billing job-start failure; not a K-Tools product failure.
-
-Material environment change:
-
-- repository changed from private to public;
-- GitHub repository API confirmed `visibility: public`.
-
-Resolution evidence:
-
-- exact-head run `33330660076` on `1ccffb11af25a8d993ead931183380d354746131` completed successfully;
-- Ubuntu 3.10: success;
-- Ubuntu 3.13: success;
-- Windows 3.10: success;
-- Windows 3.13: success;
-- each matrix path reached Checkout, Setup Python, editable install, unit/contract tests and CLI smoke successfully.
-
-Result: the historical job-start blocker is closed. Future CI failures must be classified from their actual first failing step rather than carried forward from the billing incident.
+Future CI failures must be classified from their actual first failing step rather than carried forward from this incident.
 
 ## KI-008 — Legacy stable GUI is not yet wired to canonical Text Node Pack
 
@@ -83,8 +62,24 @@ Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
 `packages/ktools-text` is the canonical evolution owner for Markdown/TXT merge, but `K Tools Neo - Versão Estável 2.py` still executes its historical implementation.
 
-Impact: the old GUI can drift if someone changes the historical copy directly.
+Invariant: new behavior/bug fixes originate in `ktools-text`; the historical copy is frozen until traditional Tool/UI migration redirects/removes it.
 
-Invariant until migration: new behavior/bug fixes must originate in `ktools-text`; the historical copy is frozen as an old compatibility path.
+## KI-009 — Legacy stable GUI is not yet wired to canonical PDF Node Pack
 
-Next: when the traditional Tool surface is migrated to the platform runtime, redirect the GUI/tool path to `ktools-text` and remove or reduce the historical duplicate. Do not disguise this debt, but do not block Text Node Pack V1 on a full GUI rewrite.
+Status: OPEN / EXPLICIT COMPATIBILITY DEBT
+
+`packages/ktools-pdf` is the canonical evolution owner for PDF merge after M5 Slice 2 final promotion, but the stable GUI still contains and invokes its historical PDF merge implementation.
+
+Impact: direct edits to the old copy could drift from the tested package behavior.
+
+Invariant: new PDF merge behavior/bug fixes originate in `ktools-pdf`; the historical implementation is a compatibility path only.
+
+Next: when the traditional PDF Tool surface is migrated to platform workflows, redirect it to `ktools-pdf` and remove/reduce the duplicate. Do not block bounded capability extraction on a full GUI rewrite.
+
+## KI-010 — Shared temp-then-replace pattern is repeated across file-producing packs
+
+Status: OPEN / OBSERVE BEFORE ABSTRACTING
+
+Text and PDF writers both use same-directory temporary publication followed by final replacement, but their write/finalization contracts differ.
+
+Do not create a generic core abstraction merely because two implementations look similar. Re-evaluate after another file-producing pack shows a stable cross-domain API for temp allocation, cleanup and promotion without leaking writer-specific semantics.
