@@ -4,11 +4,11 @@
 
 1. Static/syntax checks — structure only.
 2. Unit tests — isolated model/capability rules.
-3. Contract tests — node/port/journal/diagnostics/adapter contracts.
+3. Contract tests — node/port/journal/diagnostics/cache/artifact/adapter contracts.
 4. CLI smoke — real headless workflow execution boundary.
 5. Integration tests — real Node Packs/adapters/subsystems exercised together.
 6. Native smoke — Windows/PowerShell/FFmpeg/browser/subprocess boundary where required.
-7. E2E — production editor/tool → engine → capability → durable run/artifact/result/diagnostic bundle.
+7. E2E — production editor/tool → engine → capability → durable run/artifact/cache/result/diagnostic bundle.
 
 Do not promote evidence across levels.
 
@@ -39,7 +39,7 @@ Each matrix job performs:
 8. JSON workflow CLI smoke;
 9. generated JSON-part verification.
 
-Because the suites are discovered from the repository, the matrix also exercises Durable Execution and Diagnostics/Support Bundle tests, including SQLite lifecycle, safe redaction, diagnostic report generation, subprocess timeout/launch failure, CLI support bundles and real `json.split` diagnostic success/failure behavior.
+Because suites are discovered from the repository, the matrix exercises Durable Execution, Diagnostics/Support Bundle and M4 Artifact/Cache contracts together, including SQLite lifecycle, safe redaction, support reports, subprocess failure boundaries, semantic cache reuse/invalidation and persistent Artifact observations.
 
 ### xyflow spike
 
@@ -61,7 +61,7 @@ A claim that durable execution works requires:
 - real official Node Pack durable execution;
 - Windows/Linux hosted regression.
 
-Full resume/cache are separate claims and must not be inferred from interruption detection.
+Cache and automatic resume are separate claims and must not be inferred from interruption detection.
 
 ## Diagnostics + Support Bundle V1 evidence expectations
 
@@ -78,23 +78,134 @@ Minimum evidence includes:
 - command-argument redaction;
 - unknown-object repr non-leakage;
 - support-bundle creation containing `session.json`, `report.md`, `report.json`, `diagnostics.jsonl` and referenced raw logs;
-- a human report that surfaces environment, executed steps, batches, decisions, metrics/quality observations, anomalies, subprocesses, errors, results and Run Journal lifecycle;
+- human report reconstruction of environment, executed steps, batches, decisions, metrics/quality observations, anomalies, subprocesses, errors, results and Run Journal lifecycle;
 - real subprocess stdout/stderr + exit-code evidence;
 - subprocess timeout and launch-failure evidence;
-- PowerShell stdout/stderr smoke where PowerShell is present on the hosted/native lane;
-- Ctrl+C/KeyboardInterrupt classification as `INTERRUPTED` at the CLI support boundary;
+- PowerShell stdout/stderr smoke where PowerShell is present;
+- Ctrl+C/KeyboardInterrupt classification as `INTERRUPTED`;
 - stale incomplete-session recovery without classifying a fresh session as abandoned;
-- a real official `json.split` success bundle and a real failure bundle;
-- seeded fake secrets absent from report/event/raw shareable material;
+- a real official Node Pack success bundle and failure bundle;
+- seeded fake secrets absent from shareable report/event/raw material;
 - Windows/Linux hosted regression.
 
 ### Diagnostic evidence boundaries
 
-A support bundle is **forensic evidence**, not proof of root cause. `diagnosticHotspots` may summarize recorded WARNING/ERROR/ANOMALY facts but must not be described as an automatic causal diagnosis.
+A support bundle is forensic evidence, not proof of root cause. `diagnosticHotspots` may summarize recorded WARNING/ERROR/ANOMALY facts but must not be described as automatic causal diagnosis.
 
-A missing final report is not sufficient proof of a crash while a process might still be alive. Abandoned-session recovery must retain a staleness/ownership safety boundary until a stronger lease mechanism exists.
+A missing final report is not sufficient proof of a crash while a process might still be alive. Abandoned-session recovery retains a staleness/ownership boundary until a stronger lease mechanism exists.
 
-Low model accuracy or inconsistent domain results must be asserted by the domain capability/model adapter using explicit metric/anomaly records. The core diagnostics layer records the observation; it does not invent a universal quality threshold.
+Low model accuracy or inconsistent domain results must be asserted by the domain capability/model adapter using explicit metric/anomaly records. Core diagnostics records the observation; it does not invent a universal quality threshold.
+
+## Artifact Lifecycle + Semantic Cache V1 evidence expectations
+
+A claim that a node result is safely reusable requires all applicable dimensions below; a previous successful run alone is insufficient.
+
+### Artifact validity
+
+For strong local-file reuse evidence:
+
+- snapshot includes normalized file identity, size, mtime-ns, SHA-256 and observation time;
+- unchanged file validates;
+- missing file invalidates;
+- size/mtime change invalidates quickly;
+- same-size content mutation must still invalidate when mtime is restored;
+- file change during hashing/validation must fail closed;
+- unsupported directory/remote URI must not be mislabeled strongly valid;
+- content identity must not depend on random Artifact/run ids.
+
+### Semantic signature
+
+Tests must prove that signature identity includes at least:
+
+- node type;
+- declared implementation version;
+- canonical config;
+- semantic input values;
+- Artifact content identity when Artifact input semantics are content-based.
+
+Equivalent JSON mapping order must not change the signature. Config/input/version/Artifact-content changes must change it. Opaque or nondeterministically serializable values must disable/bypass cache rather than guess.
+
+### Persistent cache
+
+A persistent cache claim requires:
+
+- close/reopen persistence;
+- origin run/node provenance;
+- deterministic, collision-safe output serialization;
+- Artifact output rehydration when supported;
+- output Artifact strong revalidation before reuse;
+- explicit invalidation/removal behavior;
+- cache-store failure normalization;
+- proof that cache failure does not become workflow failure when normal execution can proceed.
+
+### Engine lifecycle truth
+
+A real cache hit must prove the handler did not execute, preferably with call-count instrumentation.
+
+Journal semantics for a reused node are:
+
+```text
+RUN_STARTED
+NODE_CACHED
+RUN_SUCCEEDED
+```
+
+A reused node must not emit fake `NODE_STARTED`; SQLite projection status is `CACHED`.
+
+A `NEVER` node must always execute even if an apparently equivalent prior output exists.
+
+### Artifact registry
+
+Persistent Artifact lifecycle evidence requires occurrence records tied to:
+
+- current run;
+- current node;
+- output port;
+- nested value path where relevant;
+- source `EXECUTED` or `CACHED`;
+- original Artifact identity/provenance;
+- strong snapshot or explicit unsupported/error state.
+
+Historical snapshot evidence must remain queryable after current filesystem mutation.
+
+### Real workload
+
+Fixture nodes are insufficient for milestone promotion. At least one official product capability must prove meaningful reuse or must explicitly prove why its side-effect contract forbids reuse.
+
+M4 acceptance includes both:
+
+- `json.split.plan`: a real PURE transformation over the shared `split_json_document` owner, exercised with 2,000 records and cache close/reopen;
+- `json.split`: a side-effectful `NEVER` node that republishes files on the second run even when its source is CACHED.
+
+### Diagnostics
+
+When diagnostics is active, cache decisions must leave concise operational facts such as:
+
+- policy bypass;
+- signature unsupported;
+- lookup miss;
+- validated hit;
+- output Artifact invalidation reason;
+- cache read/write/touch/invalidation failure.
+
+Do not store private chain-of-thought. Record decision + concrete observed reason.
+
+## Recovery / ownership evidence boundary
+
+M4 restart reuse is not equivalent to continuing an old in-flight run.
+
+Until a process/session ownership contract proves atomic acquisition, liveness/takeover and side-effect replay/idempotency:
+
+- do not automatically continue old `RUNNING` work;
+- do not emit `RECOVERED`;
+- use a new run and selectively reuse validated completed PURE results;
+- keep M2 explicit `INTERRUPTED` reconciliation authoritative for abandoned old runs.
+
+## Retention / deletion evidence boundary
+
+Cache and Artifact-registry databases own metadata, not user output files.
+
+Deleting/invalidation of cache metadata must not silently delete user Artifacts. Automatic cleanup of temporary/intermediate files requires a later explicit ownership contract proving which files K-Tools may delete safely.
 
 ## Serialization / privacy safety evidence
 
@@ -108,7 +219,7 @@ This does not mean every conceivable sensitive string can be recognized automati
 
 If a capability crosses a real external boundary (FFmpeg, PowerShell, browser, auth, subprocess application, OS integration), unit mocks alone are insufficient for claims about that boundary.
 
-Use the lowest real boundary that proves the claim and record environment/version information where material. Future subprocess-heavy capabilities should use the common diagnostics boundary so failed native executions leave shareable evidence.
+Use the lowest real boundary that proves the claim and record environment/version information where material. Future subprocess-heavy capabilities use the common diagnostics boundary so failed native executions leave shareable evidence.
 
 ## Failure classification
 
@@ -129,4 +240,4 @@ Do not change product code to fix a failure that never reached product code.
 
 Evidence from a previous SHA may only be reused when the relevant code, tests and runtime boundary are shown to be equivalent.
 
-Each major milestone records its exact candidate/head and hosted run IDs under its own `docs/specs/<milestone>/evidence.md` before being marked resolved.
+Each major milestone records its exact candidate/head and hosted run IDs under its own `docs/specs/<milestone>/evidence.md` before being marked resolved. A code candidate may be accepted before memory closure, but the milestone is not promoted until canonical state/decision/journal/roadmap documentation is synchronized and the required exact promotion head passes hosted evidence.

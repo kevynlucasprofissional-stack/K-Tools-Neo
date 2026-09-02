@@ -23,7 +23,13 @@ Working runtime base:
 
 ## M1 — First official Node Pack — RESOLVED
 
-`packages/ktools-json/` proves one capability owner shared by direct API and `json.split` workflow use, with classified failures, deterministic output, collision safety and hosted evidence.
+`packages/ktools-json/` proves one capability owner shared by direct API and workflow use, with classified failures, deterministic output, collision safety and hosted evidence.
+
+Current official JSON nodes include:
+
+- `json.literal` — PURE;
+- `json.split.plan` — PURE planning over the real `split_json_document` implementation owner;
+- `json.split` — NEVER because file publication is a required side effect.
 
 Audit: `docs/multi-agent/handoffs/OC-001-AUDIT.md`.
 
@@ -43,162 +49,184 @@ Delivered:
 - conservative JSON-safe serialization;
 - run history/detail/event query API;
 - `--journal <sqlite-db>` on core and JSON CLIs;
-- real `json.literal -> json.split` success/failure evidence.
+- real official Node Pack success/failure evidence.
 
 Evidence: `docs/specs/durable-execution-v1/evidence.md`.
 
 ## M3 — Diagnostics, Structured Logging + Support Bundle — RESOLVED / PROMOTED
 
-The project now has a first-class diagnostic/support layer before cache/recovery, media, browser and imported-app integration work.
+The project has a first-class diagnostic/support layer before cache/recovery, media, browser and imported-app integration work.
 
 Spec/evidence/final report: `docs/specs/diagnostics-support-bundle-v1/`.
 
-### Structured diagnostics
+Working contracts include:
 
-`ktools-core` now provides:
-
-- DEBUG / INFO / WARNING / ERROR / CRITICAL severities;
-- LOG / DECISION / METRIC / BATCH / ANOMALY / EXCEPTION / SUBPROCESS / LIFECYCLE event kinds;
+- structured DEBUG / INFO / WARNING / ERROR / CRITICAL events;
+- LOG / DECISION / METRIC / BATCH / ANOMALY / EXCEPTION / SUBPROCESS / LIFECYCLE kinds;
 - run/workflow/node/stage/batch correlation;
-- explicit decision reasons, metrics, batch observations and anomalies;
-- exception type/message/traceback capture;
-- `DiagnosticLogHandler` bridge for stdlib Python logging.
+- stdlib Python logging bridge;
+- exception traceback capture;
+- recursive share-safe redaction for common credential patterns;
+- subprocess command/duration/exit/stdout/stderr/timeout/launch-failure diagnostics;
+- real hosted PowerShell stdout/stderr evidence;
+- automatic `session.json`, `diagnostics.jsonl`, `report.json`, `report.md` and `support-bundle.zip`;
+- human execution reconstruction covering steps, lots, decisions, metrics, anomalies, subprocesses, errors, outputs and Run Journal lifecycle;
+- CLI diagnostics enabled by default with `--diagnostics-dir` and `--no-diagnostics`;
+- Ctrl+C classified as diagnostic `INTERRUPTED`;
+- conservative stale abandoned-session packaging as `ABANDONED_OR_INTERRUPTED`.
 
-### Safe sharing
+M3 final memory/documentation checkpoint `5e1e46714aaefe0827c96a415d7d58d57790a187` passed all five hosted jobs in run `33557338124`.
 
-Support material uses a conservative safe-sharing boundary:
+## M4 — Artifact Lifecycle + Recovery + Semantic Cache V1 — IMPLEMENTATION RESOLVED / PROMOTION HEAD CI PENDING
 
-- common token/API-key/password/secret/cookie/Authorization patterns are redacted recursively;
-- secret-like command arguments and URL query values are redacted;
-- arbitrary unknown-object `repr()`/reflection is avoided;
-- structured strings are bounded;
-- environment variables are not snapshotted wholesale;
-- captured subprocess stdout/stderr is redacted before becoming shareable.
+Spec/evidence/final report: `docs/specs/artifact-recovery-cache-v1/`.
 
-Seeded-secret regression tests exercise these boundaries.
+M4 adds a conservative reusable-execution layer without treating old success as sufficient evidence for reuse.
 
-### Subprocess / PowerShell diagnostics
+### Artifact validity and provenance
 
-`DiagnosticsSession.run_subprocess(...)` records command identity, cwd, start/end, duration, return code, stdout/stderr files, non-zero exit, timeout and launch failure.
+Local file Artifacts can be observed with:
 
-Hosted acceptance executed a real PowerShell (`pwsh`) stdout/stderr test successfully.
+- normalized local URI/path;
+- size;
+- mtime-ns;
+- SHA-256;
+- observation timestamp.
 
-This becomes the expected future common boundary for FFmpeg/FFprobe and other subprocess-heavy capabilities.
+Size/mtime are quick invalidation evidence only. When they still match, SHA-256 is recomputed before strong reuse is claimed.
 
-### Automatic diagnostic report / support bundle
+`SQLiteArtifactRegistry` persists Artifact occurrences tied to:
 
-A normal first-party CLI execution creates automatically:
+- current run;
+- current node;
+- output port;
+- nested output value path;
+- source `EXECUTED` or `CACHED`;
+- original Artifact identity/provenance/metadata;
+- strong snapshot or explicit unsupported/error evidence.
+
+The registry owns metadata only and does not delete user files.
+
+### Semantic cache
+
+`NodeDefinition` now has:
+
+- implementation `version`;
+- `CachePolicy.NEVER` by default;
+- explicit `CachePolicy.PURE` opt-in.
+
+A semantic cache signature depends on node type/version, canonical config and semantic inputs. Artifact inputs use content identity rather than random Artifact/run ids.
+
+`SQLiteNodeCache` persists reusable results across process boundaries. Reuse requires both a matching signature and valid output Artifacts where applicable.
+
+Cache is an optional injected optimization and is deliberately **fail-open**: cache read/write/touch/invalidation failure is diagnostic evidence and normal node execution remains authoritative where possible.
+
+### Explicit lifecycle truth
+
+A reused node records:
 
 ```text
-<diagnostics-root>/<session-id>/
-  session.json
-  diagnostics.jsonl
-  report.json
-  report.md
-  raw/
-  support-bundle.zip
+RUN_STARTED
+NODE_CACHED
+RUN_SUCCEEDED
 ```
 
-The Markdown report is a human-readable execution reconstruction containing:
+and projects `NodeRunStatus.CACHED`.
 
-- environment and execution identity;
-- status/timing;
-- executed nodes/steps and stages;
-- batches/lots;
-- system decisions;
-- metrics/quality observations;
-- anomalies/inconsistent results;
-- subprocess/PowerShell outcomes;
-- errors/failures;
-- result/output summaries;
-- Run Journal lifecycle;
-- diagnostic hotspots/potential failure points derived only from recorded evidence;
-- raw-log inventory.
+There is no fabricated `NODE_STARTED` for a handler that did not run.
 
-The JSON report retains the machine-readable equivalent.
+### Real workload proof
 
-Core and JSON workflow CLIs enable diagnostics by default and expose:
+`json.split.plan` exposes the existing pure `split_json_document` capability owner without file I/O and is explicitly PURE.
+
+A hosted integration test uses 2,000 JSON records and 8-part planning, closes/reopens the SQLite cache, executes the equivalent workflow again, and proves the real implementation owner is called once total while the second source/planner results are CACHED.
+
+A separate first-party CLI test proves `json.literal -> json.split` can cache the source while `json.split` executes again and republishes its files. This preserves required side effects rather than optimizing them away.
+
+### Recovery boundary
+
+M4 does **not** claim automatic in-flight resume.
+
+Safe V1 restart behavior is:
 
 ```text
+new run
+  -> recompute semantic signatures
+  -> validate completed PURE candidates
+      -> valid: CACHED reuse
+      -> invalid/unsupported: execute normally
+```
+
+It is not safe to take an old `RUNNING` row and continue it automatically because exclusive process/session ownership has not yet been proved.
+
+`RECOVERED` therefore remains unavailable. M2 explicit `INTERRUPTED` reconciliation remains authoritative for abandoned in-flight history.
+
+Accepted boundary: `docs/specs/artifact-recovery-cache-v1/ownership-recovery-boundary.md`.
+
+### CLI surfaces
+
+Core and JSON CLIs expose:
+
+```text
+--journal <sqlite-db>
+--cache <sqlite-db>
+--artifact-registry <sqlite-db>
 --diagnostics-dir <dir>
 --no-diagnostics
 ```
 
-Successful JSON output includes `diagnosticBundle`; handled failures print the bundle path before their classified exit code.
+All persistence/diagnostic concerns remain injected/optional rather than hidden global runtime requirements.
 
-### Interruption / hard-crash evidence
+### Accepted hosted code evidence
 
-Caught Ctrl+C/KeyboardInterrupt finalizes diagnostic status `INTERRUPTED` and returns code 130.
+Accepted code candidate:
 
-During execution, `session.json` starts as RUNNING and `diagnostics.jsonl` is append-written. If normal finalization never occurs, a stale session can later be packaged as `ABANDONED_OR_INTERRUPTED` while preserving the last durable evidence.
+`c7ae2fa3953099d0bd9377da7c2c0195e96f6175`
 
-Fresh incomplete sessions are deliberately not auto-recovered because another live process could still own them. Stronger process/session ownership remains later work.
+GitHub Actions run:
 
-### Hosted evidence
+`33560041360`
 
-Accepted implementation/test candidate:
+All five jobs passed. Representative Ubuntu/Python 3.13 lane executed:
 
-`9c14e073ec5f770ce9d03d031c4ca1820bcd6ce2`
-
-Primary implementation acceptance run:
-
-`33556969496`
-
-All five jobs passed:
-
-- Ubuntu / Python 3.10;
-- Ubuntu / Python 3.13;
-- Windows / Python 3.10;
-- Windows / Python 3.13;
-- xyflow spike / Node.js 22.
-
-Representative Ubuntu/Python 3.13 lane:
-
-- **33 core tests — OK**;
-- **59 JSON Node Pack tests — OK**;
-- real PowerShell stdout/stderr diagnostic test — **OK**;
-- core CLI diagnostic smoke — OK;
-- real JSON workflow diagnostic smoke — OK;
+- **63 ktools-core tests — OK**;
+- **64 ktools-json tests — OK**;
+- real PowerShell diagnostic regression — OK;
+- core CLI smoke — OK;
+- JSON workflow CLI smoke — OK;
 - generated JSON artifact verification — OK.
 
-Final memory/documentation closure checkpoint:
+The subsequent canonical ADR checkpoint `38c0dad7799334ac44477ecc5992d02e7bf46b04` also passed all five jobs in run `33560424024`.
 
-- SHA: `5e1e46714aaefe0827c96a415d7d58d57790a187`;
-- GitHub Actions run: `33557338124`;
-- result: **all five jobs success**.
+### Current promotion gate
 
-M3 therefore has no remaining implementation or evidence gate.
+M4 implementation and its acceptance evidence are resolved. This document, `ROADMAP.md`, `TESTING.md` and the Engineering Journal are being synchronized into one final canonical-memory candidate.
+
+M4 becomes **RESOLVED / PROMOTED** only after that exact memory HEAD passes the same five hosted jobs.
 
 ## Architecture direction now
 
-- `RunJournal` = durable lifecycle truth/history;
-- `DiagnosticsSession` = richer forensic/support evidence;
-- both correlate through run/workflow/node identity but remain separate injected concerns;
-- support bundles are share-safe by default and do not claim automatic root cause;
-- diagnostics is part of Definition of Done for new significant runtime/subprocess/integration capabilities;
-- unfinished/stale evidence is never treated as automatic proof of process death;
-- future cache/recovery decisions must emit diagnostic explanation.
+The runtime has four complementary truth/optimization concerns:
 
-## Active roadmap milestone — M4 Artifact Lifecycle + Recovery + Semantic Cache
+```text
+WorkflowEngine
+  ├─ RunJournal          -> lifecycle truth/history
+  ├─ DiagnosticsSession  -> forensic/support evidence
+  ├─ NodeCache           -> validated reusable PURE results
+  └─ ArtifactRegistry    -> persistent Artifact occurrence/validity provenance
+```
 
-Status: **ACTIVE TARGET / CLEARED TO IMPLEMENT**.
+Rules carried forward:
 
-M4 must answer with executable evidence:
-
-1. what makes an Artifact valid enough to reuse after restart;
-2. how file existence/content changes invalidate reuse;
-3. what exact input/config/node-version identity forms a safe cache signature;
-4. which nodes are cacheable versus side-effectful;
-5. how cached/recovered states extend M2 lifecycle truth;
-6. how process/session ownership affects restart recovery;
-7. how M3 diagnostics explains every reuse/invalidation/recovery decision.
-
-Do not implement broad automatic resume from old `RUNNING`/successful rows without those rules.
-
-## Later roadmap
-
-After M4: official local Node Packs, imported application adapters, runtime/UI contract API, production workflow editor, ready-made Tools/Templates, desktop packaging, agent-first composition and release hardening.
+- no old `SUCCEEDED` row is sufficient for reuse;
+- cacheability is explicit, never inferred;
+- side effects are not skipped without a proved replay/publication contract;
+- cache failure must not become workflow failure where normal execution is possible;
+- `CACHED` is distinct from ordinary execution;
+- unfinished state is not proof of process death;
+- user output files are not automatically deleted merely because cache metadata becomes stale;
+- diagnostics is part of Definition of Done for future native/subprocess/integration capabilities.
 
 ## Next exact action
 
-Create the dedicated M4 Artifact Lifecycle + Recovery + Semantic Cache spec and begin with persistent Artifact validity/provenance plus deterministic cache-signature acceptance tests before implementing automatic reuse.
+Run the complete hosted matrix on the synchronized M4 memory candidate. If all five jobs are green, mark M4 promoted, move M5 to ACTIVE and select the first official local Node Pack slice from real legacy inventory before changing implementation code.

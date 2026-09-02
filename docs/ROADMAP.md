@@ -13,7 +13,7 @@ K-Tools Neo becomes one integrated local-first product where:
 - every reusable operation is a capability/node;
 - simple ready-made Tools and visual Workflows call the same implementation owners;
 - workflows are built visually from typed blocks;
-- expensive/local tasks are observable, diagnosable, durable and recoverable;
+- expensive/local tasks are observable, diagnosable, durable and conservatively reusable/recoverable;
 - every real execution can produce a shareable diagnostic record sufficient to reconstruct what happened;
 - official Node Packs cover files, text, JSON, images, PDFs, audio, video and integrations;
 - mature imported applications are exposed through adapters instead of being needlessly rewritten;
@@ -26,7 +26,7 @@ K-Tools Neo becomes one integrated local-first product where:
 
 Status: **RESOLVED / PROMOTED**
 
-Delivered: UI-independent `ktools-core`, typed ports/validation, deterministic DAG execution, initial Artifact model, CLI, Windows/Linux CI and architecture memory.
+Delivered UI-independent `ktools-core`, typed ports/validation, deterministic DAG execution, initial Artifact model, CLI, Windows/Linux CI and architecture memory.
 
 ---
 
@@ -65,48 +65,66 @@ Working now:
 - subprocess command/duration/exit/stdout/stderr/timeout/launch-failure diagnostics;
 - real PowerShell stdout/stderr hosted smoke;
 - automatic `session.json`, `diagnostics.jsonl`, `report.json`, `report.md` and `support-bundle.zip`;
-- full human execution reconstruction covering steps, lots, decisions, metrics, anomalies, subprocesses, errors, outputs and Run Journal lifecycle;
-- CLI diagnostics enabled by default with `--diagnostics-dir` and `--no-diagnostics`;
-- Ctrl+C classified as diagnostic `INTERRUPTED`;
-- conservative stale abandoned-session recovery as `ABANDONED_OR_INTERRUPTED`.
+- human execution reconstruction and raw-log inventory;
+- CLI diagnostics by default with `--diagnostics-dir` / `--no-diagnostics`;
+- Ctrl+C classified as `INTERRUPTED`;
+- conservative stale abandoned-session packaging as `ABANDONED_OR_INTERRUPTED`.
 
-Hosted acceptance: run `33556969496` on `9c14e073ec5f770ce9d03d031c4ca1820bcd6ce2`, all Windows/Linux Python lanes plus xyflow green. Representative Ubuntu/Python 3.13 lane: 33 core tests + 59 JSON tests, real PowerShell test executed and passed.
+Final M3 closure run: `33557338124` on `5e1e46714aaefe0827c96a415d7d58d57790a187`, all five jobs success.
 
 Evidence: `docs/specs/diagnostics-support-bundle-v1/`.
 
-Architectural rule from this milestone: every significant new runtime/subprocess/integration capability should integrate diagnostics as part of Definition of Done rather than adding logs retroactively.
+Architectural carry-forward: significant runtime/subprocess/integration capabilities after M3 integrate diagnostics as part of Definition of Done.
 
 ---
 
-## M4 — Artifact Lifecycle + Recovery + Semantic Cache
+## M4 — Artifact Lifecycle + Recovery + Semantic Cache V1
 
-Status: **NEXT / ACTIVE TARGET**
+Status: **IMPLEMENTATION RESOLVED / FINAL MEMORY-HEAD CI PENDING**
 
-Build on M2 durable state and M3 diagnostics rather than inventing parallel state.
+Delivered/proved:
 
-Targets:
+- persistent Artifact occurrence/provenance records tied to run/node/output port/value path;
+- local file snapshots with size, mtime-ns and SHA-256;
+- strong revalidation before cached file reuse;
+- stable semantic signatures over node type/version, canonical config and semantic inputs;
+- explicit `CachePolicy.NEVER` default and `PURE` opt-in;
+- persistent stdlib SQLite node cache;
+- fail-open cache behavior;
+- invalidation on config/input/version/Artifact-content/output-validity changes;
+- explicit `NODE_CACHED` / `NodeRunStatus.CACHED` lifecycle truth;
+- M3 diagnostic reasons for cache hit/miss/bypass/invalidation/failure;
+- first-party CLI `--cache` and `--artifact-registry` support;
+- real JSON workload proof using `json.split.plan` over 2,000 records with cache close/reopen;
+- proof that `json.split` remains side-effectful and executes again even when its source is CACHED;
+- conservative restart recovery boundary: new run + validated PURE reuse;
+- explicit prohibition of automatic continuation of old RUNNING work without process/session ownership;
+- metadata-only retention boundary: no automatic deletion of user output files.
 
-- persistent Artifact provenance/validity records tied to run/node/output port;
-- local file observations such as existence, size, modification/fingerprint evidence where relevant;
-- stable workflow/node input/config/version signatures;
-- explicit cacheability/side-effect policy per node/capability;
-- selective reuse of valid prior outputs;
-- invalidation when inputs/config/node version/artifact validity changes;
-- safe restart/recovery semantics and process/session ownership rules;
-- explicit `CACHED` / `RECOVERED` semantics only when evidence supports them;
-- cleanup/retention policy for temporary/intermediate artifacts;
-- M3 diagnostic events explaining every cache reuse, invalidation and recovery decision;
-- real workload proof that reuse avoids meaningful repeated work without returning stale/missing artifacts.
+Accepted code SHA `c7ae2fa3953099d0bd9377da7c2c0195e96f6175`, hosted run `33560041360`, all five jobs green. Canonical ADR checkpoint `38c0dad7799334ac44477ecc5992d02e7bf46b04` also passed run `33560424024`.
 
-M4 must not treat an old successful row as sufficient cache validity. External filesystem mutation/deletion and side-effectful nodes must be part of the model.
+Evidence: `docs/specs/artifact-recovery-cache-v1/`.
+
+Promotion rule: M4 becomes RESOLVED/PROMOTED only when the synchronized canonical-memory HEAD also passes the complete hosted matrix.
 
 ---
 
 ## M5 — Official local Node Packs
 
-Status: **PLANNED / ITERATIVE**
+Status: **NEXT AFTER M4 PROMOTION GATE / ITERATIVE**
 
-Migrate real legacy functionality behind one-owner capability packages: Files/Folders, Text, Images/PDF and Media. Create one shared FFmpeg/FFprobe process boundary before broad media nodes; that boundary must use M3 diagnostics.
+Migrate real legacy functionality behind one-owner capability packages.
+
+Preferred capability families:
+
+- Files/Folders;
+- Text;
+- Images/PDF;
+- Media.
+
+Before selecting the first implementation slice, inspect actual legacy ownership and choose a small deterministic capability that proves the M0-M4 platform contracts without duplicating existing behavior.
+
+For media work, create one shared FFmpeg/FFprobe process boundary before broad audio/video nodes. That boundary must use M3 subprocess diagnostics and must define M4 Artifact/cache semantics explicitly rather than hiding native side effects.
 
 ---
 
@@ -130,7 +148,7 @@ Publish machine-readable Node Pack/catalog/config/workflow/validation/run/artifa
 
 Status: **PLANNED**
 
-Build the production editor from runtime contracts and audited xyflow lessons. Run state, warnings, errors and diagnostic links come from runtime truth rather than frontend simulation.
+Build the production editor from runtime contracts and audited xyflow lessons. Run state, cache state, warnings, errors and diagnostic links come from runtime truth rather than frontend simulation.
 
 ---
 
@@ -138,7 +156,7 @@ Build the production editor from runtime contracts and audited xyflow lessons. R
 
 Status: **PLANNED**
 
-Project workflows as simple Tools without duplicate business logic; simple Tool runs receive the same history and diagnostic bundle capability as visual workflows.
+Project workflows as simple Tools without duplicate business logic; simple Tool runs receive the same history, cache/Artifact semantics and diagnostic bundle capability as visual workflows.
 
 ---
 
@@ -170,4 +188,4 @@ Across all milestones: keep CI green, classify dependencies/licenses, remove dup
 
 The active implementer normally takes the **first unresolved milestone whose prerequisites are satisfied**, creates/updates an explicit spec, works through evidence → RED → GREEN → REFACTOR → regression → hosted evidence → memory closure, then advances while capacity remains.
 
-Every new significant runtime/subprocess/integration capability after M3 should integrate diagnostics as part of its Definition of Done rather than adding logs retroactively.
+Every significant runtime/subprocess/integration capability after M3 integrates diagnostics in its Definition of Done. Every candidate for M4 cache reuse must separately justify purity, semantic identity and output validity; side effects are never skipped merely because previous output exists.
