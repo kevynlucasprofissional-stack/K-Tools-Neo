@@ -30,19 +30,25 @@ jobs:
       - name: Install ktools-core
         run: python -m pip install -e ./packages/ktools-core
 
-      - name: Install ktools-json (first official node pack)
+      - name: Install ktools-json
         run: python -m pip install -e ./packages/ktools-json
 
-      - name: Unit and contract tests
+      - name: Install ktools-text
+        run: python -m pip install -e ./packages/ktools-text
+
+      - name: Core unit and contract tests
         run: python -m unittest discover -s packages/ktools-core/tests -v
 
-      - name: JSON node pack unit/contract tests
+      - name: JSON node pack tests
         run: python -m unittest discover -s packages/ktools-json/tests -v
 
-      - name: CLI smoke
+      - name: Text node pack tests
+        run: python -m unittest discover -s packages/ktools-text/tests -v
+
+      - name: Core CLI smoke
         run: python -m ktools_core packages/ktools-core/examples/hello-workflow.json --json
 
-      - name: JSON node pack workflow smoke
+      - name: JSON workflow CLI smoke
         run: python -m ktools_json "${{ github.workspace }}/packages/ktools-json/examples/split-workflow.json" --json
         working-directory: ${{ runner.temp }}
 
