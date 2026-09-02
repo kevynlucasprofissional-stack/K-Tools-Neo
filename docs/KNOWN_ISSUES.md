@@ -12,11 +12,11 @@ Next: design root jobs/path filters for imported applications before imported-ap
 
 ## KI-002 — Legacy GUI owns large amounts of business logic
 
-Status: OPEN / REDUCED BY M5 SLICES 1–6
+Status: OPEN / REDUCED BY M5 SLICES 1–7
 
 `K Tools Neo - Versão Estável 2.py` remains a large monolithic GUI/application file with capability implementations beside presentation/runtime concerns.
 
-M5 has extracted canonical owners for Markdown/TXT merge/split, PDF merge/split, mixed Text/PDF document-split orchestration and WebP→PNG/image safety. Images→PDF, filesystem and media utilities remain substantially in the monolith.
+M5 has extracted canonical owners for Markdown/TXT merge/split, PDF merge/split, mixed Text/PDF document-split orchestration, WebP→PNG/image safety/shared image reading and Images→PDF. Filesystem and media utilities remain substantially in the monolith.
 
 Invariant: extract capability-by-capability behind tested node contracts rather than performing a broad monolith rewrite.
 
@@ -66,9 +66,9 @@ Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
 Status: OPEN / OBSERVE BEFORE ABSTRACTING
 
-Text, PDF and Images now all contain temp→promote publication patterns, but their allocation, writer, aggregate/per-output and failure contracts differ materially. This additional occurrence still does **not** prove a generic core publication API.
+Text, PDF and Images all contain temp→promote publication patterns, but their allocation, writer, aggregate/per-output and failure contracts differ materially. Images→PDF adds another singular aggregate use while WebP→PNG remains per-output batch publication; this strengthens the evidence that apparently similar mechanics still have different domain transaction boundaries.
 
-Re-evaluate only when multiple independent packs expose a stable common contract for allocation, cleanup, collision policy, promotion and ownership without leaking domain-specific writer semantics.
+This does **not** prove a generic core publication API. Re-evaluate only when multiple independent packs expose a stable common contract for allocation, cleanup, collision policy, promotion and ownership without leaking domain-specific writer semantics.
 
 ## KI-011 — Multi-output operations are not globally transactional
 
@@ -78,11 +78,13 @@ PDF split, Text split and WebP→PNG publish individual completed outputs atomic
 
 This is intentional and tested. The failing destination must not be partial or falsely claimed successful. Set-wide rollback requires stronger file ownership/deletion evidence.
 
+Images→PDF is different: it has one aggregate output and therefore one singular temp→replace transaction; source/preparation/serialization failure returns no new PDF and preserves a previous destination.
+
 ## KI-012 — Domain-specialized collection types are intentionally deferred
 
 Status: OPEN / DESIGN WATCH
 
-`FILE_SET` carries Text FILE, PDF and IMAGE Artifacts through current workflows. Hosted PDF/Text composition, mixed Documents and WebP→PNG prove member-level Artifact typing is currently sufficient without `PDF_SET`, text-specific sets, document sets or `IMAGE_SET`.
+`FILE_SET` carries Text FILE, PDF and IMAGE Artifacts through current workflows. Hosted PDF/Text composition, mixed Documents, WebP→PNG and Images→PDF prove member-level Artifact typing is currently sufficient without `PDF_SET`, text-specific sets, document sets or `IMAGE_SET`.
 
 Revisit only when graph-time element-type rejection or catalog/UI behavior proves a concrete need.
 
@@ -104,18 +106,30 @@ A primitive Text/PDF split may publish earlier parts and then raise on a later p
 
 Status: OPEN / EXPLICIT COMPATIBILITY DEBT
 
-`packages/ktools-images` is now the canonical evolution owner for the 80M-pixel/Pillow bomb boundary, EXIF orientation policy and WebP→PNG conversion. `K Tools Neo - Versão Estável 2.py` still contains and invokes the historical WebP→PNG implementation and related image helpers.
+`packages/ktools-images` is now the canonical evolution owner for the 80M-pixel/Pillow bomb boundary, shared safe first-frame reading, EXIF orientation policy, WebP→PNG and Images→PDF.
 
-Impact: direct edits to the legacy path could drift from tested package semantics.
+`K Tools Neo - Versão Estável 2.py` still contains and invokes historical image implementations/helpers.
 
-Invariant: WebP→PNG/image-safety semantic changes originate in `ktools-images`; the legacy implementation is a compatibility path only.
+Impact: direct edits to legacy image paths could drift from tested package semantics.
 
-Next: traditional image Tool migration should redirect WebP→PNG to the canonical pack. Images→PDF extraction must reuse canonical image safety/orientation rather than copy it.
+Invariant: image safety/decode/frame/EXIF semantics originate in the shared `ktools-images` foundation; WebP→PNG and Images→PDF output semantics originate in their canonical pack owners. Legacy implementations are compatibility paths only.
+
+Next: traditional image Tool migration should redirect both WebP→PNG and Images→PDF to the canonical pack rather than evolving the legacy copies.
 
 ## KI-016 — Pillow major-version support is intentionally bounded
 
 Status: OPEN / DEPENDENCY GOVERNANCE WATCH
 
-`ktools-images` V1 declares `Pillow>=12,<13`. This does not claim Pillow 13 is incompatible; it prevents an untested major release from silently changing decode/security/format behavior.
+`ktools-images` V1 declares `Pillow>=12,<13`. This does not claim Pillow 13 is incompatible; it prevents an untested major release from silently changing decode/security/format/PDF serialization behavior.
 
-Reopen the upper bound only with package tests and hosted image smoke against the proposed major version.
+Reopen the upper bound only with package tests and hosted image smokes against the proposed major version.
+
+## KI-017 — Files/Folders legacy scan semantics are not yet canonical
+
+Status: OPEN / DISCOVERY REQUIRED
+
+The legacy product exposes overlapping filesystem traversal/report behavior without one locked cross-platform contract for root validity, files-vs-directories inclusion, hidden items, recursion, symlink/reparse traversal, deterministic ordering, permission/OSError aggregation, progress and result schema.
+
+Impact: extracting an arbitrary helper now could accidentally promote one historical implementation detail as product semantics or create duplicate filesystem owners.
+
+Invariant: do not implement a production Files/Folders Node Pack slice until fresh discovery reconciles these surfaces and a spec locks the observable contract.

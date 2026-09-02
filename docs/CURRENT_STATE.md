@@ -65,7 +65,9 @@ Carry-forward invariants:
 - compatibility copies in the legacy GUI are frozen once a canonical package owner is promoted;
 - cross-pack orchestration preserves child capability ownership and returned domain Artifacts rather than copying primitive algorithms;
 - third-party image decoding has an explicit safety/version policy before broad image capabilities depend on it;
-- image format semantics may stay in member Artifact metadata while `FILE_SET` remains the collection port until a real graph-time requirement proves otherwise.
+- image format semantics may stay in member Artifact metadata while `FILE_SET` remains the collection port until a real graph-time requirement proves otherwise;
+- shared decoder policy may be extracted within a pack once a second independent consumer proves real reuse, while capability-specific output semantics remain separate;
+- aggregate single-output publication and multi-output publication are distinct transaction boundaries and must not be generalized merely because both use temp→promote mechanics.
 
 ## M5 — Official local Node Packs — ACTIVE / ITERATIVE DELIVERY
 
@@ -104,50 +106,65 @@ Evidence: spec `c3fe4b98bc923eeb02a0b47877262bcbf83620d9` / `33661964413`; RED `
 ADR: `docs/decisions/ADR-027-DOCUMENT-SPLIT-ORCHESTRATOR-V1.md`.
 The stable GUI mixed dispatcher is frozen compatibility debt.
 
-### Slice 6 — Image Safety Foundation + WebP→PNG V1 — RESOLVED / PROMOTION CLOSURE GATE
+### Slice 6 — Image Safety Foundation + WebP→PNG V1 — RESOLVED / PROMOTED
 
-`packages/ktools-images/` is now the canonical evolution owner for the image-safety foundation and WebP→PNG conversion.
+`packages/ktools-images/` is the canonical evolution owner for the image-safety foundation and WebP→PNG conversion.
+
+Delivered `Pillow>=12,<13`, 80M-pixel/decompression-bomb policy, EXIF normalization, frame-0 policy, alpha-preserving PNG behavior, collision-safe per-output atomic publication, `image.webp_to_png: FILE_SET -> FILE_SET` v1 NEVER, IMAGE Artifact metadata/provenance/snapshots, cached-source/republication proof and real RGB/RGBA hosted smoke.
+
+Technical evidence: spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293`; RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304`; GREEN `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076`.
+
+Terminal memory closure `9b9fc57bd4bfb28d7e23637651a30182ce6f8828`, run `33668942264`, 5/5.
+
+ADR: `docs/decisions/ADR-028-IMAGE-SAFETY-WEBP-PNG-V1.md`.
+The stable GUI WebP→PNG path is compatibility debt.
+
+### Slice 7 — Images→PDF Node V1 — TECHNICALLY RESOLVED / MEMORY-CLOSURE GATE
+
+Fresh terminal-main discovery compared Images→PDF and bounded Files/Folders and selected Images→PDF only after the Slice-6 image foundation made its remaining contract bounded. Files/Folders remains deferred pending a dedicated cross-platform traversal/result contract.
 
 Delivered:
 
-- `Pillow>=12,<13` package boundary;
-- 80,000,000-pixel/decompression-bomb policy;
-- EXIF orientation normalization;
-- explicit animated WebP frame-0 policy;
-- transparency preservation as RGBA PNG where applicable;
-- RGB/L preservation and fallback RGB normalization;
-- collision-safe per-output temp→promote publication;
-- explicit non-transactional batch failure boundary;
-- one canonical converter owner shared by direct API and node;
-- `image.webp_to_png: FILE_SET -> FILE_SET`, version 1, NEVER;
-- IMAGE Artifacts with PNG MIME, current provenance and image-policy metadata;
-- ArtifactRegistry strong snapshots;
-- cached `files.literal` without suppressed re-publication;
-- real generated RGB/RGBA hosted workflow smoke in every Python lane.
+- shared `ktools_images.reader` as single guarded Pillow decode / bomb / frame-0 / EXIF owner;
+- WebP→PNG refactored onto that shared reader with zero observed semantic regression;
+- supported JPG/JPEG/PNG/WebP/BMP/TIF/TIFF filtering in preserved compatible-source order;
+- one first-frame source → one PDF page;
+- EXIF normalization before page preparation;
+- RGB page normalization with RGBA/LA/palette transparency composited over white;
+- one aggregate PDF with same-directory temp→promote publication and prior-destination preservation on handled failure;
+- canonical Images→PDF writer shared by direct API and workflow;
+- `image.files_to_pdf: FILE_SET -> PDF`, version 1, NEVER;
+- one PDF Artifact with `application/pdf`, current provenance, ordered-source/page metadata and strong ArtifactRegistry snapshot;
+- cached PURE `files.literal` without suppressed Images→PDF publication;
+- real hosted workflow smoke independently reopened with `pypdf` in every Python lane;
+- ownership-audit hardening so architecture tests prove `reader.py` rather than stale `converter.py` decode ownership.
 
 Evidence:
 
-- spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3`, run `33666227293`, 5/5;
-- discriminating RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc`, run `33667224304`;
-- GREEN/audited candidate `670a503d822ba100a66eea3ba0b31cfe39692984`, run `33667874076`, 5/5.
+- spec `ae617e948d5549e3dbca1dbe8d5de19c16555535`, run `33670517542`, 5/5;
+- discriminating RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db`, run `33671061268`;
+- GREEN `309863ac475330448e6fc44dbdf305482528689e`, run `33671740134`, 5/5;
+- hardened/audited technical HEAD `1d9afc40bb7adbb511a1869d25b18058782bcbad`, run `33672387118`, 5/5.
 
-ADR: `docs/decisions/ADR-028-IMAGE-SAFETY-WEBP-PNG-V1.md`.
-Evidence/final report: `docs/specs/webp-to-png-node-v1/`.
-The stable GUI WebP→PNG path is now compatibility debt; semantic evolution belongs to `ktools-images`.
+ADR: `docs/decisions/ADR-029-IMAGES-TO-PDF-NODE-V1.md`.
+Evidence/final report: `docs/specs/images-to-pdf-node-v1/`.
 
-### Slice 7 — PENDING FRESH DISCOVERY
+The legacy stable GUI Images→PDF implementation is now compatibility debt; semantic evolution belongs to `ktools-images`.
 
-Remaining bounded candidates now include at minimum:
+Promotion is intentionally not claimed until this synchronized memory-closure HEAD itself passes the standard five hosted jobs.
 
-- Images→PDF, which has sequencing advantage because canonical image safety/EXIF/frame policy now exists;
-- bounded Files/Folders operations, which still require a cross-platform traversal/result contract.
+### Slice 8 — PENDING FRESH DISCOVERY
 
-Do not auto-select Images→PDF solely because the shared foundation exists. Re-inspect the exact terminal `main` after the Slice-6 closure HEAD is green and compare behavior clarity, security/dependencies, publication semantics, Artifact cardinality, cacheability, composition value and duplicate-owner reduction.
+Do not preselect the next capability before Slice 7 is terminally promoted.
 
-If Images→PDF wins, it must reuse `ktools-images` safety/orientation policy while specifying its own supported formats, ordered pages, RGB conversion, alpha→white background behavior, multi-frame policy, singular PDF Artifact, aggregate publication and NEVER/cache semantics.
+At minimum fresh-inspect:
 
-If Files/Folders wins, lock root validity, files/dirs inclusion, hidden handling, recursion, symlink/reparse behavior, deterministic ordering, permission/OSError aggregation, report schema and observation/publication ownership before implementation.
+- bounded Files/Folders operations, including the overlapping legacy traversal/report owners and unresolved root/hidden/recursion/symlink-reparse/ordering/permission-error/result-schema semantics;
+- the smallest useful Media capability whose FFmpeg/FFprobe boundary can be specified against M3 diagnostics and M4 Artifact/cache rules;
+- any remaining image/document utility only if it has a clearer bounded contract and stronger composition value than those candidates.
+
+Do not create a generic filesystem abstraction, generic media framework or cross-domain publication helper before evidence proves a stable shared contract.
 
 ## Next exact action
 
-Require this synchronized Slice-6 memory-closure HEAD itself to pass the standard five hosted jobs. If green, Slice 6 becomes terminally **RESOLVED / PROMOTED** and Slice 7 begins fresh discovery from that exact `main` state.
+Publish the synchronized Slice-7 memory closure and require that exact HEAD to pass Ubuntu/Windows × Python 3.10/3.13 plus xyflow. If 5/5, terminally mark Slice 7 **RESOLVED / PROMOTED**, record the closure run, revalidate the terminal docs-only HEAD, and only then begin Slice 8 fresh discovery.

@@ -112,6 +112,18 @@ Status: **VALIDATED IN IMAGE SLICE 6** — IMAGE Artifact type plus PNG MIME, fr
 ## H-043 — Security-sensitive decoder policy is product behavior, not an implementation detail
 Status: **VALIDATED IN IMAGE SLICE 6** — the 80M-pixel ceiling, bomb-warning handling and Pillow major range are explicit tested contracts and must not be silently changed by future image capabilities.
 
+## H-044 — A second independent consumer is a strong threshold for extracting shared pack policy
+Status: **VALIDATED IN IMAGE SLICE 7** — Images→PDF made guarded Pillow open/bomb/frame/EXIF behavior genuinely reusable; moving it to `ktools_images.reader` reduced duplicate safety ownership without inventing a generic image framework.
+
+## H-045 — Shared decode policy does not imply shared output policy
+Status: **VALIDATED IN IMAGE SLICE 7** — WebP→PNG preserves PNG-specific alpha/mode/per-output publication while Images→PDF owns RGB/alpha→white/aggregate publication. Reuse stops at the proven shared boundary.
+
+## H-046 — Singular aggregate publication is a different transaction model from multi-output publication
+Status: **VALIDATED IN IMAGES→PDF V1** — all compatible pages must succeed before one PDF is promoted; there is no partial-success output set, unlike WebP→PNG/Text/PDF split.
+
+## H-047 — Architecture tests must move when ownership moves
+Status: **VALIDATED / AUDIT LESSON** — stale token-based assertions can reward compatibility breadcrumbs instead of true ownership. When decode moved to `reader.py`, the Slice-6 structural guard had to be hardened to test the new owner explicitly.
+
 ## E-004 — Correct output-collision guard can make non-isolated smoke red
 Status: **CLASSIFIED** — fix isolation, not safety behavior.
 
@@ -151,6 +163,12 @@ Status: **RESOLVED / TEST-DESIGN LESSON** — isolated output directories are co
 ## E-016 — Image RED must prove Pillow bootstrap before missing product failure
 Status: **RESOLVED / USEFUL RED** — `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304` observed Core 76 + JSON 64 + Text 28 + PDF 24 + Documents 7 passing, Pillow 12.3.0 installing, then Image failing exactly at missing `ktools_images`.
 
+## E-017 — Images→PDF RED must preserve the existing image capability while isolating the new owner
+Status: **RESOLVED / USEFUL RED** — `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / `33671061268` kept all 15 WebP→PNG tests green after prior suites passed, while all 15 new Images→PDF contracts failed on the absent shared reader/PDF-publication boundary.
+
+## E-018 — A migration breadcrumb can accidentally satisfy a stale architecture test
+Status: **RESOLVED / AUDIT HARDENING** — initial GREEN was behavior-correct, but the old Slice-6 structural guard searched for `Image.open`/EXIF tokens in `converter.py`. Audit moved the assertion to the true shared reader and removed the breadcrumb; `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118` stayed 5/5.
+
 ## M5 Slice 1 closure
 
 Text promotion `958d5bf563cda21673d69865d1508831c599c006` / `33630159514`; memory closure `f759e1712d5cf73103cfc37f8a7b7f77ecb6a388` / `33631040505`.
@@ -181,21 +199,29 @@ Result: **RESOLVED / PROMOTED**. `ktools-documents` owns batch orchestration onl
 
 Fresh discovery selected WebP→PNG over Images→PDF and bounded Files/Folders to establish the image safety foundation first.
 
-Spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293` passed 5/5.
-RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304` discriminated at absent Image package after prior suites and Pillow bootstrap passed.
-GREEN/audited technical candidate `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076` passed 5/5, including `ktools-images` suite and real generated RGB/RGBA WebP→PNG workflow smoke on every Python lane.
+Spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293`; RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304`; GREEN `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076`; terminal memory closure `9b9fc57bd4bfb28d7e23637651a30182ce6f8828` / `33668942264`, 5/5.
+Result: **RESOLVED / PROMOTED**. `ktools-images` owns Pillow safety/EXIF/frame policy and WebP→PNG; the stable GUI copy is compatibility debt.
 
-Architecture result: `ktools-images` owns Pillow safety/EXIF and WebP→PNG conversion; direct API/node share one converter; output members remain IMAGE Artifacts inside FILE_SET; publication is NEVER and atomic per PNG; the stable GUI copy becomes compatibility debt.
+## M5 Slice 7 closure candidate
 
-Result pending only this synchronized memory-closure HEAD gate: **Slice 6 RESOLVED / PROMOTION CLOSURE GATE**.
+Fresh discovery selected Images→PDF over bounded Files/Folders only after Slice 6 made the image decode/safety boundary reusable and bounded.
 
-## Next journal focus — M5 Slice 7
+Spec `ae617e948d5549e3dbca1dbe8d5de19c16555535` / `33670517542`, 5/5.
+RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / `33671061268` preserved prior packs and all old WebP tests while isolating missing reader/PDF contracts.
+GREEN `309863ac475330448e6fc44dbdf305482528689e` / `33671740134`, 5/5.
+Ownership hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118`, 5/5.
 
-After the Slice-6 closure HEAD is green:
+Architecture result: `ktools_images.reader` owns guarded Pillow decode/safety/frame/EXIF for both WebP→PNG and Images→PDF; Images→PDF owns RGB/alpha-white/page-order/aggregate-PDF semantics; `image.files_to_pdf: FILE_SET -> PDF` is v1 NEVER; output is one strongly snapshotted PDF Artifact.
 
-1. fresh-inspect Images→PDF and bounded Files/Folders from the exact terminal `main`;
-2. give Images→PDF a sequencing advantage only insofar as it can reuse canonical `ktools-images` safety/EXIF/frame policy — do not preselect without characterizing aggregate PDF semantics;
-3. if Images→PDF wins, lock supported formats, ordered pages, RGB conversion, alpha→white background, multi-frame policy, singular PDF Artifact, aggregate atomic publication and NEVER/cache behavior;
-4. if Files/Folders wins, lock roots, hidden/recursion, symlink/reparse behavior, deterministic ordering, permission/OSError aggregation and report semantics;
-5. do not create IMAGE_SET or a generic atomic writer without new graph/domain evidence;
-6. continue using exact-head hosted evidence and memory closure before moving to the next slice.
+Result pending only the synchronized memory-closure HEAD gate: **TECHNICALLY RESOLVED / MEMORY-CLOSURE CI PENDING**.
+
+## Next journal focus — M5 Slice 8
+
+Only after Slice 7 is terminally promoted:
+
+1. re-open exact terminal `main` and inventory unresolved capability owners;
+2. fresh-compare bounded Files/Folders, the smallest useful Media capability and any remaining bounded image/document utility;
+3. for Files/Folders, reconcile overlapping traversal/report semantics before implementation;
+4. for Media, establish one FFmpeg/FFprobe process boundary tied to M3 diagnostics and M4 Artifact/cache contracts before broad audio/video extraction;
+5. do not create generic filesystem/media/publication abstractions from superficial code similarity;
+6. continue exact-head spec → RED → GREEN → audit → hosted evidence → memory closure.

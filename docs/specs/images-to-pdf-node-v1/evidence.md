@@ -1,6 +1,6 @@
 # Evidence — Images→PDF Node V1
 
-Status: **RED ACCEPTED / GREEN CANDIDATE PENDING**
+Status: **TECHNICAL GREEN / MEMORY-CLOSURE CANDIDATE**
 
 ## Prerequisite gate
 
@@ -14,7 +14,7 @@ Image Safety Foundation + WebP→PNG terminal closure:
 - Windows Python 3.13 success;
 - xyflow success.
 
-Every Python lane installed `ktools-images`, passed the image suite and executed the real WebP→PNG workflow smoke. Slice 7 therefore starts from a terminal-green canonical image foundation.
+Every Python lane installed `ktools-images`, passed the image suite and executed the real WebP→PNG workflow smoke. Slice 7 therefore started from a terminal-green canonical image foundation.
 
 ## Fresh candidate decision
 
@@ -78,17 +78,63 @@ Ubuntu 3.10 provides the complete discriminating evidence:
 - all 15 pre-existing WebP→PNG tests passed inside the image suite;
 - the 15 new Images→PDF contracts failed on the intended missing product boundary, principally `ModuleNotFoundError: No module named 'ktools_images.reader'`, with `publish_pdf_atomic` also absent.
 
-Ubuntu 3.13 reached the same image-test failure after all prior suites passed. This is product-absence RED, not bootstrap/dependency or Slice-6 regression.
+Ubuntu 3.13 reached the same image-test failure after all prior suites passed. This was product-absence RED, not bootstrap/dependency or Slice-6 regression.
 
-## GREEN implementation hypothesis
+## GREEN implementation
 
-The GREEN candidate must add only:
+GREEN implementation:
 
-- `reader.py` shared safe first-frame owner;
-- refactored WebP converter using the reader;
-- `pdf_writer.py` aggregate Images→PDF owner;
-- PDF atomic publication in the existing image-pack publication module;
+- HEAD `309863ac475330448e6fc44dbdf305482528689e`;
+- run `33671740134`;
+- Ubuntu Python 3.10 success;
+- Ubuntu Python 3.13 success;
+- Windows Python 3.10 success;
+- Windows Python 3.13 success;
+- xyflow success.
+
+Delivered:
+
+- `reader.py` as the shared safe first-frame owner;
+- WebP→PNG refactored to consume the reader;
+- `pdf_writer.py` as the aggregate Images→PDF owner;
+- singular same-directory atomic PDF publication;
 - direct API + `image.files_to_pdf` thin node;
-- deterministic hosted Images→PDF workflow smoke using `pypdf` only as an independent test oracle.
+- supported JPG/JPEG/PNG/WebP/BMP/TIF/TIFF filtering in preserved order;
+- EXIF-normalized first-frame semantics;
+- RGB page normalization and alpha/palette transparency composited over white;
+- PDF Artifact metadata/provenance and strong ArtifactRegistry snapshot;
+- NEVER semantics with cached upstream `files.literal` still re-publishing;
+- direct/workflow semantic equivalence;
+- real hosted `files.literal -> image.files_to_pdf` smoke independently reopened with `pypdf`.
 
-The next accepted evidence is exact-head hosted 5/5 with all old WebP behavior still green and all new Images→PDF contracts green.
+The same run kept the existing WebP→PNG suite and hosted smoke green in all Python lanes.
+
+## Integration/ownership audit
+
+The first GREEN exposed one test-design debt: the older Slice-6 structural guard still required literal `Image.open` and `safety.normalize_orientation` tokens inside `converter.py`. A temporary migration comment could satisfy that old assertion while the real owner had already moved to `reader.py`; this would make the architecture test less truthful than the architecture.
+
+The audit therefore changed the guard rather than weakening the new owner:
+
+- HEAD `1d9afc40bb7adbb511a1869d25b18058782bcbad`;
+- run `33672387118`;
+- all five hosted jobs completed success.
+
+The hardened test now requires `reader.load_safe_first_frame` from the WebP converter, rejects Pillow open/warning/EXIF ownership there, and verifies those responsibilities in `reader.py`. The artificial breadcrumb was removed from production code.
+
+## Exact-head technical gate
+
+Run `33672387118` on `1d9afc40bb7adbb511a1869d25b18058782bcbad` completed:
+
+- Ubuntu / Python 3.10 — success;
+- Ubuntu / Python 3.13 — success;
+- Windows / Python 3.10 — success;
+- Windows / Python 3.13 — success;
+- xyflow spike — success.
+
+Every Python lane installed all official packs, passed Core/JSON/Text/PDF/Documents/Images suites, and passed the existing and new hosted workflow smokes, including Images→PDF.
+
+## Remaining promotion gate
+
+The technical capability is green and audited. Promotion is not yet claimed by this evidence file alone.
+
+The synchronized memory-closure commit containing ADR-029, canonical state/roadmap/testing/issues/journal updates, completed task accounting and final report must itself pass the same five hosted jobs. Only then may Slice 7 be terminally marked **RESOLVED / PROMOTED**.

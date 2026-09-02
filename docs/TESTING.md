@@ -25,9 +25,9 @@ Matrix:
 - Windows / Python 3.10;
 - Windows / Python 3.13.
 
-Each matrix job performs checkout/Python setup; editable install of Core, JSON, Text, PDF, Documents and Images in dependency order; the complete suite for every installed pack; Core CLI smoke; JSON split smoke; Text merge and split→merge smokes; PDF merge and split→merge smokes; Documents mixed Text/PDF smoke; and a generated lossless RGB/RGBA WebP→PNG workflow smoke that reopens emitted PNGs and verifies exact mode/size/pixels.
+Each matrix job performs checkout/Python setup; editable install of Core, JSON, Text, PDF, Documents and Images in dependency order; the complete suite for every installed pack; Core CLI smoke; JSON split smoke; Text merge and split→merge smokes; PDF merge and split→merge smokes; Documents mixed Text/PDF smoke; generated lossless RGB/RGBA WebP→PNG workflow smoke that reopens emitted PNGs and verifies exact mode/size/pixels; and Images→PDF workflow smoke that creates deterministic image sources, executes `files.literal -> image.files_to_pdf`, reopens the PDF through `pypdf`, and verifies page count/order plus PDF Artifact semantics.
 
-`ktools-images` must obtain Pillow from its package metadata, not an execution-time installer. Current V1 dependency is `Pillow>=12,<13`.
+`ktools-images` must obtain Pillow from its package metadata, not an execution-time installer. Current V1 dependency is `Pillow>=12,<13`. `pypdf` is already installed through `ktools-pdf` in the root matrix and is an independent Images→PDF smoke/test oracle, not an Images→PDF runtime dependency.
 
 Because suites are discovered from the repository, the matrix also exercises Durable Execution, Diagnostics/Support Bundle and M4 Artifact/Cache contracts together, including SQLite lifecycle, safe redaction, support reports, subprocess failure boundaries, semantic cache reuse/invalidation and persistent Artifact observations.
 
@@ -83,53 +83,62 @@ Evidence: spec `c3fe4b98bc923eeb02a0b47877262bcbf83620d9` / `33661964413`; RED `
 
 ## Image Safety Foundation + WebP→PNG V1 evidence expectations
 
-A WebP→PNG migration claim requires all of the following.
+A WebP→PNG migration claim requires `Pillow>=12,<13`; 80M-pixel/decompression-bomb protection; positive dimensions; existing `.webp` filtering; preserved input order; EXIF normalization; intentional frame 0; alpha-preserving PNG behavior; collision-safe per-output same-directory temp→replace; explicit non-transactional batch failure; `image.webp_to_png: FILE_SET -> FILE_SET` v1 NEVER; IMAGE Artifact metadata/provenance/snapshots; cached source without suppressed publication; direct/node one-owner architecture; and hosted generated RGB/RGBA pixel/mode/size verification.
 
-### Dependency / safety
+Evidence: spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293`; RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304`; GREEN `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076`; terminal closure `9b9fc57bd4bfb28d7e23637651a30182ce6f8828` / `33668942264`, 5/5.
 
-- `Pillow>=12,<13` declared in `ktools-images` package metadata;
-- 80,000,000-pixel ceiling plus Pillow bomb warning/error handling;
-- positive dimensions and pixel count validated around orientation normalization;
-- no execution-time self-installer inside the capability.
+## Images→PDF Node V1 evidence expectations
 
-### Image semantics
+An Images→PDF promotion claim requires all of the following.
 
-- only existing `.webp` regular files are compatible inputs; empty compatible set fails closed;
-- source order is preserved;
-- EXIF orientation is normalized before final publication;
-- animated WebP intentionally uses frame 0 only and exposes this policy in metadata/progress evidence;
-- RGBA/LA/transparent palette sources preserve alpha in RGBA PNG;
-- RGB/L remain valid modes; other non-alpha modes normalize to RGB;
-- generated PNGs are reopened for real pixel/mode/size verification.
+### Shared reader / safety
 
-### Publication / failure
+- WebP→PNG and Images→PDF both consume one pack-local guarded first-frame reader;
+- the reader owns Pillow bomb configuration/classification, original/post-orientation size validation, frame-0 selection, EXIF normalization and detached loaded image output;
+- `Image.open`, bomb-warning setup and EXIF transpose are not duplicated across the two capability owners;
+- the existing `Pillow>=12,<13` and 80M-pixel policy remains unchanged unless separately evidenced.
 
-- output folder is explicit;
-- names are case-insensitive collision-safe `{stem}.png`, `_1`, ...;
-- each PNG uses same-directory temp→replace publication;
-- current failing source leaves no partial final/temp output;
-- a later source failure may leave earlier successfully published PNGs; batch rollback is not inferred;
-- node is `CachePolicy.NEVER`, so a cached `files.literal` source still produces a fresh collision-safe publication.
+### Input / page semantics
 
-### Architecture / Artifact
+- only existing regular JPG/JPEG/PNG/WebP/BMP/TIF/TIFF inputs are compatible, case-insensitively;
+- missing/unsupported paths are filtered and compatible order is preserved;
+- no compatible source fails closed;
+- one input contributes exactly one first-frame page;
+- EXIF normalization occurs before PDF page preparation;
+- every PDF page is RGB;
+- RGBA/LA/palette transparency is composited over pure white;
+- page order and normalized page sizes are verified semantically after reopen.
 
-- `image.webp_to_png: FILE_SET -> FILE_SET`, version 1;
-- members are IMAGE Artifacts with `image/png` MIME and current run/node provenance;
-- metadata records source/frame/orientation/mode/dimensions;
-- ArtifactRegistry strongly snapshots nested outputs;
-- direct API and workflow node delegate to one converter owner;
-- API/node do not contain Pillow decode/EXIF/save/bomb/temp-publication algorithms;
+### Aggregate publication / failure
+
+- destination suffix normalizes to `.pdf`;
+- all pages are prepared before aggregate serialization;
+- one same-directory temp PDF is written and verified non-empty before replace;
+- a pre-existing destination is replaced only after success;
+- a corrupt later compatible source or forced serializer failure preserves the previous destination;
+- temp output and prepared page objects are cleaned/closed best-effort on handled failure;
+- unlike WebP→PNG, the capability has one singular aggregate transaction boundary and does not expose partial success.
+
+### Node / Artifact / cache
+
+- `image.files_to_pdf: FILE_SET -> PDF`, version 1, `CachePolicy.NEVER`;
+- input FILE_SET members may be local FILE/IMAGE Artifacts; suffix/existence filtering remains capability-owned;
+- output is one `DataType.PDF` Artifact with `application/pdf`, current provenance and ordered source/page/policy metadata;
+- ArtifactRegistry records a strong local-file snapshot;
+- a cached PURE `files.literal` does not suppress second Images→PDF execution/publication;
+- direct API and workflow share one Images→PDF writer owner;
+- API/node contain no Pillow decode/EXIF/RGB/composite/PDF-save/temp-publication algorithms;
 - no `IMAGE_SET` is introduced without graph-time evidence.
 
 ### Hosted evidence
 
-- spec `bd454050c182aec74c8f45d529ab2e0377cb3ad3` / `33666227293`, 5/5;
-- RED `311c82a26b5ef64a7c80299b9253829a8e98cfbc` / `33667224304`: observed Ubuntu 3.13 lane passed 76 Core + 64 JSON + 28 Text + 24 PDF + 7 Documents, installed Pillow 12.3.0, then failed exactly because `ktools_images` was absent;
-- GREEN `670a503d822ba100a66eea3ba0b31cfe39692984` / `33667874076`, 5/5;
-- every Python lane installed Images, passed the Image suite and passed real generated RGB/RGBA WebP→PNG workflow smoke;
-- xyflow remained green.
+- spec `ae617e948d5549e3dbca1dbe8d5de19c16555535` / `33670517542`, 5/5;
+- discriminating RED `9ac1c9bcb2974e8d4daf70844a14198e35fe54db` / `33671061268`, with prior suites and 15 old WebP tests green while 15 new Images→PDF contracts failed on the missing reader/PDF boundary;
+- GREEN `309863ac475330448e6fc44dbdf305482528689e` / `33671740134`, 5/5;
+- architecture hardening `1d9afc40bb7adbb511a1869d25b18058782bcbad` / `33672387118`, 5/5;
+- every Python lane passed both image capability suites and both image hosted smokes; xyflow remained green.
 
-Formal promotion additionally requires the synchronized Slice-6 memory-closure HEAD to pass the same five hosted jobs.
+Formal promotion additionally requires the synchronized Slice-7 memory-closure HEAD to pass the same five hosted jobs.
 
 ## Recovery / ownership evidence boundary
 
