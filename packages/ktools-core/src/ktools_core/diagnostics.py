@@ -9,6 +9,7 @@ import sys
 import time
 import traceback
 import zipfile
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
@@ -157,6 +158,9 @@ class SubprocessResult:
     stderr_path: str | None
     timed_out: bool = False
     launch_error: str | None = None
+
+
+_ACTIVE_SESSION: ContextVar[DiagnosticsSession | None] = ContextVar("diagnostics_session", default=None)
 
 
 class DiagnosticsSession:
@@ -728,3 +732,57 @@ class DiagnosticsSession:
             "",
         ])
         return "\n".join(lines)
+
+def record_subprocess(
+    command: Sequence[str] | str,
+    *,
+    cwd: str | Path | None = None,
+    timeout: float | None = None,
+    env: Mapping[str, str] | None = None,
+    shell: bool = False,
+    check: bool = False,
+    category: str = "subprocess",
+    run_id: str | None = None,
+    workflow_id: str | None = None,
+    node_id: str | None = None,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess:
+    session = _ACTIVE_SESSION.get()
+    if session:
+        result = session.run_subprocess(
+            command,
+            cwd=cwd,
+            timeout=timeout,
+            env=env,
+            shell=shell,
+            check=check,
+            category=category,
+            run_id=run_id,
+            workflow_id=workflow_id,
+            node_id=node_id,
+        )
+        stdout_text = None
+        if result.stdout_path and Path(result.stdout_path).exists():
+            stdout_text = Path(result.stdout_path).read_text(encoding="utf-8", errors="replace")
+            
+        stderr_text = None
+        if result.stderr_path and Path(result.stderr_path).exists():
+            stderr_text = Path(result.stderr_path).read_text(encoding="utf-8", errors="replace")
+            
+        if check and result.return_code != 0:
+            raise subprocess.CalledProcessError(
+                result.return_code,
+                command,
+                output=stdout_text,
+                stderr=stderr_text,
+            )
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=result.return_code,
+            stdout=stdout_text,
+            stderr=stderr_text,
+        )
+    else:
+        if kwargs.get("text") is None:
+            kwargs["text"] = True
+        return subprocess.run(command, cwd=cwd, timeout=timeout, env=env, shell=shell, check=check, **kwargs)

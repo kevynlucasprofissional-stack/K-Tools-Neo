@@ -476,6 +476,9 @@ class WorkflowEngine:
         )
 
     def execute(self, workflow: WorkflowDefinition) -> WorkflowResult:
+        from .diagnostics import _ACTIVE_SESSION
+        _ACTIVE_SESSION.set(self.diagnostics) if self.diagnostics else None
+        
         order = self.validate(workflow)
         nodes_by_id = {node.id: node for node in workflow.nodes}
         incoming = {
