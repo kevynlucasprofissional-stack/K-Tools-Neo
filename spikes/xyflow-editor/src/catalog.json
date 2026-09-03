@@ -1,0 +1,905 @@
+[
+  {
+    "type": "ktool",
+    "type_id": "core.identity",
+    "label": "Identity",
+    "category": "Core",
+    "defaultData": {
+      "type_id": "core.identity",
+      "label": "Identity",
+      "category": "Core",
+      "inputs": [
+        {
+          "id": "value",
+          "type": "any",
+          "label": "value"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "value",
+          "type": "any",
+          "label": "value"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "number.literal",
+    "label": "Número",
+    "category": "Core",
+    "defaultData": {
+      "type_id": "number.literal",
+      "label": "Número",
+      "category": "Core",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "number",
+          "type": "number",
+          "label": "number"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "document.split.files",
+    "label": "Dividir documentos",
+    "category": "Documents",
+    "defaultData": {
+      "type_id": "document.split.files",
+      "label": "Dividir documentos",
+      "category": "Documents",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        },
+        {
+          "id": "report",
+          "type": "json",
+          "label": "report"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "file.literal",
+    "label": "Arquivo",
+    "category": "Files",
+    "defaultData": {
+      "type_id": "file.literal",
+      "label": "Arquivo",
+      "category": "Files",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "file"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "files.literal",
+    "label": "Arquivos",
+    "category": "Files",
+    "defaultData": {
+      "type_id": "files.literal",
+      "label": "Arquivos",
+      "category": "Files",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "folder.literal",
+    "label": "Pasta",
+    "category": "Files",
+    "defaultData": {
+      "type_id": "folder.literal",
+      "label": "Pasta",
+      "category": "Files",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "folder"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "folder.scan_files",
+    "label": "Scan Folder Files",
+    "category": "Files",
+    "defaultData": {
+      "type_id": "folder.scan_files",
+      "label": "Scan Folder Files",
+      "category": "Files",
+      "inputs": [
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "folder"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        },
+        {
+          "id": "report",
+          "type": "json",
+          "label": "report"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "filesystem.drive_stream_scan",
+    "label": "Drive Streaming Scanner",
+    "category": "Filesystem",
+    "defaultData": {
+      "type_id": "filesystem.drive_stream_scan",
+      "label": "Drive Streaming Scanner",
+      "category": "Filesystem",
+      "inputs": [
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "folder"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "database",
+          "type": "file",
+          "label": "database"
+        },
+        {
+          "id": "csv",
+          "type": "file",
+          "label": "csv"
+        },
+        {
+          "id": "report",
+          "type": "json",
+          "label": "report"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "filesystem.structure_report",
+    "label": "Export Structure Report",
+    "category": "Filesystem",
+    "defaultData": {
+      "type_id": "filesystem.structure_report",
+      "label": "Export Structure Report",
+      "category": "Filesystem",
+      "inputs": [
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "folder"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "csv",
+          "type": "file",
+          "label": "csv"
+        },
+        {
+          "id": "txt",
+          "type": "file",
+          "label": "txt"
+        },
+        {
+          "id": "json",
+          "type": "json",
+          "label": "json"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "image.files_to_pdf",
+    "label": "Imagens para PDF",
+    "category": "Images",
+    "defaultData": {
+      "type_id": "image.files_to_pdf",
+      "label": "Imagens para PDF",
+      "category": "Images",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pdf",
+          "type": "pdf",
+          "label": "pdf"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "image.webp_to_png",
+    "label": "WebP para PNG",
+    "category": "Images",
+    "defaultData": {
+      "type_id": "image.webp_to_png",
+      "label": "WebP para PNG",
+      "category": "Images",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "json.split",
+    "label": "Dividir JSON",
+    "category": "JSON",
+    "defaultData": {
+      "type_id": "json.split",
+      "label": "Dividir JSON",
+      "category": "JSON",
+      "inputs": [
+        {
+          "id": "json_data",
+          "type": "json",
+          "label": "json_data"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "parts",
+          "type": "json",
+          "label": "parts"
+        },
+        {
+          "id": "summary",
+          "type": "json",
+          "label": "summary"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "json.literal",
+    "label": "JSON literal",
+    "category": "JSON",
+    "defaultData": {
+      "type_id": "json.literal",
+      "label": "JSON literal",
+      "category": "JSON",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "json",
+          "type": "json",
+          "label": "json"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "json.split.plan",
+    "label": "Planejar divisão JSON",
+    "category": "JSON",
+    "defaultData": {
+      "type_id": "json.split.plan",
+      "label": "Planejar divisão JSON",
+      "category": "JSON",
+      "inputs": [
+        {
+          "id": "json_data",
+          "type": "json",
+          "label": "json_data"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "plan",
+          "type": "json",
+          "label": "plan"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.compress_video",
+    "label": "Compress Video",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.compress_video",
+      "label": "Compress Video",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "video",
+          "type": "file",
+          "label": "video"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "video",
+          "type": "video",
+          "label": "video"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.convert_audio",
+    "label": "Convert Audio",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.convert_audio",
+      "label": "Convert Audio",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "audio",
+          "type": "file",
+          "label": "audio"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.convert_lossless_alac",
+    "label": "Convert to Lossless ALAC",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.convert_lossless_alac",
+      "label": "Convert to Lossless ALAC",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "audio",
+          "type": "file",
+          "label": "audio"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.deess_audio",
+    "label": "De-ess Audio",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.deess_audio",
+      "label": "De-ess Audio",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "audio",
+          "type": "file",
+          "label": "audio"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.extract_audio",
+    "label": "Extract Audio",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.extract_audio",
+      "label": "Extract Audio",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "video",
+          "type": "file",
+          "label": "video"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.extract_and_join_by_subfolder",
+    "label": "Extract and Join Audio by Subfolder",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.extract_and_join_by_subfolder",
+      "label": "Extract and Join Audio by Subfolder",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "folder"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audios",
+          "type": "file_set",
+          "label": "audios"
+        },
+        {
+          "id": "report",
+          "type": "json",
+          "label": "report"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.join_audios",
+    "label": "Join Audios",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.join_audios",
+      "label": "Join Audios",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "audios",
+          "type": "file_set",
+          "label": "audios"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.join_videos",
+    "label": "Join Videos",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.join_videos",
+      "label": "Join Videos",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "videos",
+          "type": "file_set",
+          "label": "videos"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "video",
+          "type": "video",
+          "label": "video"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.merge_audio_studio",
+    "label": "Merge Audio Studio",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.merge_audio_studio",
+      "label": "Merge Audio Studio",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "sources",
+          "type": "file_set",
+          "label": "sources"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "audio"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.split_audio",
+    "label": "Split Audio",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.split_audio",
+      "label": "Split Audio",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "audio",
+          "type": "file",
+          "label": "audio"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pieces",
+          "type": "file_set",
+          "label": "pieces"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.webp_to_png",
+    "label": "WebP to PNG",
+    "category": "Media",
+    "defaultData": {
+      "type_id": "media.webp_to_png",
+      "label": "WebP to PNG",
+      "category": "Media",
+      "inputs": [
+        {
+          "id": "image",
+          "type": "file",
+          "label": "image"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "image",
+          "type": "image",
+          "label": "image"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "pdf.split.parts",
+    "label": "Dividir PDF",
+    "category": "PDF",
+    "defaultData": {
+      "type_id": "pdf.split.parts",
+      "label": "Dividir PDF",
+      "category": "PDF",
+      "inputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "pdf.merge.files",
+    "label": "Juntar PDFs",
+    "category": "PDF",
+    "defaultData": {
+      "type_id": "pdf.merge.files",
+      "label": "Juntar PDFs",
+      "category": "PDF",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pdf",
+          "type": "pdf",
+          "label": "pdf"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "pdf.merge",
+    "label": "Merge PDFs",
+    "category": "PDF",
+    "defaultData": {
+      "type_id": "pdf.merge",
+      "label": "Merge PDFs",
+      "category": "PDF",
+      "inputs": [
+        {
+          "id": "pdfs",
+          "type": "file_set",
+          "label": "pdfs"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pdf",
+          "type": "file",
+          "label": "pdf"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "pdf.split",
+    "label": "Split PDF",
+    "category": "PDF",
+    "defaultData": {
+      "type_id": "pdf.split",
+      "label": "Split PDF",
+      "category": "PDF",
+      "inputs": [
+        {
+          "id": "pdf",
+          "type": "file",
+          "label": "pdf"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "parts",
+          "type": "file_set",
+          "label": "parts"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "text.concat",
+    "label": "Concatenar texto",
+    "category": "Text",
+    "defaultData": {
+      "type_id": "text.concat",
+      "label": "Concatenar texto",
+      "category": "Text",
+      "inputs": [
+        {
+          "id": "left",
+          "type": "text",
+          "label": "left"
+        },
+        {
+          "id": "right",
+          "type": "text",
+          "label": "right"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "type": "text",
+          "label": "text"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "text.split.parts",
+    "label": "Dividir Markdown/TXT",
+    "category": "Text",
+    "defaultData": {
+      "type_id": "text.split.parts",
+      "label": "Dividir Markdown/TXT",
+      "category": "Text",
+      "inputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "text.tldv_extract",
+    "label": "Extrair Transcrição tl;dv",
+    "category": "Text",
+    "defaultData": {
+      "type_id": "text.tldv_extract",
+      "label": "Extrair Transcrição tl;dv",
+      "category": "Text",
+      "inputs": [
+        {
+          "id": "html",
+          "type": "file",
+          "label": "html"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "markdown",
+          "type": "file",
+          "label": "markdown"
+        },
+        {
+          "id": "srt",
+          "type": "file",
+          "label": "srt"
+        },
+        {
+          "id": "json",
+          "type": "json",
+          "label": "json"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "text.merge.files",
+    "label": "Juntar Markdown/TXT",
+    "category": "Text",
+    "defaultData": {
+      "type_id": "text.merge.files",
+      "label": "Juntar Markdown/TXT",
+      "category": "Text",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "file_set",
+          "label": "files"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "file"
+        }
+      ],
+      "config": {}
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "text.literal",
+    "label": "Texto",
+    "category": "Text",
+    "defaultData": {
+      "type_id": "text.literal",
+      "label": "Texto",
+      "category": "Text",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "text",
+          "type": "text",
+          "label": "text"
+        }
+      ],
+      "config": {}
+    }
+  }
+]

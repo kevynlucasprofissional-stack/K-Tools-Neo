@@ -45,38 +45,7 @@ export const initialEdges: Edge[] = [
   { id: 'e1-2', source: 'node-1', target: 'node-2', sourceHandle: 'out1', targetHandle: 'in1' },
 ];
 
-export const nodeCatalog = [
-    {
-        type: 'ktool',
-        label: 'Read File',
-        category: 'System',
-        defaultData: {
-            label: 'Read File',
-            inputs: [],
-            outputs: [{ id: 'out1', type: 'file', label: 'File' }],
-            config: { path: '' }
-        }
-    },
-    {
-        type: 'ktool',
-        label: 'Text Concat',
-        category: 'Text',
-        defaultData: {
-            label: 'Text Concat',
-            inputs: [{ id: 'in1', type: 'text', label: 'Text 1' }, { id: 'in2', type: 'text', label: 'Text 2' }],
-            outputs: [{ id: 'out1', type: 'text', label: 'Result' }],
-            config: { separator: ' ' }
-        }
-    },
-    {
-        type: 'ktool',
-        label: 'Extract Audio',
-        category: 'Media',
-        defaultData: {
-            label: 'Extract Audio',
-            inputs: [{ id: 'in1', type: 'file', label: 'Video/File' }],
-            outputs: [{ id: 'out1', type: 'audio', label: 'Audio' }],
-            config: { format: 'wav' }
-        }
-    }
-]
+import catalogData from './catalog.json';
+
+export const nodeCatalog = catalogData;
+
