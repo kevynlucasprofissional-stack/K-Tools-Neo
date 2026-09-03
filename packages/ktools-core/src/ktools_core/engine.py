@@ -477,8 +477,14 @@ class WorkflowEngine:
 
     def execute(self, workflow: WorkflowDefinition) -> WorkflowResult:
         from .diagnostics import _ACTIVE_SESSION
-        _ACTIVE_SESSION.set(self.diagnostics) if self.diagnostics else None
-        
+        token = _ACTIVE_SESSION.set(self.diagnostics) if self.diagnostics else None
+        try:
+            return self._execute_inner(workflow)
+        finally:
+            if token:
+                _ACTIVE_SESSION.reset(token)
+
+    def _execute_inner(self, workflow: WorkflowDefinition) -> WorkflowResult:
         order = self.validate(workflow)
         nodes_by_id = {node.id: node for node in workflow.nodes}
         incoming = {

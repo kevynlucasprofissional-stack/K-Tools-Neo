@@ -166,11 +166,17 @@ ecord_subprocess inside ktools_core.diagnostics to capture subprocess stdout/std
 - Atomic artifact publication.
 - GitHub Actions CI matrix integration.
 
-### Slice 10 — FRESH DISCOVERY GATE
+### Slice 10 — Media Convert Audio Node V1
+
+Status: **RESOLVED (ADR-032)**
+
+- Developed `media.convert_audio` node in `ktools-media`.
+- Atomic `.tmp` to final path replacements.
+- Handled ContextVar diagnostics leaks in test engine.
+
+### Slice 11 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
-
-Do not infer the Slice-10 winner from previous preference. Run fresh discovery against the exact terminal Slice-9 mainline.
 
 ---
 Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery -> spec -> evidence -> RED -> GREEN -> REFACTOR/AUDIT -> regression -> hosted evidence -> memory closure.

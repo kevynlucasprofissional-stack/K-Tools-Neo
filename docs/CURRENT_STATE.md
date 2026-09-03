@@ -1,4 +1,4 @@
-﻿# Current State â€” K-Tools Neo
+# Current State â€” K-Tools Neo
 
 ## Current development truth
 
@@ -185,7 +185,11 @@ Evidence/final report: docs/specs/media-extract-audio-node-v1/.
 
 ### Slice 10 — FRESH DISCOVERY GATE
 
-Status: **ACTIVE / NO CANDIDATE SELECTED YET**
+Status: **RESOLVED**
+
+- [x] Slice 9 (Media: Extract Audio Node V1)
+- [x] Slice 10 (Media: Convert Audio Node V1)
+- [ ] M5 Final Integration & Walkthroughs: **ACTIVE / NO CANDIDATE SELECTED YET**
 
 Inspect exact terminal main and compare remaining legacy capabilities:
 - Video Compression
