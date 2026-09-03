@@ -26,15 +26,17 @@ def scan_files(
     extensions: set[str] | None = None,
     context: NodeExecutionContext | None = None,
 ) -> FolderScanResult:
-    root = root_path.expanduser().resolve()
+    expanded = root_path.expanduser()
+    
+    # No-follow root reparse/symlink check before resolving
+    if expanded.is_symlink() or _is_reparse_point(expanded):
+        raise FolderScanError(f"Root path is a symlink or reparse point: {expanded}")
+        
+    root = expanded.resolve()
     if not root.exists():
         raise FolderScanError(f"Directory does not exist: {root}")
     if not root.is_dir():
         raise FolderScanError(f"Path is not a directory: {root}")
-
-    # No-follow root reparse/symlink check
-    if root.is_symlink() or _is_reparse_point(root):
-        raise FolderScanError(f"Root path is a symlink or reparse point: {root}")
 
     normalized_extensions = _normalize_extensions(extensions)
 
