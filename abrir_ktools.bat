@@ -1,45 +1,47 @@
 @echo off
-chcp 65001 >nul
+setlocal
 title K-Tools Neo - Workflow Editor (xyflow)
+
+:: Posicionar no diretorio raiz do projeto
 cd /d "%~dp0"
 
 echo ======================================================================
 echo             K-TOOLS NEO - WORKFLOW CANVAS ^& NODE PACKS
 echo ======================================================================
 echo.
-echo [1/3] Configurando ambiente Python e pacotes do monorepo...
-set "PYTHONPATH=%~dp0packages\ktools-core\src;%~dp0packages\ktools-json\src;%~dp0packages\ktools-text\src;%~dp0packages\ktools-pdf\src;%~dp0packages\ktools-documents\src;%~dp0packages\ktools-images\src;%~dp0packages\ktools-filesystem\src;%~dp0packages\ktools-media\src;%PYTHONPATH%"
 
-echo [2/3] Verificando ambiente Node.js / npm...
+:: 1. Verificar se npm esta instalado
 where npm >nul 2>&1
 if %errorlevel% neq 0 (
+    echo [ERRO] O comando 'npm' nao foi encontrado no seu sistema.
     echo.
-    echo [ERRO] O comando 'npm' não foi encontrado no sistema.
-    echo O K-Tools Neo com editor baseado em xyflow precisa do Node.js para rodar a interface.
-    echo Por favor, instale o Node.js em: https://nodejs.org/ (versão LTS recomendada).
+    echo O K-Tools Neo novo utiliza o editor visual baseado em xyflow/React.
+    echo Para executa-lo, instale o Node.js em: https://nodejs.org/
     echo.
     pause
     exit /b 1
 )
 
-cd /d "%~dp0spikes\xyflow-editor"
+:: 2. Navegar para a pasta do editor xyflow
+cd "spikes\xyflow-editor"
 
+:: 3. Instalar dependencias caso seja a primeira execucao
 if not exist "node_modules\" (
-    echo.
-    echo [INFO] Primeira execução detectada. Instalando dependências do xyflow-editor...
+    echo [INFO] Primeira execucao detectada. Instalando dependencias do xyflow...
     call npm install
     if %errorlevel% neq 0 (
-        echo [ERRO] Falha ao instalar dependências do npm.
+        echo [ERRO] Falha ao instalar dependencias do npm.
         pause
         exit /b 1
     )
 )
 
-echo [3/3] Iniciando o K-Tools Neo com xyflow e abrindo no navegador...
+:: 4. Iniciar o editor e abrir automaticamente no navegador padrao
+echo [INFO] Abrindo o K-Tools Neo com xyflow no navegador...
 echo.
 echo ======================================================================
-echo  Interface abrindo em: http://localhost:5173
-echo  Para encerrar o software, basta fechar esta janela ou pressionar Ctrl+C
+echo  URL: http://localhost:5173
+echo  Para fechar o software, pressione Ctrl+C ou feche esta janela.
 echo ======================================================================
 echo.
 
@@ -47,6 +49,6 @@ call npm run dev -- --open
 
 if errorlevel 1 (
     echo.
-    echo [AVISO] O servidor foi encerrado.
+    echo [INFO] Aplicacao encerrada.
     pause
 )
