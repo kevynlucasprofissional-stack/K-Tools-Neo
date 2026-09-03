@@ -8,6 +8,8 @@ Execution truth: current `main`, tests and hosted CI
 
 K-Tools Neo becomes one integrated local-first product where every reusable operation is a capability/node, simple Tools and visual Workflows share implementation owners, expensive/local work is observable/durable/diagnosable/conservatively reusable, official Node Packs cover local capability families, imported applications are adapted rather than rewritten, the UI is a client of stable runtime contracts, and later AI agents compose through the same catalog.
 
+The long-horizon extension of that destination is an **agent-native System Capability Layer**: K-Tools exposes deterministic, typed, inspectable computer capabilities to humans, workflows and AI agents through the same canonical owners. K-Tools does not become the conversational agent, planner or product-level orchestrator; it becomes a reliable execution substrate that agent systems can call.
+
 ---
 
 ## M0 — Platform Foundation
@@ -159,8 +161,7 @@ Fresh terminal-main discovery compared Media capabilities with document/system u
 
 Delivered:
 - packages/ktools-media/ with FFmpeg execution capability (media.extract_audio).
-- ContextVar-based 
-ecord_subprocess inside ktools_core.diagnostics to capture subprocess stdout/stderr and exit codes reliably across functional boundaries.
+- ContextVar-based `record_subprocess` inside ktools_core.diagnostics to capture subprocess stdout/stderr and exit codes reliably across functional boundaries.
 - Atomic artifact publication.
 - GitHub Actions CI matrix integration.
 
@@ -237,5 +238,339 @@ All operations have been extracted into independent, tested, observable, diagnos
 - `packages/ktools-filesystem` (Folder scan, Structure report, Cloud drive streaming scanner)
 - `packages/ktools-media` (Audio extract, convert, split, join, ALAC lossless, Studio merge, De-esser, Subfolder audio, video compress, video join)
 
-Repository Test Suite: 298 tests passing across all 8 packages.
+Repository Test Suite: 298 tests passing across all 8 packages at the M5 closure point. Later product/UI changes must use current `main` tests as execution truth rather than treating this historical count as permanently current.
 
+---
+
+# Next strategic horizon — K-Tools as an Agent-Native System Capability Layer
+
+The next architectural horizon turns the capability catalog already proved by M0–M5 into a stable execution surface for AI agents without changing the product's ownership model.
+
+The intended relationship is:
+
+```text
+Human / Tools UI / Workflow Studio / AI Agent
+                    ↓
+          stable K-Tools capability contract
+                    ↓
+  typed Node Packs + WorkflowEngine + adapters
+                    ↓
+ RunJournal + Diagnostics + Artifacts + Cache
+                    ↓
+       deterministic host-side execution
+```
+
+For an agentic workstation, K-Tools should answer **“what can this computer safely and deterministically do, and what happened when it tried?”**. A higher-level agent such as Hermes should answer **“what should be done, why, in what order, and whether another agent should be delegated?”**.
+
+This boundary prevents K-Tools from becoming a second conversational memory, Kanban, planner, LLM router or agent-control plane.
+
+## M6 — Agent Capability Interface V1
+
+Status: **PLANNED / POST-M5 STRATEGIC HORIZON**
+
+**Purpose:** make the same canonical capabilities consumable by AI agents and external automation clients without building a second implementation beside workflow nodes.
+
+### M6.1 — Versioned Capability Manifest
+
+Expose a machine-readable catalog derived from canonical Node Pack/runtime definitions.
+
+Each exposed capability should be able to describe, where applicable:
+
+- stable capability/node identifier and version;
+- human description;
+- typed inputs and outputs;
+- required/local dependencies;
+- supported host/platform constraints;
+- network requirement;
+- side-effect class;
+- expected artifact/publication behavior;
+- cache policy;
+- whether dry-run/planning is supported;
+- whether the action is naturally reversible or has an explicit recovery path;
+- whether privilege elevation can be required;
+- diagnostics/receipt support.
+
+The manifest is a projection of canonical owners, not a second registry manually kept in sync.
+
+### M6.2 — Direct Capability Invocation Contract
+
+Generalize the direct-API pattern already proved by Node Packs into a stable agent/external-client invocation boundary.
+
+Required properties:
+
+- validate the same typed contract used by workflows;
+- execute through the same capability owner as Tools/Workflows;
+- emit the same Artifact provenance, RunJournal lifecycle and Diagnostics evidence where those concerns apply;
+- return structured success/failure rather than requiring an agent to scrape console prose;
+- preserve explicit partial-success semantics for batch capabilities;
+- never silently substitute a different capability/provider after stateful binding.
+
+### M6.3 — Multiple transport surfaces over one contract
+
+Preferred evolution order:
+
+1. **CLI** — canonical, scriptable local entrypoint;
+2. **Skill/playbook** — teaches an agent which capability to use and how to validate/recover;
+3. **MCP adapter** — structured agent interoperability where useful;
+4. **local HTTP/IPC adapter** — only when a desktop/remote client needs a long-lived service boundary.
+
+Transport adapters must remain thin. None may reimplement media/file/system business logic.
+
+### M6.4 — Agent-facing skills without agent lock-in
+
+Ship or generate capability guidance that can be consumed by Hermes and other compatible harnesses.
+
+Skills should teach:
+
+- capability discovery;
+- safe parameter construction;
+- path/workspace boundaries;
+- validation after execution;
+- interpretation of partial success;
+- recovery/rollback where supported;
+- how to collect diagnostics when execution fails.
+
+K-Tools remains agent-agnostic: Hermes Workstation is a first-class reference consumer, not the only supported caller.
+
+### M6 exit direction
+
+M6 is proved when one canonical K-Tools capability can be invoked through direct API/workflow and at least one agent-facing transport with equivalent observable semantics and without a duplicate implementation owner.
+
+---
+
+## M7 — System Capabilities, Events + Scoped Safety
+
+Status: **PLANNED / AFTER M6 CONTRACT PROOF**
+
+**Purpose:** extend K-Tools from file/media transformation into a bounded computer-capability runtime suitable for agentic work while keeping security and policy responsibilities explicit.
+
+### M7.1 — System Capability Node Packs
+
+Candidate capability families, implemented only when a concrete consumer justifies them:
+
+- filesystem/workspace inspection and bounded mutations;
+- process launch/status/termination;
+- application launch/focus/open-with operations;
+- clipboard read/write with explicit sensitivity policy;
+- download/output handoff and location reporting;
+- Git and development-environment utilities;
+- local job/build/test execution wrappers;
+- notifications and user-attention requests;
+- machine/application health and diagnostics;
+- recoverable user-level configuration operations.
+
+The same one-capability/one-owner rule continues to apply. Do not turn `ktools-core` into a bag of platform-specific commands; host-specific implementation belongs behind capability/provider boundaries.
+
+### M7.2 — Capability scopes and least privilege
+
+Add metadata/runtime enforcement needed for safe agent invocation.
+
+Evaluate explicit scopes such as:
+
+- allowed workspace/path roots;
+- read vs write vs destructive mutation;
+- network/no-network;
+- subprocess/application execution;
+- user-interactive vs unattended;
+- privilege/elevation requirement;
+- secret-bearing input/output handling.
+
+K-Tools must not normalize convenience into blanket administrator/root access. Privilege elevation must be explicit, host-native and narrow.
+
+### M7.3 — Policy handshake, not a second policy brain
+
+K-Tools should expose enough action metadata for a higher-level caller to classify an action as, for example:
+
+```text
+allow
+constrain / sandbox
+require human confirmation
+deny
+```
+
+K-Tools enforces its own hard safety invariants and caller-provided scopes, but it does **not** own the user's global conversational approval policy. In Hermes Workstation integration, Hermes/Workstation approvals remain authoritative and K-Tools acts as the deterministic executor beneath them.
+
+### M7.4 — System Event → structured event stream
+
+Add the inverse execution direction: meaningful host/runtime changes can be exposed as structured local events.
+
+Candidate event classes:
+
+- process/app crash or abnormal exit;
+- local job/build/test completion or failure;
+- download/output completion;
+- watched file/workspace change where explicitly configured;
+- dependency/runtime health transition;
+- long-running capability completion;
+- user-attention-required state.
+
+Event records should carry stable type/version, timestamp, source/provider, correlation/run identity where available, concise reason/state and evidence references.
+
+K-Tools events do not create an independent agent task database. Consumers such as Hermes Workstation may translate them into or attach them to their own canonical task/session model.
+
+### M7.5 — Execution receipts and local observability
+
+Generalize existing RunJournal/Diagnostics strengths into concise machine-consumable receipts for agent callers.
+
+A receipt may include:
+
+- capability/version/provider;
+- validated inputs represented safely;
+- start/end/status;
+- artifacts and provenance;
+- subprocess/native exit information;
+- warnings/partial-success details;
+- cache/reuse fact;
+- recovery/rollback outcome when applicable;
+- diagnostic/support-bundle reference when failure requires deeper investigation.
+
+No outbound telemetry is required for this architecture. Local execution evidence is the default; external analytics/usage reporting requires a separate explicit product decision.
+
+### M7 exit direction
+
+M7 is proved when an agent can invoke at least one non-media host capability under an explicit scope, receive a structured receipt, and consume at least one meaningful system event without K-Tools becoming the owner of agent planning/tasks.
+
+---
+
+## M8 — Cross-Platform Host Provider Architecture
+
+Status: **PLANNED / AFTER WINDOWS CONTRACT IS PROVED**
+
+**Purpose:** preserve one semantic K-Tools capability language while allowing the native mechanism to vary by operating system.
+
+### M8.1 — Generic Host Provider Contract
+
+Introduce provider boundaries only after concrete Windows capabilities prove what must vary by host.
+
+The provider contract may cover:
+
+- capability availability/discovery;
+- process/application operations;
+- workspace/filesystem semantics;
+- notifications and user-attention primitives;
+- privilege/elevation strategy;
+- host health/event sources;
+- supported rollback/recovery mechanisms.
+
+Feature negotiation must be explicit. A provider that cannot safely implement a capability reports it unavailable rather than pretending cross-platform parity.
+
+### M8.2 — Windows as canonical first host
+
+Windows remains K-Tools Neo's primary desktop target and the first semantic conformance baseline.
+
+Reuse native Windows mechanisms where they provide materially safer or more correct behavior, while keeping platform-specific code behind the provider/capability owner instead of leaking it into generic workflow semantics.
+
+### M8.3 — Linux / Omarchy reference provider
+
+Treat **Omarchy** as a high-value Linux reference environment and architectural benchmark, not as a mandatory K-Tools dependency or product base.
+
+Relevant patterns to evaluate:
+
+- deterministic public CLI surfaces for system operations;
+- skills that teach multiple agents how to operate the host safely;
+- explicit agent/tool installation and discovery;
+- system-event hooks such as crash diagnosis;
+- local health/usage observability;
+- user-level configuration boundaries rather than direct edits to packaged system files.
+
+Where an Omarchy integration is built, prefer its documented CLI/config/skill contracts over distro-specific filesystem hacks. Generic Linux support must not be artificially defined as “whatever Omarchy does”; Omarchy is the first reference provider, not the semantic owner.
+
+### M8.4 — Cross-host conformance suite
+
+For every capability advertised by more than one host provider, test the semantic contract rather than implementation identity.
+
+Conformance should prove, where relevant:
+
+- equivalent input validation;
+- side-effect and safety classification;
+- artifact/result shape;
+- error/partial-success semantics;
+- event/receipt contract;
+- path/scope isolation;
+- privilege behavior;
+- recovery behavior.
+
+A host may legitimately expose fewer capabilities. Unsupported is preferable to unsafe emulation.
+
+### M8 exit direction
+
+M8 is proved when at least one meaningful capability family can run through the same external contract on Windows and a Linux reference host while preserving typed semantics, safety metadata, receipts and evidence.
+
+---
+
+## M9 — Agentic Workstation Integration + Capability Ecosystem
+
+Status: **LONG-HORIZON / AFTER M6–M8 FOUNDATIONS**
+
+**Purpose:** make K-Tools a reusable capability runtime for the broader agent ecosystem while preserving its independent product value for humans and workflows.
+
+### Hermes Workstation integration
+
+Hermes Workstation is the primary ecosystem integration to design against because the projects are complementary:
+
+```text
+Hermes Workstation
+  owns user intent, chat, tasks, memory, agent orchestration and approvals
+        ↓
+K-Tools Capability Adapter
+  translates bounded requested operations into canonical K-Tools contracts
+        ↓
+K-Tools Neo
+  owns deterministic capability/workflow execution, artifacts, diagnostics and receipts
+```
+
+The integration must not introduce:
+
+- a second Hermes SessionDB/Kanban/Memory inside K-Tools;
+- a K-Tools LLM planner that competes with Hermes orchestration;
+- duplicate implementations of K-Tools nodes inside Workstation;
+- silent approval bypass because execution is local;
+- hidden fallback between stateful providers.
+
+### Reusable workflow-as-capability for agents
+
+Build on ADR-007 so a saved, validated workflow with explicit typed public inputs/outputs can itself become an agent-callable capability.
+
+This is strategically important: an agent should be able to call a tested local procedure such as a media/document pipeline without regenerating the low-level sequence every time.
+
+The workflow remains the one owner of orchestration semantics; the agent-facing projection is an adapter over it.
+
+### Capability discovery and compatibility
+
+Evolve toward:
+
+- stable capability IDs/versions;
+- provider/host availability negotiation;
+- backward-compatible manifest evolution;
+- workflow/capability dependency declarations;
+- local installation/readiness checks;
+- conformance tests for external adapters;
+- explicit deprecation/migration rules.
+
+### Agentic capability reference tracking
+
+Maintain lightweight research on projects that solve adjacent agent↔computer interface problems. Current references should include:
+
+- Omarchy — OS skills, default-agent abstraction, system events and agent-native desktop affordances;
+- Hermes / Hermes Workstation — orchestration, skills, memory, task identity and approvals;
+- MCP ecosystem — structured tool interoperability;
+- agent harnesses such as Codex, Claude Code, OpenCode and Antigravity — expectations of machine-operable local tools;
+- relevant Windows/Linux automation runtimes where they can improve deterministic host providers.
+
+The question is not “which project should K-Tools copy?” but “which stable contract would let all of them consume K-Tools capabilities without K-Tools becoming coupled to one agent?”
+
+### Long-horizon target experience
+
+```text
+user asks Hermes for an outcome
+  → Hermes plans and owns the task
+  → Hermes selects a K-Tools capability or reusable workflow
+  → caller policy scopes/approves the requested side effect
+  → K-Tools executes deterministically on the host
+  → RunJournal/Diagnostics/Artifacts produce structured evidence
+  → K-Tools returns a receipt
+  → host events can wake/enrich the upstream task when appropriate
+  → the same K-Tools capability remains usable directly by a human or Workflow Studio
+```
+
+The success criterion is composability without identity loss: **Tools, Workflows and Agents are three clients of the same capability owners, not three K-Tools implementations.**
