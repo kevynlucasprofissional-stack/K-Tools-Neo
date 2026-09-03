@@ -64,5 +64,12 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (11/11 in ktools-filesystem).
 - ADR-044 accepted.
 
+## Slice 3.2: Filesystem Drive Streaming Scanner Node V1 (`K_Tools_Drive_Streaming_Scanner.py` v1.4)
+- Implemented `filesystem.drive_stream_scan` in `ktools-filesystem`.
+- Non-hydrating Win32 native scanning with SQLite checkpoints and CSV export.
+- All behavior and engine tests passing (14/14 in ktools-filesystem).
+- ADR-045 accepted.
+
 # Current
-Proceeding to Slice 3.2: Filesystem Drive Streaming Scanner Node V1 (`K_Tools_Drive_Streaming_Scanner.py` v1.4).
+All 8 requested standalone legacy Python utilities are fully implemented as node packs across `ktools-media`, `ktools-text`, and `ktools-filesystem`!
+All tests across the entire repository are passing.
