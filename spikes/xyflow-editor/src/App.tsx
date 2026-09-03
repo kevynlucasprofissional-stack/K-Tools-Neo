@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -9,6 +9,7 @@ import {
   addEdge,
   ReactFlowProvider,
   MarkerType,
+  useReactFlow,
   type Node,
   type Edge,
   type NodeChange,
@@ -20,6 +21,9 @@ import '@xyflow/react/dist/style.css';
 import { KToolNode, MissingNode } from './components/nodes';
 import { Inspector } from './components/Inspector';
 import { Palette } from './components/Palette';
+import { QuickSearch } from './components/QuickSearch';
+import { BottomConsole, type LogEntry } from './components/BottomConsole';
+import { WORKFLOW_PRESETS } from './presets';
 
 // Fixture Data
 import { initialNodes, initialEdges } from './fixtures';
@@ -37,6 +41,40 @@ function FlowEditor() {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [workflowTitle, setWorkflowTitle] = useState<string>('Pipeline de Processamento de Mídia');
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(true);
+  const [logs, setLogs] = useState<LogEntry[]>([
+    {
+      id: 'log-init',
+      timestamp: new Date().toLocaleTimeString(),
+      level: 'info',
+      message: 'K-Tools Neo Engine inicializado. 34 nós prontos no monorepo.',
+    },
+    {
+      id: 'log-ready',
+      timestamp: new Date().toLocaleTimeString(),
+      level: 'success',
+      message: 'Ambiente pronto. Arraste nós da paleta ou pressione Barra de Espaço para buscar.',
+    },
+  ]);
+
+  const { screenToFlowPosition, fitView } = useReactFlow();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+  const addLog = (level: LogEntry['level'], message: string, nodeId?: string) => {
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}-${Math.random()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        level,
+        message,
+        nodeId,
+      },
+    ]);
+  };
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -73,6 +111,9 @@ function FlowEditor() {
             eds
           )
         );
+        addLog('info', `Conexão estabelecida: ${connection.source} -> ${connection.target}`);
+      } else {
+        addLog('warn', `Conexão rejeitada: tipos de portas incompatíveis.`);
       }
     },
     [nodes]
@@ -91,6 +132,7 @@ function FlowEditor() {
       if (selectedNode && selectedNode.id === nodeId) {
         setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...data } } : null));
       }
+      addLog('info', `Configurações atualizadas para o nó [${nodeId}].`, nodeId);
     },
     [selectedNode]
   );
@@ -106,17 +148,94 @@ function FlowEditor() {
       },
     };
     setNodes((nds) => [...nds, newNode]);
+    addLog('info', `Nó adicionado ao canvas: ${nodeData.label}`, newNode.id);
   }, []);
 
+  // HTML5 Drag and Drop handlers
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const raw = event.dataTransfer.getData('application/reactflow');
+      if (!raw) return;
+      try {
+        const { type, data } = JSON.parse(raw);
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        const newNode: Node = {
+          id: `node-${Date.now()}`,
+          type,
+          position,
+          data: {
+            ...data,
+            runState: 'IDLE',
+          },
+        };
+        setNodes((nds) => [...nds, newNode]);
+        addLog('info', `Nó solto no canvas: ${data.label}`, newNode.id);
+      } catch (err) {
+        console.error('Failed to drop node:', err);
+      }
+    },
+    [screenToFlowPosition]
+  );
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar se estiver digitando em input ou textarea
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      if (e.key === ' ' || e.key === '/') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNode) {
+          setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+          setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
+          addLog('warn', `Nó removido do fluxo: ${selectedNode.data.label}`, selectedNode.id);
+          setSelectedNode(null);
+        }
+      } else if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        simulateRun();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode]);
+
   const simulateRun = () => {
+    if (isRunning) return;
     setIsRunning(true);
-    // Transiciona todos os nos para RUNNING
+    setIsConsoleOpen(true);
+    addLog('info', `Iniciando execução do workflow "${workflowTitle}" (${nodes.length} nós, ${edges.length} conexões)...`);
+
+    // Iniciar nos em ordem
     setNodes((nds) =>
       nds.map((n) => {
         if (n.type === 'missing') return { ...n, data: { ...n.data, runState: 'ERROR' } };
         return { ...n, data: { ...n.data, runState: 'RUNNING' } };
       })
     );
+
+    nodes.forEach((n, idx) => {
+      setTimeout(() => {
+        addLog('exec', `Processando nó: ${n.data.label} [${n.data.type_id || n.id}]...`, n.id);
+      }, (idx + 1) * 350);
+    });
 
     setTimeout(() => {
       setNodes((nds) =>
@@ -132,17 +251,31 @@ function FlowEditor() {
         })
       );
       setIsRunning(false);
-    }, 1500);
+      addLog('success', `Execução concluída com sucesso! Todos os nós finalizaram sem falhas.`);
+    }, nodes.length * 350 + 600);
   };
 
   const clearRunState = () => {
     setIsRunning(false);
     setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, runState: 'IDLE' } })));
+    addLog('info', 'Status de execução resetado para IDLE.');
+  };
+
+  const loadPreset = (presetId: string) => {
+    const preset = WORKFLOW_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setNodes(preset.nodes);
+    setEdges(preset.edges);
+    setWorkflowTitle(preset.name);
+    setSelectedNode(null);
+    addLog('info', `Modelo carregado: "${preset.name}".`);
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
   };
 
   const exportWorkflowJson = () => {
     const payload = {
       version: '1.0.0',
+      title: workflowTitle,
       nodes: nodes.map((n) => ({
         id: n.id,
         type: n.type,
@@ -162,9 +295,10 @@ function FlowEditor() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ktools-workflow-${Date.now()}.json`;
+    a.download = `${workflowTitle.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    addLog('success', 'Arquivo JSON do workflow exportado com sucesso.');
   };
 
   return (
@@ -176,56 +310,139 @@ function FlowEditor() {
             <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px #38bdf8)' }}>⚡</span>
             <span>K-Tools Neo</span>
           </div>
-          <span className="brand-badge">Workflow Studio</span>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '11px',
-              color: '#10b981',
-              background: 'rgba(16, 185, 129, 0.12)',
-              padding: '3px 9px',
-              borderRadius: '12px',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              marginLeft: '12px',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-            <span>34 Nós Registrados (M0-M5 Ativos)</span>
+          <span className="brand-badge">Studio</span>
+
+          {/* Workflow Title input */}
+          <div style={{ marginLeft: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {isEditingTitle ? (
+              <input
+                type="text"
+                value={workflowTitle}
+                onChange={(e) => setWorkflowTitle(e.target.value)}
+                onBlur={() => setIsEditingTitle(false)}
+                onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                autoFocus
+                style={{
+                  background: '#090d16',
+                  border: '1px solid #38bdf8',
+                  borderRadius: '6px',
+                  color: '#f8fafc',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '4px 8px',
+                  outline: 'none',
+                }}
+              />
+            ) : (
+              <span
+                onClick={() => setIsEditingTitle(true)}
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#cbd5e1',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid transparent',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#334155';
+                  e.currentTarget.style.background = '#0e1526';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.background = 'transparent';
+                }}
+                title="Clique para renomear este fluxo"
+              >
+                📝 {workflowTitle}
+              </span>
+            )}
           </div>
         </div>
 
+        {/* Navbar Center & Actions */}
         <div className="navbar-actions">
+          {/* Presets dropdown */}
+          <select
+            onChange={(e) => e.target.value && loadPreset(e.target.value)}
+            defaultValue=""
+            style={{
+              background: '#131b2e',
+              border: '1px solid #1e293b',
+              borderRadius: '8px',
+              color: '#cbd5e1',
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '6px 10px',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="" disabled>
+              📂 Carregar Modelo Pronto...
+            </option>
+            {WORKFLOW_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.icon} {p.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Quick Search Button */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsSearchOpen(true)}
+            title="Atalho: Barra de Espaço ou /"
+          >
+            <span>🔍</span>
+            <span>Buscar Nó</span>
+            <span style={{ fontSize: '9px', opacity: 0.6, background: '#090d16', padding: '1px 4px', borderRadius: '3px' }}>
+              Espaço
+            </span>
+          </button>
+
+          {/* Run Button */}
           <button
             className="btn btn-primary"
             onClick={simulateRun}
             disabled={isRunning}
             style={{ opacity: isRunning ? 0.7 : 1 }}
+            title="Atalho: Ctrl + Enter"
           >
             <span>{isRunning ? '⏳' : '▶'}</span>
             <span>{isRunning ? 'Executando...' : 'Executar Workflow'}</span>
           </button>
-          <button className="btn btn-secondary" onClick={clearRunState}>
+
+          {/* Clear Run */}
+          <button className="btn btn-secondary" onClick={clearRunState} title="Limpar status de execução">
             <span>🔄</span>
-            <span>Limpar Estado</span>
+            <span>Limpar</span>
           </button>
-          <button className="btn btn-secondary" onClick={exportWorkflowJson}>
+
+          {/* Export JSON */}
+          <button className="btn btn-secondary" onClick={exportWorkflowJson} title="Exportar grafo em JSON">
             <span>📥</span>
-            <span>Exportar JSON</span>
+            <span>Exportar</span>
           </button>
         </div>
       </header>
 
-      {/* Editor Layout: Palette + Canvas + Inspector */}
+      {/* Main Workspace Layout */}
       <div className="editor-layout">
         {/* Left: Palette */}
         <aside className="sidebar">
           <Palette onAddNode={onAddNode} />
         </aside>
 
-        {/* Center: ReactFlow Canvas */}
-        <main className="canvas-container">
+        {/* Center: Canvas */}
+        <main
+          className="canvas-container"
+          ref={reactFlowWrapper}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -249,6 +466,14 @@ function FlowEditor() {
               maskColor="rgba(9, 13, 22, 0.75)"
             />
           </ReactFlow>
+
+          {/* Execution Console Drawer */}
+          <BottomConsole
+            logs={logs}
+            onClearLogs={() => setLogs([])}
+            isOpen={isConsoleOpen}
+            onToggle={() => setIsConsoleOpen((prev) => !prev)}
+          />
         </main>
 
         {/* Right: Inspector */}
@@ -260,6 +485,13 @@ function FlowEditor() {
           />
         </aside>
       </div>
+
+      {/* Quick Search Spotlight Modal */}
+      <QuickSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectNode={onAddNode}
+      />
     </div>
   );
 }

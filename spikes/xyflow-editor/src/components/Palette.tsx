@@ -142,12 +142,20 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
             <div
               key={item.type_id || item.label}
               className="palette-item"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(
+                  'application/reactflow',
+                  JSON.stringify({ type: item.type, data: item.defaultData })
+                );
+                event.dataTransfer.effectAllowed = 'move';
+              }}
               style={{
                 padding: '10px 12px',
                 background: '#131b2e',
                 border: '1px solid #1e293b',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: 'grab',
                 transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 flexDirection: 'column',

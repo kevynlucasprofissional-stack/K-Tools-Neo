@@ -140,6 +140,24 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
         </div>
       )}
 
+      {/* Animated running progress line */}
+      {runState === 'RUNNING' && (
+        <div style={{ height: '3px', width: '100%', background: '#1e293b', overflow: 'hidden', position: 'relative' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: '50%',
+              background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+              boxShadow: '0 0 10px #f59e0b',
+              animation: 'pulseBar 1s infinite alternate ease-in-out',
+            }}
+          />
+        </div>
+      )}
+
       {/* Node Body (Ports) */}
       <div
         className="node-body"
