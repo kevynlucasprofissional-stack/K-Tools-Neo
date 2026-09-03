@@ -13,6 +13,7 @@ from .audio.split import split_audio
 from .audio.join import join_audios
 from .audio.alac import convert_to_alac
 from .audio.studio_merge import merge_audio_studio, natural_sort_key
+from .audio.deesser import deess_audio
 from .video.compress import compress_video
 from .video.join import join_videos
 from .image.webp_to_png import webp_to_png
@@ -149,6 +150,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _convert_lossless_alac_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.deess_audio",
+            title="De-ess Audio",
+            category="Media",
+            inputs={
+                "audio": PortDefinition(DataType.FILE),
+            },
+            outputs={
+                "audio": PortDefinition(DataType.AUDIO),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _deess_audio_node,
     )
     registry.register(
         NodeDefinition(
@@ -696,5 +713,60 @@ def _merge_audio_studio_node(
         type=DataType.AUDIO,
         uri=final_path.as_uri(),
         metadata=studio_meta,
+    )
+    return {"audio": out_artifact}
+
+
+def _deess_audio_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    audio_artifact = inputs["audio"]
+    if audio_artifact.type not in (DataType.FILE, DataType.AUDIO):
+        raise TypeError("media.deess_audio requires a FILE or AUDIO artifact")
+
+    input_path = path_from_file_uri(audio_artifact.uri)
+
+    output_dir = input_path.parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+
+    output_format = config.get("output_format", "wav").lower().strip(".")
+    output_name = config.get("output_name")
+    if output_name:
+        output_path = output_dir / output_name
+    else:
+        output_path = output_dir / f"{input_path.stem}_deessed.{output_format}"
+
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"{input_path.stem}_deessed_{counter}.{output_format}"
+        counter += 1
+
+    intensity = float(config.get("intensity", 0.5))
+    frequency = float(config.get("frequency", 0.5))
+    noise_reduction = bool(config.get("noise_reduction", False))
+
+    final_path = deess_audio(
+        input_path=input_path,
+        output_path=output_path,
+        intensity=intensity,
+        frequency=frequency,
+        noise_reduction=noise_reduction,
+        output_format=output_format,
+    )
+
+    from ktools_core.models import Artifact
+
+    out_artifact = Artifact.create(
+        type=DataType.AUDIO,
+        uri=final_path.as_uri(),
+        metadata={
+            "name": final_path.name,
+            "format": output_format,
+            "size_bytes": final_path.stat().st_size,
+            "intensity": intensity,
+            "frequency": frequency,
+            "noise_reduction": noise_reduction,
+        },
     )
     return {"audio": out_artifact}

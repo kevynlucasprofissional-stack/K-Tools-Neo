@@ -38,5 +38,11 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (42/42 in ktools-media).
 - ADR-040 accepted.
 
+## Slice 1.4: Media De-ess Audio Node V1 (`removedor_sibilancia_gui_v2.py`)
+- Implemented `media.deess_audio` in `ktools-media`.
+- Dynamic sibilance reduction and spectral noise reduction via FFmpeg filter chain.
+- All behavior and engine tests passing (46/46 in ktools-media).
+- ADR-041 accepted.
+
 # Current
-Proceeding to Slice 1.4: Media De-esser & Denoise Node V1 (`removedor_sibilancia_gui_v2.py`).
+Proceeding to Slice 1.5: Media Extract and Join by Subfolder (`JA_de_Vários_videos.py` / `varredura subpastas`).
