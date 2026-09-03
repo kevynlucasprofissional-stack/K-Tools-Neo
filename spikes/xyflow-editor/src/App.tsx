@@ -3,6 +3,7 @@ import {
   ReactFlow,
   Controls,
   Background,
+  MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
@@ -35,6 +36,7 @@ function FlowEditor() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -60,100 +62,203 @@ function FlowEditor() {
   const onConnect = useCallback(
     (connection: Connection | Edge) => {
       if (isValidKToolsConnection(connection, nodes)) {
-        setEdges((eds) => addEdge({ ...connection, markerEnd: { type: MarkerType.ArrowClosed } } as Edge | Connection, eds));
+        setEdges((eds) =>
+          addEdge(
+            {
+              ...connection,
+              animated: true,
+              style: { stroke: '#38bdf8', strokeWidth: 2 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#38bdf8' },
+            } as Edge | Connection,
+            eds
+          )
+        );
       }
     },
     [nodes]
   );
 
-  const onNodeUpdate = useCallback((nodeId: string, data: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === nodeId) {
-          return { ...node, data: { ...node.data, ...data } };
-        }
-        return node;
-      })
-    );
-    if (selectedNode && selectedNode.id === nodeId) {
-       setSelectedNode((prev) => prev ? { ...prev, data: { ...prev.data, ...data } } : null);
-    }
-  }, [selectedNode]);
+  const onNodeUpdate = useCallback(
+    (nodeId: string, data: any) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            return { ...node, data: { ...node.data, ...data } };
+          }
+          return node;
+        })
+      );
+      if (selectedNode && selectedNode.id === nodeId) {
+        setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...data } } : null));
+      }
+    },
+    [selectedNode]
+  );
 
   const onAddNode = useCallback((type: string, nodeData: any) => {
     const newNode: Node = {
       id: `node-${Date.now()}`,
       type: type,
-      position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
-      data: nodeData,
+      position: { x: Math.random() * 250 + 200, y: Math.random() * 250 + 150 },
+      data: {
+        ...nodeData,
+        runState: 'IDLE',
+      },
     };
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
   const simulateRun = () => {
-    // Simple state machine for simulation
-    setNodes((nds) => nds.map((n) => {
-        if(n.type === 'missing') return { ...n, data: { ...n.data, runState: 'ERROR' }};
+    setIsRunning(true);
+    // Transiciona todos os nos para RUNNING
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.type === 'missing') return { ...n, data: { ...n.data, runState: 'ERROR' } };
         return { ...n, data: { ...n.data, runState: 'RUNNING' } };
-    }));
+      })
+    );
 
     setTimeout(() => {
-        setNodes((nds) => nds.map((n, i) => {
-            if(n.type === 'missing') return n;
-            return { ...n, data: { ...n.data, runState: i % 3 === 0 ? 'ERROR' : 'SUCCESS' } };
-        }));
-    }, 2000);
+      setNodes((nds) =>
+        nds.map((n, i) => {
+          if (n.type === 'missing') return n;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              runState: i % 4 === 0 ? 'CACHED' : 'SUCCESS',
+            },
+          };
+        })
+      );
+      setIsRunning(false);
+    }, 1500);
   };
 
   const clearRunState = () => {
-      setNodes((nds) => nds.map(n => ({ ...n, data: { ...n.data, runState: 'IDLE' } })));
-  }
+    setIsRunning(false);
+    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, runState: 'IDLE' } })));
+  };
 
-  const addManyNodes = () => {
-    const newNodes: Node[] = [];
-    for (let i = 0; i < 150; i++) {
-      newNodes.push({
-        id: `perf-node-${Date.now()}-${i}`,
-        type: 'ktool',
-        position: { x: Math.random() * 2000, y: Math.random() * 2000 },
-        data: {
-          label: `Synthetic ${i}`,
-          inputs: [{ id: 'in', type: 'file', label: 'In' }],
-          outputs: [{ id: 'out', type: 'file', label: 'Out' }],
-          runState: 'IDLE'
-        }
-      });
-    }
-    setNodes((nds) => [...nds, ...newNodes]);
+  const exportWorkflowJson = () => {
+    const payload = {
+      version: '1.0.0',
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        type_id: n.data.type_id || n.data.label,
+        position: n.position,
+        config: n.data.config || {},
+      })),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+        targetHandle: e.targetHandle,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ktools-workflow-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="editor-layout">
-      <div className="sidebar">
-        <Palette onAddNode={onAddNode} />
-      </div>
-      <div className="canvas-container">
-        <div className="toolbar">
-            <button onClick={simulateRun}>Simulate Run</button>
-            <button onClick={clearRunState}>Clear State</button>
-            <button onClick={addManyNodes}>Add 150 Nodes</button>
+    <div className="app-container">
+      {/* Top Navbar */}
+      <header className="top-navbar">
+        <div className="brand-section">
+          <div className="brand-logo">
+            <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px #38bdf8)' }}>⚡</span>
+            <span>K-Tools Neo</span>
+          </div>
+          <span className="brand-badge">Workflow Studio</span>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: '#10b981',
+              background: 'rgba(16, 185, 129, 0.12)',
+              padding: '3px 9px',
+              borderRadius: '12px',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              marginLeft: '12px',
+            }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+            <span>34 Nós Registrados (M0-M5 Ativos)</span>
+          </div>
         </div>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          isValidConnection={(conn) => isValidKToolsConnection(conn, nodes)}
-          fitView
-        >
-          <Background />
-          <Controls />
-        </ReactFlow>
-      </div>
-      <div className="inspector-panel">
-        <Inspector key={selectedNode?.id || 'empty'} selectedNode={selectedNode} onNodeUpdate={onNodeUpdate} />
+
+        <div className="navbar-actions">
+          <button
+            className="btn btn-primary"
+            onClick={simulateRun}
+            disabled={isRunning}
+            style={{ opacity: isRunning ? 0.7 : 1 }}
+          >
+            <span>{isRunning ? '⏳' : '▶'}</span>
+            <span>{isRunning ? 'Executando...' : 'Executar Workflow'}</span>
+          </button>
+          <button className="btn btn-secondary" onClick={clearRunState}>
+            <span>🔄</span>
+            <span>Limpar Estado</span>
+          </button>
+          <button className="btn btn-secondary" onClick={exportWorkflowJson}>
+            <span>📥</span>
+            <span>Exportar JSON</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Editor Layout: Palette + Canvas + Inspector */}
+      <div className="editor-layout">
+        {/* Left: Palette */}
+        <aside className="sidebar">
+          <Palette onAddNode={onAddNode} />
+        </aside>
+
+        {/* Center: ReactFlow Canvas */}
+        <main className="canvas-container">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            isValidConnection={(conn) => isValidKToolsConnection(conn, nodes)}
+            fitView
+          >
+            <Background color="#1e293b" gap={20} size={1.2} />
+            <Controls />
+            <MiniMap
+              nodeColor={(n) => {
+                if (n.data?.runState === 'RUNNING') return '#f59e0b';
+                if (n.data?.runState === 'SUCCESS') return '#10b981';
+                if (n.data?.runState === 'ERROR') return '#ef4444';
+                if (n.data?.runState === 'CACHED') return '#06b6d4';
+                return '#38bdf8';
+              }}
+              maskColor="rgba(9, 13, 22, 0.75)"
+            />
+          </ReactFlow>
+        </main>
+
+        {/* Right: Inspector */}
+        <aside className="inspector-panel">
+          <Inspector
+            key={selectedNode?.id || 'empty'}
+            selectedNode={selectedNode}
+            onNodeUpdate={onNodeUpdate}
+          />
+        </aside>
       </div>
     </div>
   );
