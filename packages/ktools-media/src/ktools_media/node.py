@@ -12,6 +12,7 @@ from .audio.convert import convert_audio
 from .audio.split import split_audio
 from .audio.join import join_audios
 from .video.compress import compress_video
+from .video.join import join_videos
 from .image.webp_to_png import webp_to_png
 from .pdf.merge import merge_pdfs
 from .pdf.split import split_pdf
@@ -49,6 +50,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _compress_video_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.join_videos",
+            title="Join Videos",
+            category="Media",
+            inputs={
+                "videos": PortDefinition(DataType.FILE_SET),
+            },
+            outputs={
+                "video": PortDefinition(DataType.VIDEO),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _join_videos_node,
     )
     registry.register(
         NodeDefinition(
@@ -492,3 +509,51 @@ def _split_pdf_node(
         )
 
     return {"parts": part_artifacts}
+
+
+def _join_videos_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    videos = inputs.get("videos")
+    if not videos:
+        raise ValueError("media.join_videos requires 'videos' input.")
+
+    artifacts = videos if isinstance(videos, list) else [videos]
+    if len(artifacts) < 2:
+        raise ValueError("media.join_videos requires at least 2 video files.")
+
+    artifacts = sorted(artifacts, key=lambda a: a.metadata.get("name", a.uri) if a.metadata else a.uri)
+    input_paths = [path_from_file_uri(a.uri) for a in artifacts]
+
+    output_dir = input_paths[0].parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+
+    output_name = config.get("output_name", "joined_video.mp4")
+    output_path = output_dir / output_name
+
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"joined_video_{counter}.mp4"
+        counter += 1
+
+    fast_copy = config.get("fast_copy", True)
+
+    final_path = join_videos(
+        input_paths=input_paths,
+        output_path=output_path,
+        fast_copy=fast_copy,
+    )
+
+    from ktools_core.models import Artifact
+
+    out_artifact = Artifact.create(
+        type=DataType.VIDEO,
+        uri=final_path.as_uri(),
+        metadata={
+            "name": final_path.name,
+            "format": "mp4",
+            "size_bytes": final_path.stat().st_size,
+        },
+    )
+    return {"video": out_artifact}
