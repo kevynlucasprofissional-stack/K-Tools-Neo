@@ -19,6 +19,7 @@ from .video.join import join_videos
 from .image.webp_to_png import webp_to_png
 from .pdf.merge import merge_pdfs
 from .pdf.split import split_pdf
+from .orchestrators.subfolder_audio import extract_and_join_by_subfolder
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -166,6 +167,23 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _deess_audio_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.extract_and_join_by_subfolder",
+            title="Extract and Join Audio by Subfolder",
+            category="Media",
+            inputs={
+                "folder": PortDefinition(DataType.FOLDER),
+            },
+            outputs={
+                "audios": PortDefinition(DataType.FILE_SET),
+                "report": PortDefinition(DataType.JSON),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _extract_and_join_by_subfolder_node,
     )
     registry.register(
         NodeDefinition(
@@ -770,3 +788,55 @@ def _deess_audio_node(
         },
     )
     return {"audio": out_artifact}
+
+
+def _extract_and_join_by_subfolder_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    folder_artifact = inputs.get("folder")
+    if not folder_artifact or folder_artifact.type != DataType.FOLDER:
+        raise TypeError("media.extract_and_join_by_subfolder requires a FOLDER artifact")
+
+    root_dir = path_from_file_uri(folder_artifact.uri)
+
+    output_dir = None
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+
+    output_format = config.get("format", "m4a").lower().strip(".")
+    bitrate = config.get("bitrate", "192k")
+
+    audio_paths, report = extract_and_join_by_subfolder(
+        root_dir=root_dir,
+        output_dir=output_dir,
+        output_format=output_format,
+        bitrate=bitrate,
+    )
+
+    from ktools_core.models import Artifact
+
+    audio_artifacts = []
+    for p in audio_paths:
+        audio_artifacts.append(
+            Artifact.create(
+                type=DataType.AUDIO,
+                uri=p.as_uri(),
+                metadata={
+                    "name": p.name,
+                    "format": output_format,
+                    "size_bytes": p.stat().st_size,
+                },
+            )
+        )
+
+    report_artifact = Artifact.create(
+        type=DataType.JSON,
+        uri=root_dir.as_uri(),
+        metadata=report,
+    )
+
+    return {
+        "audios": audio_artifacts,
+        "report": report_artifact,
+    }
+

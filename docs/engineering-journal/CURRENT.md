@@ -44,5 +44,12 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (46/46 in ktools-media).
 - ADR-041 accepted.
 
+## Slice 1.5: Media Extract and Join by Subfolder Node V1 (`JA_de_Vários_videos.py` / `varredura subpastas`)
+- Implemented `media.extract_and_join_by_subfolder` orchestrator in `ktools-media`.
+- Scans directory tree, groups videos by subfolder, and creates one consolidated audio file per module.
+- Returns `FILE_SET` of audios + `JSON` summary report.
+- All behavior and engine tests passing (49/49 in ktools-media).
+- ADR-042 accepted.
+
 # Current
-Proceeding to Slice 1.5: Media Extract and Join by Subfolder (`JA_de_Vários_videos.py` / `varredura subpastas`).
+Phase 1 complete. Proceeding to Phase 2, Slice 2.1: Text tl;dv Transcript Extractor Node V1 (`Extrator TLDV.py`).
