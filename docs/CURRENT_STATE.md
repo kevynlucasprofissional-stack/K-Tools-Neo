@@ -196,7 +196,23 @@ Status: **RESOLVED**
 - [x] Slice 15 (PDF: Merge and Split Nodes V1)
 - [x] M5 Final Integration & Walkthroughs: **COMPLETE — all legacy capabilities migrated**
 
+## M5 Extension — Standalone Legacy Utility Migrations — RESOLVED / PROMOTED
+
+Status: **RESOLVED (All 8 standalone legacy tools migrated into Node Packs)**
+
+Migrated utilities:
+- `JV.py` -> `media.join_videos` (ADR-038)
+- `wav_para_m4a_lossless_gui_v2.py` -> `media.convert_lossless_alac` (ADR-039)
+- `Audio Merge Studio V2.py` -> `media.merge_audio_studio` (ADR-040)
+- `removedor_sibilancia_gui_v2.py` -> `media.deess_audio` (ADR-041)
+- `JA_de_Vários_videos.py` / `subpastas` -> `media.extract_and_join_by_subfolder` (ADR-042)
+- `Extrator TLDV.py` -> `text.tldv_extract` (ADR-043)
+- `EC.py` -> `filesystem.structure_report` (ADR-044)
+- `K_Tools_Drive_Streaming_Scanner.py` (v1.4) -> `filesystem.drive_stream_scan` (ADR-045)
+
+Full monorepo test coverage: 298 tests passing across all 8 packages.
+
 ## Next exact action
 
-All roadmap milestones (M0 through M5) are completely implemented and verified. Ready for next project phase.
+All planned capabilities, milestones (M0 through M5), and legacy utility migrations are completely implemented, tested, and pushed to `main`.
 

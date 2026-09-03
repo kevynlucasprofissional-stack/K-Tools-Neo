@@ -207,16 +207,35 @@ Status: **RESOLVED (ADR-037)**
 
 ---
 
+## M5 Extension — Standalone Legacy Utility Migrations
+
+Status: **RESOLVED (ADR-038 to ADR-045)**
+
+All 8 standalone legacy Python utility scripts requested by the project owner have been re-engineered into modular, quality-first Node Packs:
+
+1. **`JV.py` -> `media.join_videos` (ADR-038)**: Video concatenation with stream-copy and fallback normalization.
+2. **`wav_para_m4a_lossless_gui_v2.py` -> `media.convert_lossless_alac` (ADR-039)**: Bit-exact WAV to ALAC conversion with decoded PCM SHA-256 validation.
+3. **`Audio Merge Studio V2.py` -> `media.merge_audio_studio` (ADR-040)**: Multi-track audio/video merger with natural sorting, loudness normalization, and SHA-256 digest.
+4. **`removedor_sibilancia_gui_v2.py` -> `media.deess_audio` (ADR-041)**: Dynamic voice de-esser and spectral noise reduction.
+5. **`JA_de_Vários_videos.py` / `subpastas` -> `media.extract_and_join_by_subfolder` (ADR-042)**: Automated batch video-to-audio extraction and joining per subfolder.
+6. **`Extrator TLDV.py` -> `text.tldv_extract` (ADR-043)**: Zero-dependency tl;dv HTML transcript extractor emitting Markdown, SRT, and JSON.
+7. **`EC.py` -> `filesystem.structure_report` (ADR-044)**: Deep directory audit generating CSV inventory, ASCII tree TXT, and JSON metrics.
+8. **`K_Tools_Drive_Streaming_Scanner.py` v1.4 -> `filesystem.drive_stream_scan` (ADR-045)**: Win32 native non-hydrating cloud drive scanner with SQLite checkpoints and CSV export.
+
+---
+
 ## Milestone Status Summary
 
-All active milestones (M0 through M5) defined in this roadmap are now **RESOLVED / PROMOTED**.
-All legacy operations from the desktop monolith have been extracted into independent, tested, observable, diagnostic-instrumented node packs under `packages/`:
+All active milestones (M0 through M5) plus the M5 Standalone Extension defined in this repository are now **RESOLVED / PROMOTED**.
+All operations have been extracted into independent, tested, observable, diagnostic-instrumented node packs under `packages/`:
 - `packages/ktools-core` (Execution engine, DAG runner, Diagnostics, Run Journal, Artifact lifecycle, Cache)
 - `packages/ktools-json` (JSON capability, CLI, nodes)
-- `packages/ktools-text` (Text merge, text split nodes)
+- `packages/ktools-text` (Text merge, text split, tl;dv transcript extractor nodes)
 - `packages/ktools-pdf` (PDF merge, PDF split nodes)
 - `packages/ktools-documents` (Mixed document split orchestrator)
 - `packages/ktools-images` (WebP to PNG, Images to PDF)
-- `packages/ktools-filesystem` (Folder scan nodes)
-- `packages/ktools-media` (Audio extract, convert, split, join; video compression; WebP to PNG; PDF merge/split)
+- `packages/ktools-filesystem` (Folder scan, Structure report, Cloud drive streaming scanner)
+- `packages/ktools-media` (Audio extract, convert, split, join, ALAC lossless, Studio merge, De-esser, Subfolder audio, video compress, video join)
+
+Repository Test Suite: 298 tests passing across all 8 packages.
 
