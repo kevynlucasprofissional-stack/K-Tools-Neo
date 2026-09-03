@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-filesystem"
+version = "0.1.0"
+description = "Official K-Tools filesystem node pack"
+requires-python = ">=3.10"
+authors = [{ name = "K-Tools Neo" }]
+dependencies = [
+  "ktools-core>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

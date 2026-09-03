@@ -59,6 +59,17 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
     )
     registry.register(
         NodeDefinition(
+            type_id="folder.literal",
+            title="Pasta",
+            category="Files",
+            outputs={"folder": PortDefinition(DataType.FOLDER)},
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _folder_literal,
+    )
+    registry.register(
+        NodeDefinition(
             type_id="files.literal",
             title="Arquivos",
             category="Files",
@@ -147,6 +158,27 @@ def _file_literal(
         config_label="file.literal config.path",
     )
     return {"file": artifact}
+
+
+def _folder_literal(
+    _inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    raw_path = config.get("path")
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise TypeError("folder.literal config.path must be a non-empty string")
+    path = Path(raw_path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"local folder path does not exist: {path}")
+    if not path.is_dir():
+        raise ValueError(f"local folder path is not a directory: {path}")
+    metadata = {"name": path.name}
+    artifact = Artifact.create(
+        type=DataType.FOLDER,
+        uri=path.as_uri(),
+        produced_by=f"{context.run_id}/{context.node_id}",
+        metadata=metadata,
+    )
+    return {"folder": artifact}
 
 
 def _files_literal(
