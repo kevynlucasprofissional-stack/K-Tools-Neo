@@ -92,12 +92,14 @@ class MediaExtractEngineTests(unittest.TestCase):
         subproc_events = [e for e in events if e.kind == "SUBPROCESS"]
         self.assertGreater(len(subproc_events), 0, "No subprocess diagnostic events recorded")
         
-        # Should have at least one ffprobe (detect stream) and one ffmpeg (extract)
+        from ktools_media.ffmpeg import get_ffprobe_exe
+        # Should have at least one ffmpeg (extract), and ffprobe if available
         cmds = [e.context.get("command", []) for e in subproc_events]
         has_ffprobe = any("ffprobe" in c[0] for c in cmds if c)
         has_ffmpeg = any("ffmpeg" in c[0] for c in cmds if c)
         
-        self.assertTrue(has_ffprobe, "Did not record ffprobe execution")
+        if get_ffprobe_exe():
+            self.assertTrue(has_ffprobe, "Did not record ffprobe execution")
         self.assertTrue(has_ffmpeg, "Did not record ffmpeg execution")
 
 
