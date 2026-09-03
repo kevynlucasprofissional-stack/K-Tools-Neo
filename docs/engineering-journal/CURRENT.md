@@ -1,8 +1,9 @@
-﻿# Engineering Journal: M5 Slice 13 (Media Compress Video Node V1)
+﻿# Engineering Journal: M5 Slice 14 (Media WebP to PNG Node V1)
 
-- Developed media.compress_video in ktools-media.
-- Verified H.264 compression via FFmpeg.
-- Corrected lingering legacy CURRENT_STATE.md references (changed PNG to ICO back to WebP to PNG).
+- Implemented media.webp_to_png in ktools-media.
+- PIL imports lifted to module level to allow test mocking.
+- Atomic write pattern preserved.
+- All 23 tests passing.
 
 # Current
-Proceeding to M5 Slice 14.
+Proceeding to M5 Slice 15 - PDF capabilities.

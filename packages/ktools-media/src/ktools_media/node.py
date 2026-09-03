@@ -12,6 +12,7 @@ from .audio.convert import convert_audio
 from .audio.split import split_audio
 from .audio.join import join_audios
 from .video.compress import compress_video
+from .image.webp_to_png import webp_to_png
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -95,6 +96,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _convert_audio_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.webp_to_png",
+            title="WebP to PNG",
+            category="Media",
+            inputs={
+                "image": PortDefinition(DataType.FILE),
+            },
+            outputs={
+                "image": PortDefinition(DataType.IMAGE),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _webp_to_png_node,
     )
 
 
@@ -319,3 +336,42 @@ def _compress_video_node(
         },
     )
     return {"video": out_artifact}
+
+
+def _webp_to_png_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    image_artifact = inputs["image"]
+    if image_artifact.type not in (DataType.FILE, DataType.IMAGE):
+        raise TypeError("media.webp_to_png requires an IMAGE or FILE artifact")
+
+    input_path = path_from_file_uri(image_artifact.uri)
+    
+    output_dir = input_path.parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+        
+    output_path = output_dir / f"{input_path.stem}.png"
+    
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"{input_path.stem}_{counter}.png"
+        counter += 1
+        
+    final_path = webp_to_png(
+        input_path=input_path,
+        output_path=output_path,
+    )
+    
+    from ktools_core.models import Artifact
+    
+    out_artifact = Artifact.create(
+        type=DataType.IMAGE,
+        uri=final_path.as_uri(),
+        metadata={
+            "name": final_path.name,
+            "format": "png",
+            "size_bytes": final_path.stat().st_size,
+        },
+    )
+    return {"image": out_artifact}

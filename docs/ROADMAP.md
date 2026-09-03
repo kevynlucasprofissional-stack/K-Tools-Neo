@@ -194,7 +194,14 @@ Status: **RESOLVED (ADR-035)**
 
 - Implemented `media.compress_video` using FFmpeg `libx264`.
 
-### Slice 14 — FRESH DISCOVERY GATE
+### Slice 14 — Media WebP to PNG Node V1
+
+Status: **RESOLVED (ADR-036)**
+
+- Implemented `media.webp_to_png` using Pillow.
+- Handles animation, EXIF rotation, transparency.
+
+### Slice 15 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 

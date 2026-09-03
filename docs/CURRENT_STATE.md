@@ -192,10 +192,10 @@ Status: **RESOLVED**
 - [x] Slice 11 (Media: Split Audio Node V1)
 - [x] Slice 12 (Media: Join Audios Node V1)
 - [x] Slice 13 (Media: Compress Video Node V1)
-- [ ] M5 Final Integration & Walkthroughs: **ACTIVE / NO CANDIDATE SELECTED YET**
+- [x] Slice 14 (Media: WebP to PNG Node V1)
+- [ ] M5 Final Integration & Walkthroughs: **ACTIVE**
 
 Inspect exact terminal main and compare remaining legacy capabilities:
-- WebP to PNG conversion
 - PDF capabilities
 
 ## Next exact action
