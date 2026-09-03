@@ -32,5 +32,11 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (37/37 in ktools-media).
 - ADR-039 accepted.
 
+## Slice 1.3: Media Merge Audio Studio Node V1 (`Audio Merge Studio V2.py`)
+- Implemented `media.merge_audio_studio` in `ktools-media`.
+- Natural alphanumeric sorting, mixed audio/video source support, optional loudness normalization, SHA-256 integrity hash.
+- All behavior and engine tests passing (42/42 in ktools-media).
+- ADR-040 accepted.
+
 # Current
-Proceeding to Slice 1.3: Media Merge Audio Studio Node V1 (`Audio Merge Studio V2.py`).
+Proceeding to Slice 1.4: Media De-esser & Denoise Node V1 (`removedor_sibilancia_gui_v2.py`).

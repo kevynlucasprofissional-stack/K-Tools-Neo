@@ -12,6 +12,7 @@ from .audio.convert import convert_audio
 from .audio.split import split_audio
 from .audio.join import join_audios
 from .audio.alac import convert_to_alac
+from .audio.studio_merge import merge_audio_studio, natural_sort_key
 from .video.compress import compress_video
 from .video.join import join_videos
 from .image.webp_to_png import webp_to_png
@@ -83,6 +84,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _join_audios_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.merge_audio_studio",
+            title="Merge Audio Studio",
+            category="Media",
+            inputs={
+                "sources": PortDefinition(DataType.FILE_SET),
+            },
+            outputs={
+                "audio": PortDefinition(DataType.AUDIO),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _merge_audio_studio_node,
     )
     registry.register(
         NodeDefinition(
@@ -624,5 +641,60 @@ def _convert_lossless_alac_node(
         type=DataType.AUDIO,
         uri=final_path.as_uri(),
         metadata=metadata,
+    )
+    return {"audio": out_artifact}
+
+
+def _merge_audio_studio_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    sources = inputs.get("sources")
+    if not sources:
+        raise ValueError("media.merge_audio_studio requires 'sources' input.")
+
+    artifacts = sources if isinstance(sources, list) else [sources]
+    if len(artifacts) < 2:
+        raise ValueError("media.merge_audio_studio requires at least 2 audio or video files.")
+
+    natural_sort = config.get("natural_sort", True)
+    if natural_sort:
+        artifacts = sorted(artifacts, key=lambda a: natural_sort_key(a.metadata.get("name", a.uri) if a.metadata else a.uri))
+
+    input_paths = [path_from_file_uri(a.uri) for a in artifacts]
+
+    output_dir = input_paths[0].parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+
+    out_format = config.get("format", "m4a").lower().strip(".")
+    output_name = config.get("output_name")
+    if output_name:
+        output_path = output_dir / output_name
+    else:
+        output_path = output_dir / f"studio_merged.{out_format}"
+
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"studio_merged_{counter}.{out_format}"
+        counter += 1
+
+    bitrate = config.get("bitrate", "192k")
+    normalize_volume = config.get("normalize_volume", False)
+
+    final_path, studio_meta = merge_audio_studio(
+        input_paths=input_paths,
+        output_path=output_path,
+        output_format=out_format,
+        bitrate=bitrate,
+        normalize_volume=normalize_volume,
+        natural_sort=False,  # already sorted by artifacts
+    )
+
+    from ktools_core.models import Artifact
+
+    out_artifact = Artifact.create(
+        type=DataType.AUDIO,
+        uri=final_path.as_uri(),
+        metadata=studio_meta,
     )
     return {"audio": out_artifact}
