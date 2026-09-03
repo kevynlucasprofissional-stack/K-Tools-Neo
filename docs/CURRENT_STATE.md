@@ -193,10 +193,8 @@ Status: **RESOLVED**
 - [x] Slice 12 (Media: Join Audios Node V1)
 - [x] Slice 13 (Media: Compress Video Node V1)
 - [x] Slice 14 (Media: WebP to PNG Node V1)
-- [ ] M5 Final Integration & Walkthroughs: **ACTIVE**
-
-Inspect exact terminal main and compare remaining legacy capabilities:
-- PDF capabilities
+- [x] Slice 15 (PDF: Merge and Split Nodes V1)
+- [ ] M5 Final Integration & Walkthroughs: **COMPLETE — all legacy capabilities migrated**
 
 ## Next exact action
 

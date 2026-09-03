@@ -201,7 +201,13 @@ Status: **RESOLVED (ADR-036)**
 - Implemented `media.webp_to_png` using Pillow.
 - Handles animation, EXIF rotation, transparency.
 
-### Slice 15 — FRESH DISCOVERY GATE
+### Slice 15 — PDF Merge and Split Nodes V1
+
+Status: **RESOLVED (ADR-037)**
+
+- Implemented `pdf.merge` (FILE_SET -> FILE) and `pdf.split` (FILE -> FILE_SET) using pypdf.
+
+### Slice 16 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 
