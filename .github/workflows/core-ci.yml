@@ -45,6 +45,12 @@ jobs:
       - name: Install ktools-images
         run: python -m pip install -e ./packages/ktools-images
 
+      - name: Install ktools-filesystem
+        run: python -m pip install -e ./packages/ktools-filesystem
+
+      - name: Install ktools-media
+        run: python -m pip install -e ./packages/ktools-media
+
       - name: Core unit and contract tests
         run: python -m unittest discover -s packages/ktools-core/tests -v
 
