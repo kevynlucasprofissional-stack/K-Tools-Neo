@@ -10,9 +10,11 @@ from ktools_core.registry import NodeExecutionContext, NodeRegistry
 from . import splitter, writer
 from .capability import TextMergeError
 from .splitter import TextSplitError
+from .tldv import extract_tldv_transcript, export_transcript_outputs
 
 NODE_TYPE_ID = "text.merge.files"
 SPLIT_NODE_TYPE_ID = "text.split.parts"
+TLDV_NODE_TYPE_ID = "text.tldv_extract"
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -39,6 +41,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _split_parts_handler,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id=TLDV_NODE_TYPE_ID,
+            title="Extrair Transcrição tl;dv",
+            category="Text",
+            inputs={"html": PortDefinition(DataType.FILE)},
+            outputs={
+                "markdown": PortDefinition(DataType.FILE),
+                "srt": PortDefinition(DataType.FILE),
+                "json": PortDefinition(DataType.JSON),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _tldv_extract_handler,
     )
 
 
@@ -112,3 +130,60 @@ def _split_parts_handler(
         produced_by=f"{context.run_id}/{context.node_id}",
     )
     return {"files": outputs}
+
+
+def _tldv_extract_handler(
+    inputs: dict[str, Any],
+    config: dict[str, Any],
+    context: NodeExecutionContext,
+) -> dict[str, Any]:
+    artifact = inputs.get("html")
+    if not isinstance(artifact, Artifact) or artifact.type != DataType.FILE:
+        raise ValueError("text.tldv_extract requires an html FILE Artifact")
+
+    html_path = _artifact_path(artifact, TLDV_NODE_TYPE_ID)
+    html_content = html_path.read_text(encoding="utf-8", errors="replace")
+
+    blocks = extract_tldv_transcript(html_content)
+
+    output_dir = html_path.parent
+    if "output_dir" in config and config["output_dir"]:
+        output_dir = Path(config["output_dir"])
+
+    title = config.get("title")
+    md_path, srt_path, json_payload = export_transcript_outputs(
+        blocks=blocks,
+        output_dir=output_dir,
+        base_name=html_path.stem,
+        title=title,
+    )
+
+    md_artifact = Artifact.create(
+        type=DataType.FILE,
+        uri=md_path.as_uri(),
+        metadata={
+            "name": md_path.name,
+            "format": "markdown",
+            "size_bytes": md_path.stat().st_size,
+        },
+    )
+    srt_artifact = Artifact.create(
+        type=DataType.FILE,
+        uri=srt_path.as_uri(),
+        metadata={
+            "name": srt_path.name,
+            "format": "srt",
+            "size_bytes": srt_path.stat().st_size,
+        },
+    )
+    json_artifact = Artifact.create(
+        type=DataType.JSON,
+        uri=html_path.as_uri(),
+        metadata=json_payload,
+    )
+
+    return {
+        "markdown": md_artifact,
+        "srt": srt_artifact,
+        "json": json_artifact,
+    }

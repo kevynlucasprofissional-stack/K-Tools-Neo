@@ -51,5 +51,12 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (49/49 in ktools-media).
 - ADR-042 accepted.
 
+## Slice 2.1: Text tl;dv Extract Node V1 (`Extrator TLDV.py`)
+- Implemented `text.tldv_extract` in `ktools-text`.
+- Zero-dependency standard library HTML parser for `#transcript-container`.
+- Exports Markdown, SRT captions, and structured JSON.
+- All behavior and engine tests passing (32/32 in ktools-text).
+- ADR-043 accepted.
+
 # Current
-Phase 1 complete. Proceeding to Phase 2, Slice 2.1: Text tl;dv Transcript Extractor Node V1 (`Extrator TLDV.py`).
+Phase 2 complete. Proceeding to Phase 3, Slice 3.1: Filesystem Structure Report Exporter Node V1 (`EC.py`).
