@@ -181,7 +181,14 @@ Status: **RESOLVED (ADR-033)**
 - Implemented `media.split_audio` using `ffprobe` to determine duration and loop `ffmpeg` cuts.
 - Returns `FILE_SET` of individual piece artifacts.
 
-### Slice 12 — FRESH DISCOVERY GATE
+### Slice 12 — Media Join Audios Node V1
+
+Status: **RESOLVED (ADR-034)**
+
+- Implemented `media.join_audios`.
+- Introduced WAV normalization for disparate inputs.
+
+### Slice 13 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 
