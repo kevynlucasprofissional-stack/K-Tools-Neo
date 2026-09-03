@@ -58,5 +58,11 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (32/32 in ktools-text).
 - ADR-043 accepted.
 
+## Slice 3.1: Filesystem Structure Report Node V1 (`EC.py`)
+- Implemented `filesystem.structure_report` in `ktools-filesystem`.
+- Generates CSV inventory, ASCII tree TXT, and JSON metrics payload.
+- All behavior and engine tests passing (11/11 in ktools-filesystem).
+- ADR-044 accepted.
+
 # Current
-Phase 2 complete. Proceeding to Phase 3, Slice 3.1: Filesystem Structure Report Exporter Node V1 (`EC.py`).
+Proceeding to Slice 3.2: Filesystem Drive Streaming Scanner Node V1 (`K_Tools_Drive_Streaming_Scanner.py` v1.4).

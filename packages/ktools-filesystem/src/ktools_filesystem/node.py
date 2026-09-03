@@ -7,6 +7,7 @@ from ktools_core.models import CachePolicy, DataType, NodeDefinition, PortDefini
 from ktools_core.registry import NodeExecutionContext, NodeRegistry
 
 from .scanner import scan_files
+from .reports import generate_structure_report
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -26,6 +27,24 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _scan_files_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="filesystem.structure_report",
+            title="Export Structure Report",
+            category="Filesystem",
+            inputs={
+                "folder": PortDefinition(DataType.FOLDER),
+            },
+            outputs={
+                "csv": PortDefinition(DataType.FILE),
+                "txt": PortDefinition(DataType.FILE),
+                "json": PortDefinition(DataType.JSON),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _structure_report_node,
     )
 
 
@@ -63,3 +82,60 @@ def _scan_files_node(
         "files": result.files,
         "report": result.report,
     }
+
+
+def _structure_report_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    folder_artifact = inputs.get("folder")
+    if not folder_artifact or folder_artifact.type != DataType.FOLDER:
+        raise TypeError("filesystem.structure_report requires a FOLDER artifact")
+
+    root_path = path_from_file_uri(folder_artifact.uri)
+
+    output_dir = root_path
+    if "output_dir" in config and config["output_dir"]:
+        output_dir = Path(config["output_dir"])
+
+    base_name = config.get("base_name", f"{root_path.name}_structure")
+    include_hidden = bool(config.get("include_hidden", False))
+
+    csv_path, txt_path, summary_json = generate_structure_report(
+        root_dir=root_path,
+        output_dir=output_dir,
+        base_name=base_name,
+        include_hidden=include_hidden,
+    )
+
+    from ktools_core.models import Artifact
+
+    csv_artifact = Artifact.create(
+        type=DataType.FILE,
+        uri=csv_path.as_uri(),
+        metadata={
+            "name": csv_path.name,
+            "format": "csv",
+            "size_bytes": csv_path.stat().st_size,
+        },
+    )
+    txt_artifact = Artifact.create(
+        type=DataType.FILE,
+        uri=txt_path.as_uri(),
+        metadata={
+            "name": txt_path.name,
+            "format": "txt",
+            "size_bytes": txt_path.stat().st_size,
+        },
+    )
+    json_artifact = Artifact.create(
+        type=DataType.JSON,
+        uri=root_path.as_uri(),
+        metadata=summary_json,
+    )
+
+    return {
+        "csv": csv_artifact,
+        "txt": txt_artifact,
+        "json": json_artifact,
+    }
+
