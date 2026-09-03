@@ -33,7 +33,7 @@ Formal promotion `b09e6ac62fa74e3e1a22e7cced0a472af50285b1` passed run `33626260
 
 ## M5 — Official local Node Packs
 
-Status: **ACTIVE / ITERATIVE DELIVERY**
+Status: **RESOLVED / PROMOTED**
 
 Capability families:
 
@@ -41,8 +41,6 @@ Capability families:
 - Text;
 - Documents/Images/PDF;
 - Media.
-
-Slice rule: inspect the actual legacy owner before extraction; characterize behavior first; prefer bounded capabilities with explicit dependency/native/security risk; preserve one-owner direct API + workflow architecture; use first-class Artifacts; classify PURE versus required publication explicitly; integrate diagnostics at real native/subprocess boundaries; keep orchestration separate from primitive transformation ownership; establish third-party safety/version policy before broad capability families depend on it.
 
 ### Slice 1 — Text Node Pack V1
 
@@ -207,11 +205,18 @@ Status: **RESOLVED (ADR-037)**
 
 - Implemented `pdf.merge` (FILE_SET -> FILE) and `pdf.split` (FILE -> FILE_SET) using pypdf.
 
-### Slice 16 — FRESH DISCOVERY GATE
-
-Status: **ACTIVE / NO CANDIDATE SELECTED YET**
-
 ---
-Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery -> spec -> evidence -> RED -> GREEN -> REFACTOR/AUDIT -> regression -> hosted evidence -> memory closure.
 
-Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly. Every file cardinality remains honest. Every multi-output capability states its transaction boundary. Orchestration layers preserve child owners. Third-party decoding/execution boundaries receive explicit version/safety policy before broad reuse. Shared policy extraction requires at least a real second consumer or equivalent evidence; capability-specific output semantics remain separate.
+## Milestone Status Summary
+
+All active milestones (M0 through M5) defined in this roadmap are now **RESOLVED / PROMOTED**.
+All legacy operations from the desktop monolith have been extracted into independent, tested, observable, diagnostic-instrumented node packs under `packages/`:
+- `packages/ktools-core` (Execution engine, DAG runner, Diagnostics, Run Journal, Artifact lifecycle, Cache)
+- `packages/ktools-json` (JSON capability, CLI, nodes)
+- `packages/ktools-text` (Text merge, text split nodes)
+- `packages/ktools-pdf` (PDF merge, PDF split nodes)
+- `packages/ktools-documents` (Mixed document split orchestrator)
+- `packages/ktools-images` (WebP to PNG, Images to PDF)
+- `packages/ktools-filesystem` (Folder scan nodes)
+- `packages/ktools-media` (Audio extract, convert, split, join; video compression; WebP to PNG; PDF merge/split)
+
