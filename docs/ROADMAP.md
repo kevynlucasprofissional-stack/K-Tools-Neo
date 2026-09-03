@@ -174,7 +174,14 @@ Status: **RESOLVED (ADR-032)**
 - Atomic `.tmp` to final path replacements.
 - Handled ContextVar diagnostics leaks in test engine.
 
-### Slice 11 — FRESH DISCOVERY GATE
+### Slice 11 — Media Split Audio Node V1
+
+Status: **RESOLVED (ADR-033)**
+
+- Implemented `media.split_audio` using `ffprobe` to determine duration and loop `ffmpeg` cuts.
+- Returns `FILE_SET` of individual piece artifacts.
+
+### Slice 12 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 

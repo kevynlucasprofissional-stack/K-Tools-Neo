@@ -189,6 +189,7 @@ Status: **RESOLVED**
 
 - [x] Slice 9 (Media: Extract Audio Node V1)
 - [x] Slice 10 (Media: Convert Audio Node V1)
+- [x] Slice 11 (Media: Split Audio Node V1)
 - [ ] M5 Final Integration & Walkthroughs: **ACTIVE / NO CANDIDATE SELECTED YET**
 
 Inspect exact terminal main and compare remaining legacy capabilities:
