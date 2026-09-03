@@ -188,7 +188,13 @@ Status: **RESOLVED (ADR-034)**
 - Implemented `media.join_audios`.
 - Introduced WAV normalization for disparate inputs.
 
-### Slice 13 — FRESH DISCOVERY GATE
+### Slice 13 — Media Compress Video Node V1
+
+Status: **RESOLVED (ADR-035)**
+
+- Implemented `media.compress_video` using FFmpeg `libx264`.
+
+### Slice 14 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 

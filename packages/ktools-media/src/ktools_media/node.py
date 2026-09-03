@@ -11,6 +11,7 @@ from .audio.extract import extract_audio_from_video
 from .audio.convert import convert_audio
 from .audio.split import split_audio
 from .audio.join import join_audios
+from .video.compress import compress_video
 
 
 def register_nodes(registry: NodeRegistry) -> None:
@@ -29,6 +30,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _extract_audio_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.compress_video",
+            title="Compress Video",
+            category="Media",
+            inputs={
+                "video": PortDefinition(DataType.FILE),
+            },
+            outputs={
+                "video": PortDefinition(DataType.VIDEO),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _compress_video_node,
     )
     registry.register(
         NodeDefinition(
@@ -259,3 +276,46 @@ def _join_audios_node(
         },
     )
     return {"audio": out_artifact}
+
+
+def _compress_video_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    video_artifact = inputs["video"]
+    if video_artifact.type not in (DataType.FILE, DataType.VIDEO):
+        raise TypeError("media.compress_video requires a VIDEO or FILE artifact")
+
+    input_path = path_from_file_uri(video_artifact.uri)
+    
+    crf = config.get("crf", 28)
+    preset = config.get("preset", "medium")
+    
+    output_dir = input_path.parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+        
+    output_path = output_dir / f"{input_path.stem}_compressed{input_path.suffix}"
+    
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"{input_path.stem}_compressed_{counter}{input_path.suffix}"
+        counter += 1
+        
+    final_path = compress_video(
+        input_path=input_path,
+        output_path=output_path,
+        crf=int(crf),
+        preset=str(preset),
+    )
+    
+    from ktools_core.models import Artifact
+    
+    out_artifact = Artifact.create(
+        type=DataType.VIDEO,
+        uri=final_path.as_uri(),
+        metadata={
+            "name": final_path.name,
+            "size_bytes": final_path.stat().st_size,
+        },
+    )
+    return {"video": out_artifact}
