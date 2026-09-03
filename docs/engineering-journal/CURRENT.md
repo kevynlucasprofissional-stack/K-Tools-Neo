@@ -25,5 +25,12 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (33/33 in ktools-media).
 - ADR-038 accepted.
 
+## Slice 1.2: Media Lossless ALAC Converter Node V1 (`wav_para_m4a_lossless_gui_v2.py`)
+- Implemented `media.convert_lossless_alac` in `ktools-media`.
+- Transcodes to ALAC in `.m4a` with decoded PCM SHA-256 bit-exact verification.
+- Output metadata captures hash proof and `verified_bit_exact: true`.
+- All behavior and engine tests passing (37/37 in ktools-media).
+- ADR-039 accepted.
+
 # Current
-Proceeding to Slice 1.2: Media Lossless ALAC Converter Node V1 (`wav_para_m4a_lossless_gui_v2.py`).
+Proceeding to Slice 1.3: Media Merge Audio Studio Node V1 (`Audio Merge Studio V2.py`).

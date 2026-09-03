@@ -11,6 +11,7 @@ from .audio.extract import extract_audio_from_video
 from .audio.convert import convert_audio
 from .audio.split import split_audio
 from .audio.join import join_audios
+from .audio.alac import convert_to_alac
 from .video.compress import compress_video
 from .video.join import join_videos
 from .image.webp_to_png import webp_to_png
@@ -115,6 +116,22 @@ def register_nodes(registry: NodeRegistry) -> None:
             cache_policy=CachePolicy.NEVER,
         ),
         _convert_audio_node,
+    )
+    registry.register(
+        NodeDefinition(
+            type_id="media.convert_lossless_alac",
+            title="Convert to Lossless ALAC",
+            category="Media",
+            inputs={
+                "audio": PortDefinition(DataType.FILE),
+            },
+            outputs={
+                "audio": PortDefinition(DataType.AUDIO),
+            },
+            version="1",
+            cache_policy=CachePolicy.NEVER,
+        ),
+        _convert_lossless_alac_node,
     )
     registry.register(
         NodeDefinition(
@@ -557,3 +574,55 @@ def _join_videos_node(
         },
     )
     return {"video": out_artifact}
+
+
+def _convert_lossless_alac_node(
+    inputs: dict[str, Any], config: dict[str, Any], context: NodeExecutionContext
+) -> dict[str, Any]:
+    audio_artifact = inputs["audio"]
+    if audio_artifact.type not in (DataType.FILE, DataType.AUDIO):
+        raise TypeError("media.convert_lossless_alac requires a FILE or AUDIO artifact")
+
+    input_path = path_from_file_uri(audio_artifact.uri)
+
+    output_dir = input_path.parent
+    if "output_dir" in config:
+        output_dir = Path(config["output_dir"])
+
+    output_name = config.get("output_name")
+    if output_name:
+        output_path = output_dir / output_name
+    else:
+        output_path = output_dir / f"{input_path.stem}.m4a"
+
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"{input_path.stem}_{counter}.m4a"
+        counter += 1
+
+    verify_bit_exact = config.get("verify_bit_exact", True)
+
+    final_path, pcm_hash = convert_to_alac(
+        input_path=input_path,
+        output_path=output_path,
+        verify=verify_bit_exact,
+    )
+
+    from ktools_core.models import Artifact
+
+    metadata: dict[str, Any] = {
+        "name": final_path.name,
+        "format": "m4a",
+        "codec": "alac",
+        "size_bytes": final_path.stat().st_size,
+    }
+    if pcm_hash:
+        metadata["pcm_sha256"] = pcm_hash
+        metadata["verified_bit_exact"] = True
+
+    out_artifact = Artifact.create(
+        type=DataType.AUDIO,
+        uri=final_path.as_uri(),
+        metadata=metadata,
+    )
+    return {"audio": out_artifact}
