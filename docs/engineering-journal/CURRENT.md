@@ -230,9 +230,24 @@ Architecture result: `packages/ktools-filesystem` owns directory traversal, hand
 
 Result: **RESOLVED / PROMOTED**.
 
-## Next journal focus — M5 Slice 9
+## H-050 — FFprobe absence fallback
+Status: **VALIDATED IN MEDIA EXTRACT AUDIO V1** — imageio-ffmpeg can sometimes fail to bundle fprobe. We added a graceful fallback to parse fmpeg -i stderr to determine if a media stream exists.
 
-1. re-open the exact terminal Slice-8 `main` and inventory unresolved capability owners;
-2. fresh-compare the smallest useful Media capability and any remaining bounded image/document utility;
-3. for Media, establish one FFmpeg/FFprobe process boundary tied to M3 diagnostics and M4 Artifact/cache contracts before broad audio/video extraction;
-4. continue exact-head spec → RED → GREEN → audit → hosted evidence → memory closure.
+## H-051 — Deep diagnostics context
+Status: **VALIDATED IN MEDIA EXTRACT AUDIO V1** — Passing DiagnosticsSession to deeply nested nodes was polluting the functional signature. We added a global ContextVar _ACTIVE_SESSION in ktools_core.diagnostics so any deeply nested utility like 
+un_ffmpeg can securely record subprocess execution telemetry if an active workflow engine session exists.
+
+## M5 Slice 9 closure
+
+Fresh discovery selected Media Extract Audio over Video Compression or PDF utils to establish the FFmpeg integration boundary.
+
+Architecture result: packages/ktools-media/ owns media manipulation. media.extract_audio is NEVER cache policy (due to intermediate extraction to disk), extracts to a .tmp file and replaces the target file atomically. It uses imageio-ffmpeg as an isolated package for cross-platform binary resolution, and leverages 
+ecord_subprocess for M3 diagnostic observability.
+
+Result: **RESOLVED / PROMOTED**.
+
+## Next journal focus — M5 Slice 10
+
+1. re-open the exact terminal Slice-9 main and inventory unresolved capability owners;
+2. fresh-compare Video Compression with remaining PNG to ICO or PDF capabilities;
+3. continue exact-head spec -> RED -> GREEN -> audit -> hosted evidence -> memory closure.

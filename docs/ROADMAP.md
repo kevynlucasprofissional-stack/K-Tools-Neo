@@ -153,45 +153,26 @@ Evidence:
 ADR: `docs/decisions/ADR-030-FOLDER-SCAN-NODE-V1.md`.
 Canonical owner remains `packages/ktools-filesystem`; legacy stable GUI scanners overlap is compatibility debt.
 
-### Slice 9 — FRESH DISCOVERY GATE
+### Slice 9 — Media Extract Audio Node V1
+
+Status: **RESOLVED / PROMOTED**
+
+Fresh terminal-main discovery compared Media capabilities with document/system utils. Media Extract Audio won to establish the ktools-media package boundary, the imageio-ffmpeg cross-platform dependency, and the diagnostic subprocess wrapper required for M3 compliance.
+
+Delivered:
+- packages/ktools-media/ with FFmpeg execution capability (media.extract_audio).
+- ContextVar-based 
+ecord_subprocess inside ktools_core.diagnostics to capture subprocess stdout/stderr and exit codes reliably across functional boundaries.
+- Atomic artifact publication.
+- GitHub Actions CI matrix integration.
+
+### Slice 10 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 
-Inspect exact terminal `main` and compare at minimum:
-- the smallest useful Media capability;
-- any remaining image/document utility only if it offers a clearer contract and stronger product/composition value.
-
-Media must establish a shared FFmpeg/FFprobe process boundary using M3 diagnostics and explicit M4 Artifact/cache semantics before broad audio/video nodes are promoted.
-
-Do not infer the Slice-8 winner from previous preference. Run fresh discovery against the exact terminal Slice-7 mainline.
+Do not infer the Slice-10 winner from previous preference. Run fresh discovery against the exact terminal Slice-9 mainline.
 
 ---
-
-## M6 — Imported application adapters
-Status: **PLANNED** — expose YT-DLP TUI and XCursos through explicit adapters while preserving mature internals.
-
-## M7 — Runtime Contract API for UI
-Status: **PLANNED** — machine-readable Node Pack/catalog/config/workflow/validation/run/artifact/diagnostic contracts.
-
-## M8 — Production Workflow Editor
-Status: **PLANNED** — production xyflow editor consumes runtime truth; frontend does not become engine.
-
-## M9 — Ready-made Tools + Templates
-Status: **PLANNED** — project workflows as simple Tools without duplicate logic.
-
-## M10 — Desktop Product / Packaging
-Status: **PLANNED / DECISION GATED** — choose Windows-first host after runtime/UI contracts stabilize.
-
-## M11 — Agent-first composition
-Status: **LATER** — natural language composes/repairs workflows through the same catalog/runtime.
-
-## M12 — Release hardening
-Status: **CONTINUOUS + FINAL RELEASE GATE** — CI, licenses, duplicate-owner removal, profiling, diagnostics, versioning, security and clean-Windows installer smoke.
-
----
-
-## Execution rule
-
 Take the first unresolved milestone/slice whose prerequisites are satisfied and work through explicit discovery -> spec -> evidence -> RED -> GREEN -> REFACTOR/AUDIT -> regression -> hosted evidence -> memory closure.
 
 Every significant runtime/subprocess/integration capability after M3 includes diagnostics in DoD. Every cacheable capability justifies purity, semantic identity and output validity explicitly. Every file cardinality remains honest. Every multi-output capability states its transaction boundary. Orchestration layers preserve child owners. Third-party decoding/execution boundaries receive explicit version/safety policy before broad reuse. Shared policy extraction requires at least a real second consumer or equivalent evidence; capability-specific output semantics remain separate.
