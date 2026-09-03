@@ -214,13 +214,25 @@ Synchronized memory closure `c3585f5b7f478f53e1c5ef63f72a7b49fbb0cdea` / `336743
 
 Architecture result: `ktools_images.reader` owns guarded Pillow decode/safety/frame/EXIF for both WebP→PNG and Images→PDF; Images→PDF owns RGB/alpha-white/page-order/aggregate-PDF semantics; `image.files_to_pdf: FILE_SET -> PDF` is v1 NEVER; output is one strongly snapshotted PDF Artifact.
 
+## H-048 — A single deterministic scanner can serve direct API and workflow use cases without presentation constraints
+Status: **VALIDATED IN FOLDER SCAN V1** — removing folder traversal from UI export layers cleanly establishes a bounded capability.
+
+## H-049 — Path equivalence does not imply folder content equivalence
+Status: **VALIDATED IN FOLDER SCAN V1** — both folder.literal and folder.scan_files use CachePolicy.NEVER to prevent stale directory discovery before recursive semantic snapshots are supported by ArtifactRegistry.
+
+## M5 Slice 8 closure
+
+Fresh discovery selected Folder Scan Node over Media/Image candidates to canonicalize overlapping legacy file scanning.
+
+Spec `a5e65595fa70f7f313d55f61fa7cf643b205d74f`; RED `df1f94b52f409fd626ec652b3a403092939c9819`; GREEN `1fd2091` / `33702432021`, 5/5.
+
+Architecture result: `packages/ktools-filesystem` owns directory traversal, handling hidden, recursive, extensions, and deterministic ordering. `folder.scan_files: FOLDER -> FILE_SET + JSON` is v1 NEVER. Traversal prevents escapes via symlinks/reparse points.
+
 Result: **RESOLVED / PROMOTED**.
 
-## Next journal focus — M5 Slice 8
+## Next journal focus — M5 Slice 9
 
-1. re-open the exact terminal Slice-7 `main` and inventory unresolved capability owners;
-2. fresh-compare bounded Files/Folders, the smallest useful Media capability and any remaining bounded image/document utility;
-3. for Files/Folders, reconcile overlapping traversal/report semantics before implementation;
-4. for Media, establish one FFmpeg/FFprobe process boundary tied to M3 diagnostics and M4 Artifact/cache contracts before broad audio/video extraction;
-5. do not create generic filesystem/media/publication abstractions from superficial code similarity;
-6. continue exact-head spec → RED → GREEN → audit → hosted evidence → memory closure.
+1. re-open the exact terminal Slice-8 `main` and inventory unresolved capability owners;
+2. fresh-compare the smallest useful Media capability and any remaining bounded image/document utility;
+3. for Media, establish one FFmpeg/FFprobe process boundary tied to M3 diagnostics and M4 Artifact/cache contracts before broad audio/video extraction;
+4. continue exact-head spec → RED → GREEN → audit → hosted evidence → memory closure.

@@ -152,15 +152,34 @@ Evidence/final report: `docs/specs/images-to-pdf-node-v1/`.
 
 The legacy stable GUI Images→PDF implementation is compatibility debt; semantic evolution belongs to `ktools-images`.
 
-### Slice 8 — FRESH DISCOVERY / ACTIVE
+### Slice 8 — Folder Scan Node V1
 
-Slice 7's terminal prerequisite is satisfied. No next capability is preselected.
+Status: **RESOLVED / PROMOTED**
 
-Fresh-inspect from the exact terminal mainline at minimum:
+Delivered:
+- Canonical traversal ownership in `packages/ktools-filesystem`.
+- `folder.literal: -> FOLDER`, v1 NEVER.
+- `folder.scan_files: FOLDER -> FILE_SET + JSON`, v1 NEVER.
+- Configurable recursion, hidden-item, and extension filtering semantics.
+- Security constraints preventing traversal escapes through symlinks or reparse points.
+- Deterministic alphabetical order by relative path.
+- OSErrors accumulation into a JSON report, allowing partial success for valid files.
 
-- bounded Files/Folders operations, including overlapping legacy traversal/report owners and unresolved root/hidden/recursion/symlink-reparse/ordering/permission-error/result-schema semantics;
-- the smallest useful Media capability whose FFmpeg/FFprobe boundary can be specified against M3 diagnostics and M4 Artifact/cache rules;
-- any remaining image/document utility only if it has a clearer bounded contract and stronger composition value than those candidates.
+Evidence:
+- spec `a5e65595fa70f7f313d55f61fa7cf643b205d74f`
+- RED `df1f94b52f409fd626ec652b3a403092939c9819`
+- GREEN `1fd2091` / `33702432021` 5/5
+
+ADR: `docs/decisions/ADR-030-FOLDER-SCAN-NODE-V1.md`.
+Evidence/final report: `docs/specs/folder-scan-node-v1/`.
+
+### Slice 9 — FRESH DISCOVERY GATE
+
+Status: **ACTIVE / NO CANDIDATE SELECTED YET**
+
+Inspect exact terminal `main` and compare at minimum:
+- the smallest useful Media capability;
+- any remaining image/document utility only if it offers a clearer contract and stronger product/composition value.
 
 Do not create a generic filesystem abstraction, generic media framework or cross-domain publication helper before evidence proves a stable shared contract.
 

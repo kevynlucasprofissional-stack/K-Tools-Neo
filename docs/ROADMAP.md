@@ -132,17 +132,34 @@ Evidence:
 ADR: `docs/decisions/ADR-029-IMAGES-TO-PDF-NODE-V1.md`.
 Canonical owner remains `packages/ktools-images`; stable-GUI Images→PDF is compatibility debt.
 
-### Slice 8 — FRESH DISCOVERY GATE
+### Slice 8 — Folder Scan Node V1
+
+Status: **RESOLVED / PROMOTED**
+
+Delivered:
+- Canonical traversal ownership in `packages/ktools-filesystem`.
+- `folder.literal: -> FOLDER`, v1 NEVER.
+- `folder.scan_files: FOLDER -> FILE_SET + JSON`, v1 NEVER.
+- Security constraints rejecting root symlinks and skipping nested symlinks to prevent escapes.
+- Configurable recursion, hidden-item semantics, and extension filtering.
+- Deterministic alphabetical order by relative path.
+- OSErrors accumulation into a JSON report, allowing partial success.
+
+Evidence:
+- spec `a5e65595fa70f7f313d55f61fa7cf643b205d74f`
+- RED `df1f94b52f409fd626ec652b3a403092939c9819`
+- GREEN `1fd2091` / `33702432021` 5/5
+
+ADR: `docs/decisions/ADR-030-FOLDER-SCAN-NODE-V1.md`.
+Canonical owner remains `packages/ktools-filesystem`; legacy stable GUI scanners overlap is compatibility debt.
+
+### Slice 9 — FRESH DISCOVERY GATE
 
 Status: **ACTIVE / NO CANDIDATE SELECTED YET**
 
 Inspect exact terminal `main` and compare at minimum:
-
-- bounded Files/Folders operations;
 - the smallest useful Media capability;
 - any remaining image/document utility only if it offers a clearer contract and stronger product/composition value.
-
-Files/Folders must lock root validity, files/dirs inclusion, hidden handling, recursion, symlink/reparse behavior, deterministic ordering, permission/OSError aggregation, progress/report schema and observation/publication ownership before coding.
 
 Media must establish a shared FFmpeg/FFprobe process boundary using M3 diagnostics and explicit M4 Artifact/cache semantics before broad audio/video nodes are promoted.
 
