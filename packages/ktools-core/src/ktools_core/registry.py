@@ -70,6 +70,7 @@ def load_all_installed_node_packs(registry: NodeRegistry | None = None) -> NodeR
         "ktools_media.node",
         "ktools_system.node",
         "ktools_script.node",
+        "ktools_youtube.node",
     )
     for mod_name in known_packs:
         try:

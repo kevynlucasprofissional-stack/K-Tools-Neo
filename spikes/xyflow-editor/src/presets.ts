@@ -521,4 +521,92 @@ export const WORKFLOW_PRESETS: WorkflowPreset[] = [
       { id: 'pye-3', source: 'py-step-3', target: 'py-step-4', sourceHandle: 'result', targetHandle: 'trigger', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
     ],
   },
+  {
+    id: 'youtube-download-and-join',
+    name: '🎬 Baixar do YouTube e Juntar Vídeos (Pipeline Automático)',
+    description: 'Baixa uma playlist ou partes de vídeo do YouTube e junta automaticamente em um único arquivo final.',
+    category: 'YouTube & Vídeo',
+    icon: '🔻',
+    expectedOutput: {
+      fileName: 'Video_Unificado.mp4',
+      description: 'Vídeo final com todas as partes baixadas unidas',
+      path: 'C:/Users/Public/KTools_Outputs/Video_Unificado.mp4',
+    },
+    nodes: [
+      {
+        id: 'yt-step-1',
+        type: 'ktool',
+        position: { x: 100, y: 150 },
+        data: {
+          type_id: 'youtube.download',
+          stepNumber: 1,
+          label: 'Passo 1: Baixar do YouTube',
+          category: 'Download',
+          description: 'Baixa o vídeo ou as partes da playlist.',
+          inputs: [
+            { id: 'url', type: 'text', label: '🔗 Link do Vídeo ou Playlist' },
+          ],
+          outputs: [
+            { id: 'files', type: 'files', label: '📚 Arquivos Baixados' },
+            { id: 'folder', type: 'folder', label: '📁 Pasta de Destino' },
+          ],
+          config: {
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            media_type: 'video',
+            quality: 'best',
+          },
+          runState: 'IDLE',
+        },
+      },
+      {
+        id: 'yt-step-2',
+        type: 'ktool',
+        position: { x: 550, y: 150 },
+        data: {
+          type_id: 'media.join_videos',
+          stepNumber: 2,
+          label: 'Passo 2: Juntar Vídeos em 1 Só',
+          category: 'Mídia',
+          description: 'Une todas as partes baixadas em um único vídeo.',
+          inputs: [
+            { id: 'videos', type: 'files', label: '📚 Vídeos para Juntar' },
+          ],
+          outputs: [
+            { id: 'video', type: 'video', label: '🎬 Vídeo Final' },
+          ],
+          config: {
+            output_format: 'mp4',
+          },
+          runState: 'IDLE',
+        },
+      },
+      {
+        id: 'yt-step-3',
+        type: 'ktool',
+        position: { x: 980, y: 150 },
+        data: {
+          type_id: 'system.notify',
+          stepNumber: 3,
+          label: 'Passo 3: Avisar no Windows',
+          category: 'Sistema',
+          description: 'Notifica na tela que o download e união terminaram.',
+          inputs: [
+            { id: 'trigger', type: 'any', label: '⚡ Sinal de Término' },
+          ],
+          outputs: [
+            { id: 'delivered', type: 'boolean', label: '✓ Alerta Enviado' },
+          ],
+          config: {
+            title: 'K-Tools Neo — YouTube Pipeline',
+            message: 'O download e a união do vídeo foram concluídos com sucesso!',
+          },
+          runState: 'IDLE',
+        },
+      },
+    ],
+    edges: [
+      { id: 'yte-1', source: 'yt-step-1', target: 'yt-step-2', sourceHandle: 'files', targetHandle: 'videos', animated: true, style: { stroke: '#ef4444', strokeWidth: 2 } },
+      { id: 'yte-2', source: 'yt-step-2', target: 'yt-step-3', sourceHandle: 'video', targetHandle: 'trigger', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+    ],
+  },
 ];

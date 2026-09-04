@@ -798,5 +798,79 @@
         "file_path"
       ]
     }
+  },
+  {
+    "type": "ktool",
+    "type_id": "youtube.download",
+    "label": "🔻 Baixar do YouTube",
+    "description": "Baixa vídeos ou playlists públicas ou autenticadas do YouTube.",
+    "category": "Download & Mídia",
+    "icon": "🔻",
+    "defaultData": {
+      "type_id": "youtube.download",
+      "label": "🔻 Baixar do YouTube",
+      "category": "Download & Mídia",
+      "description": "Baixa vídeos ou playlists diretamente para alimentar outros nós.",
+      "inputs": [
+        {
+          "id": "url",
+          "type": "text",
+          "label": "🔗 Link do Vídeo ou Playlist",
+          "desc": "URL do YouTube (ex: https://youtube.com/watch?v=...)"
+        },
+        {
+          "id": "media_type",
+          "type": "text",
+          "label": "🎬 Tipo de Mídia",
+          "desc": "video ou audio"
+        },
+        {
+          "id": "quality",
+          "type": "text",
+          "label": "📺 Qualidade",
+          "desc": "best, 1080p, 720p"
+        },
+        {
+          "id": "audio_format",
+          "type": "text",
+          "label": "🎵 Formato de Áudio",
+          "desc": "m4a, mp3, wav"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "📚 Arquivos Baixados",
+          "desc": "Lista de vídeos ou áudios para nós seguintes"
+        },
+        {
+          "id": "folder",
+          "type": "folder",
+          "label": "📁 Pasta de Destino",
+          "desc": "Diretório com os arquivos"
+        },
+        {
+          "id": "metadata",
+          "type": "json",
+          "label": "📊 Detalhes do Vídeo",
+          "desc": "Informações completas do download"
+        }
+      ],
+      "config": {
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "media_type": "video",
+        "quality": "best",
+        "audio_format": "m4a"
+      },
+      "essentialFields": [
+        "url",
+        "media_type",
+        "quality"
+      ],
+      "advancedFields": [
+        "audio_format"
+      ]
+    }
   }
 ]

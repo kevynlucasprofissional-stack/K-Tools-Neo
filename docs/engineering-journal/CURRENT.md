@@ -121,9 +121,25 @@ The ROADMAP.md M5 milestone is now complete.
 - Conformance test verified in `packages/ktools-core/tests/test_capability_conformance.py`.
 - ADR-050 accepted.
 
+## Extension: YouTube Download Node Pack (`ktools-youtube`)
+- Conducted mandatory empirical Auth Spike: validated profile persistence across restart via graceful `Browser.close` (code 0), in-memory CDP cookie extraction bypassing Windows App-Bound encryption, public video download without cookies, boundary trapping on auth-restricted videos, dynamic port recycling, headless session reuse, and reauth flow (all 7 spike criteria PASS).
+- Implemented `packages/ktools-youtube` with layered execution architecture:
+  - Layer 1: Public downloads execute with 0 cookies by default.
+  - Layer 2: `YouTubeAuthManager` coordinating `EdgeCdpAuthProvider` (primary Windows with native `msedge.exe` and dedicated profile), `FirefoxAuthProvider`, and `CookieFileAuthProvider`.
+  - `bridge.py`: strict domain whitelist filtering (`.youtube.com`, `.google.com`) and normalization into `http.cookiejar.CookieJar`.
+  - `engine/adapter.py`: parameter generation, JS runtime detection (`node`, `deno`), FFmpeg resolution via `imageio-ffmpeg`.
+  - `engine/service.py`: fallback from public download to active auth session upon auth-boundary errors.
+  - `engine/errors.py`: structured exception hierarchy (`AuthRequiredError`, `ReauthRequiredError`, etc.).
+  - `node.py`: registers canonical `youtube.download` (`url`, `media_type`, `quality`, `audio_format` -> `files: FILE_SET`, `folder`, `metadata`).
+- Wired `ktools_youtube.node` into `ktools_core.registry.load_all_installed_node_packs`.
+- Added 18 unit tests in `packages/ktools-youtube/tests/` (100% passing).
+- Integrated `youtube.download` into `spikes/xyflow-editor/src/catalog.json` and added 7th production preset: **"🎬 Baixar do YouTube e Juntar Vídeos (Pipeline Automático)"** connecting `youtube.download` -> `media.join_videos` -> `system.notify`.
+- Total monorepo tests: 347 passing (0 failures).
+- ADR-051 accepted.
+
 # Current
 All roadmap milestones (M0 through M9) and extensions are fully RESOLVED / PROMOTED.
-K-Tools Neo is complete as a unified, local-first computer capability runtime, visual workflow studio, and agent-native execution substrate (41 typed capabilities, 10 Node Packs).
+K-Tools Neo is complete as a unified, local-first computer capability runtime, visual workflow studio, and agent-native execution substrate (42 typed capabilities, 11 Node Packs).
 
 
 

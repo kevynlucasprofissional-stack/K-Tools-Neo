@@ -33,6 +33,7 @@ class CapabilityConformanceTests(unittest.TestCase):
             "system.process_launch",
             "system.notify",
             "script.python_run",
+            "youtube.download",
         ):
             self.assertIn(cap_id, manifest.capabilities)
 

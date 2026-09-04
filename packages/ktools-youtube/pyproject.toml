@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-youtube"
+version = "0.1.0"
+description = "Official YouTube download capability and auth management for K-Tools Neo"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "ktools-core",
+  "yt-dlp>=2024.08.0",
+  "websockets>=11.0",
+  "imageio-ffmpeg>=0.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

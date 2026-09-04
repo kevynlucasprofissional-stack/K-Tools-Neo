@@ -239,8 +239,16 @@ Migrated utilities:
 - Captures `stdout`, `stderr`, execution time, and exit codes.
 - Added narrative Portuguese editor integration and dedicated Python automation preset in Workflow Studio (ADR-050).
 
+## Extension — YouTube Download Node Pack (`ktools-youtube`) — RESOLVED / PROMOTED
+- Canonical `youtube.download` capability enabling public and authenticated video/playlist downloads.
+- Layered execution: Layer 1 executes public downloads without cookies; Layer 2 routes through `YouTubeAuthManager`.
+- Primary Windows `EdgeCdpAuthProvider` using native Microsoft Edge (`msedge.exe`) with dedicated profile, dynamic 127.0.0.1 loopback ports, graceful `Browser.close` persistence, and in-memory CDP cookie extraction bypassing Windows App-Bound encryption.
+- Fallback to `FirefoxAuthProvider` and `CookieFileAuthProvider`.
+- Complete empirical Auth Spike validation (7/7 tests passing).
+- Seamless pipeline interoperability with `media.join_videos` and Workflow Studio preset (ADR-051).
+
 ## Current Status: COMPLETE
-All 10 roadmap milestones (M0 through M9) plus Python Script Node Pack extension are fully delivered, validated by automated conformance test suites, documented in ADRs, and integrated into `main`.
-K-Tools Neo stands as a unified local-first execution engine, modern node-based visual workflow studio, and agent-native capability runtime (41 typed capabilities across 10 official Node Packs).
+All 10 roadmap milestones (M0 through M9) plus Python Script and YouTube Download Node Packs are fully delivered, validated by automated conformance test suites, documented in ADRs, and integrated into `main`.
+K-Tools Neo stands as a unified local-first execution engine, modern node-based visual workflow studio, and agent-native capability runtime (42 typed capabilities across 11 official Node Packs).
 
 
