@@ -1,15 +1,18 @@
 import { Handle, Position } from '@xyflow/react';
 
 const CATEGORY_COLORS: Record<string, { border: string; bg: string; text: string; badge: string }> = {
-  Media: { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', badge: '#831843' },
-  Text: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', badge: '#064e3b' },
+  Mídia: { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', badge: '#831843' },
+  'Mídia & Nuvem': { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', badge: '#831843' },
+  'Áudio & Voz': { border: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)', text: '#c084fc', badge: '#581c87' },
+  Arquivos: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', badge: '#1e3a8a' },
+  Texto: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', badge: '#064e3b' },
+  'Texto & Produtividade': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', badge: '#064e3b' },
   PDF: { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', badge: '#7f1d1d' },
-  JSON: { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', badge: '#78350f' },
-  Filesystem: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', badge: '#1e3a8a' },
-  Images: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', badge: '#4c1d95' },
-  Documents: { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)', text: '#22d3ee', badge: '#164e63' },
+  'PDF & Documentos': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', badge: '#7f1d1d' },
+  Imagens: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', badge: '#4c1d95' },
+  Sistema: { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', badge: '#312e81' },
+  'Sistema & Auditoria': { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', badge: '#312e81' },
   Core: { border: '#64748b', bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', badge: '#1e293b' },
-  Files: { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', badge: '#312e81' },
 };
 
 const PORT_COLORS: Record<string, string> = {
@@ -23,6 +26,7 @@ const PORT_COLORS: Record<string, string> = {
   json: '#fbbf24',
   pdf: '#f87171',
   number: '#818cf8',
+  boolean: '#10b981',
   any: '#94a3b8',
 };
 
@@ -30,21 +34,33 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
   const category = data.category || 'Core';
   const theme = CATEGORY_COLORS[category] || CATEGORY_COLORS.Core;
   const runState = data.runState || 'IDLE';
+  const isAdvancedMode = data.isAdvancedMode || false;
+  const stepNumber = data.stepNumber;
 
   let stateColor = '#64748b';
-  let stateLabel = 'Pronto';
+  let stateLabel = 'Aguardando';
   if (runState === 'RUNNING') {
     stateColor = '#f59e0b';
-    stateLabel = 'Executando...';
+    stateLabel = 'Processando...';
   } else if (runState === 'SUCCESS') {
     stateColor = '#10b981';
-    stateLabel = 'Concluído';
+    stateLabel = '✓ Concluído';
   } else if (runState === 'ERROR') {
     stateColor = '#ef4444';
-    stateLabel = 'Erro';
+    stateLabel = 'Falhou';
   } else if (runState === 'CACHED') {
     stateColor = '#06b6d4';
-    stateLabel = 'Cached';
+    stateLabel = '✓ Reutilizado (Cache)';
+  }
+
+  // Find key config preview
+  let previewConfig = '';
+  if (data.config) {
+    if (data.config.path) previewConfig = `📂 ${data.config.path}`;
+    else if (data.config.paths) previewConfig = `📄 ${data.config.paths}`;
+    else if (data.config.output_name) previewConfig = `💾 Salvar: ${data.config.output_name}`;
+    else if (data.config.format) previewConfig = `🎵 Formato: ${data.config.format.toUpperCase()}`;
+    else if (data.config.message) previewConfig = `💬 "${data.config.message.slice(0, 28)}..."`;
   }
 
   return (
@@ -53,21 +69,42 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
       data-state={runState}
       style={{
         background: '#131b2e',
-        borderRadius: '12px',
+        borderRadius: '14px',
         border: `2px solid ${selected ? '#38bdf8' : runState === 'IDLE' ? '#1e293b' : stateColor}`,
         boxShadow: selected
-          ? '0 0 0 3px rgba(56, 189, 248, 0.35), 0 8px 24px rgba(0,0,0,0.5)'
+          ? '0 0 0 3px rgba(56, 189, 248, 0.35), 0 10px 28px rgba(0,0,0,0.6)'
           : runState === 'RUNNING'
-          ? '0 0 16px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(0,0,0,0.4)'
+          ? '0 0 20px rgba(245, 158, 11, 0.35), 0 4px 14px rgba(0,0,0,0.5)'
           : '0 4px 16px rgba(0,0,0,0.4)',
-        minWidth: '220px',
-        maxWidth: '300px',
+        minWidth: '240px',
+        maxWidth: '320px',
         color: '#f8fafc',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
         overflow: 'hidden',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
+      {/* Narrative Step Ribbon (if defined) */}
+      {stepNumber && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #1e3a8a, #0284c7)',
+            color: '#e0f2fe',
+            fontSize: '10px',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            padding: '3px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>PASSO {stepNumber}</span>
+          <span style={{ fontSize: '9px', opacity: 0.85 }}>{stateLabel}</span>
+        </div>
+      )}
+
       {/* Node Header */}
       <div
         className="node-header"
@@ -124,19 +161,35 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
         </span>
       </div>
 
-      {/* Node Type ID pill (monospace) */}
-      {data.type_id && (
+      {/* Description / Subtitle */}
+      {data.description && !isAdvancedMode && (
+        <div
+          style={{
+            padding: '6px 14px',
+            fontSize: '11px',
+            color: '#94a3b8',
+            lineHeight: '1.4',
+            background: '#0e1526',
+            borderBottom: '1px solid #1e293b',
+          }}
+        >
+          {data.description}
+        </div>
+      )}
+
+      {/* Node Type ID pill (shown in Advanced Mode) */}
+      {isAdvancedMode && data.type_id && (
         <div
           style={{
             padding: '3px 14px',
             fontSize: '10px',
             fontFamily: 'Consolas, monospace',
             color: '#64748b',
-            background: '#0e1526',
+            background: '#0a0f1d',
             borderBottom: '1px solid #1e293b',
           }}
         >
-          {data.type_id}
+          ID: {data.type_id}
         </div>
       )}
 
@@ -165,7 +218,7 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
           padding: '12px 14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          gap: '10px',
         }}
       >
         {/* Inputs */}
@@ -182,19 +235,20 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
                     alignItems: 'center',
                     justifyContent: 'flex-start',
                   }}
+                  title={`Conexão de Entrada: ${input.label || input.id}`}
                 >
                   <Handle
                     type="target"
                     position={Position.Left}
                     id={input.id}
                     style={{
-                      left: '-18px',
-                      width: '10px',
-                      height: '10px',
+                      left: '-19px',
+                      width: '12px',
+                      height: '12px',
                       borderRadius: '50%',
                       background: pColor,
-                      border: '2px solid #131b2e',
-                      boxShadow: `0 0 6px ${pColor}`,
+                      border: '2px solid #0f172a',
+                      boxShadow: `0 0 8px ${pColor}`,
                     }}
                     isValidConnection={() => true}
                   />
@@ -202,16 +256,18 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
                     <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>
                       {input.label}
                     </span>
-                    <span
-                      style={{
-                        fontSize: '9px',
-                        color: pColor,
-                        opacity: 0.85,
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      :{input.type}
-                    </span>
+                    {isAdvancedMode && (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          color: pColor,
+                          opacity: 0.85,
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        :{input.type}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -227,7 +283,7 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
               display: 'flex',
               flexDirection: 'column',
               gap: '8px',
-              marginTop: data.inputs?.length ? '6px' : '0',
+              marginTop: data.inputs?.length ? '4px' : '0',
             }}
           >
             {data.outputs.map((output: any) => {
@@ -241,34 +297,37 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                   }}
+                  title={`Conexão de Saída: ${output.label || output.id}`}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span
-                      style={{
-                        fontSize: '9px',
-                        color: pColor,
-                        opacity: 0.85,
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      :{output.type}
-                    </span>
                     <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>
                       {output.label}
                     </span>
+                    {isAdvancedMode && (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          color: pColor,
+                          opacity: 0.85,
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        :{output.type}
+                      </span>
+                    )}
                   </div>
                   <Handle
                     type="source"
                     position={Position.Right}
                     id={output.id}
                     style={{
-                      right: '-18px',
-                      width: '10px',
-                      height: '10px',
+                      right: '-19px',
+                      width: '12px',
+                      height: '12px',
                       borderRadius: '50%',
                       background: pColor,
-                      border: '2px solid #131b2e',
-                      boxShadow: `0 0 6px ${pColor}`,
+                      border: '2px solid #0f172a',
+                      boxShadow: `0 0 8px ${pColor}`,
                     }}
                     isValidConnection={() => true}
                   />
@@ -277,83 +336,91 @@ export function KToolNode({ data, selected }: { data: any; selected?: boolean })
             })}
           </div>
         )}
-      </div>
 
-      {/* Node Footer Status */}
-      <div
-        style={{
-          padding: '6px 14px',
-          background: '#0a0f1d',
-          borderTop: '1px solid #1a2337',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '10px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        {/* Key config preview badge */}
+        {previewConfig && (
           <div
             style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: stateColor,
-              boxShadow: runState === 'RUNNING' ? `0 0 8px ${stateColor}` : 'none',
+              background: '#090d16',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              fontSize: '10px',
+              color: '#94a3b8',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              border: '1px solid #1e293b',
             }}
-          />
-          <span style={{ color: stateColor, fontWeight: 500 }}>{stateLabel}</span>
-        </div>
+            title={previewConfig}
+          >
+            {previewConfig}
+          </div>
+        )}
 
-        {data.config && Object.keys(data.config).length > 0 && (
-          <span style={{ color: '#64748b', fontSize: '9px' }}>
-            ⚙️ {Object.keys(data.config).length} cfg
-          </span>
+        {/* Finished / Success Artifact Alert Badge */}
+        {(runState === 'SUCCESS' || runState === 'CACHED') && (
+          <div
+            style={{
+              marginTop: '4px',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34d399',
+              fontSize: '10px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>✓ Executado com Sucesso</span>
+            <span style={{ fontSize: '9px', opacity: 0.85 }}>Ver Resultado</span>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-export function MissingNode({ data, selected }: { data: any; selected?: boolean }) {
+export function MissingNode({ data }: { data: any }) {
   return (
     <div
       className="missing-node"
       style={{
-        background: '#1a0d13',
-        border: `2px dashed ${selected ? '#f43f5e' : '#e11d48'}`,
+        background: '#181216',
         borderRadius: '12px',
-        minWidth: '200px',
-        padding: '14px',
-        color: '#fb7185',
-        boxShadow: '0 4px 16px rgba(225, 29, 72, 0.2)',
+        border: '2px dashed #f43f5e',
+        minWidth: '220px',
+        color: '#f8fafc',
         fontFamily: 'Inter, system-ui, sans-serif',
+        overflow: 'hidden',
+        boxShadow: '0 4px 16px rgba(244, 63, 94, 0.2)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '16px' }}>⚠️</span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase' }}>
-            Nó Ausente / Desconhecido
-          </div>
-          <div style={{ fontSize: '10px', color: '#fda4af', fontFamily: 'monospace', marginTop: '2px' }}>
-            {data.originalType || 'unknown.type'}
-          </div>
-        </div>
+      <div
+        style={{
+          padding: '8px 12px',
+          background: 'rgba(244, 63, 94, 0.2)',
+          borderBottom: '1px solid rgba(244, 63, 94, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          color: '#fda4af',
+          fontSize: '12px',
+          fontWeight: 600,
+        }}
+      >
+        <span>⚠️</span>
+        <span>Extensão Não Encontrada</span>
       </div>
-
-      <div className="node-body" style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {data.inputs?.map((input: any) => (
-          <div key={input.id} style={{ position: 'relative' }}>
-            <Handle type="target" position={Position.Left} id={input.id} style={{ left: '-18px' }} />
-            <span style={{ fontSize: '10px', color: '#fda4af' }}>{input.label}</span>
-          </div>
-        ))}
-        {data.outputs?.map((output: any) => (
-          <div key={output.id} style={{ position: 'relative', textAlign: 'right' }}>
-            <span style={{ fontSize: '10px', color: '#fda4af' }}>{output.label}</span>
-            <Handle type="source" position={Position.Right} id={output.id} style={{ right: '-18px' }} />
-          </div>
-        ))}
+      <div style={{ padding: '12px', fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+        <div>
+          O tipo de nó <code style={{ color: '#f43f5e', background: '#27171d', padding: '1px 4px', borderRadius: '4px' }}>{data.type_id || 'desconhecido'}</code> não está instalado neste ambiente.
+        </div>
+        <div style={{ marginTop: '6px', fontSize: '10px', color: '#64748b' }}>
+          O nó e suas conexões foram preservados no arquivo do fluxo.
+        </div>
       </div>
     </div>
   );

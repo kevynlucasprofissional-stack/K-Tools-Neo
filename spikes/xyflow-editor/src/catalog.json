@@ -1,905 +1,745 @@
 [
   {
     "type": "ktool",
-    "type_id": "core.identity",
-    "label": "Identity",
-    "category": "Core",
+    "type_id": "folder.literal",
+    "label": "📁 Pasta de Entrada",
+    "description": "Indica a pasta do computador onde estão seus arquivos de trabalho.",
+    "category": "Arquivos",
+    "icon": "📁",
     "defaultData": {
-      "type_id": "core.identity",
-      "label": "Identity",
-      "category": "Core",
-      "inputs": [
-        {
-          "id": "value",
-          "type": "any",
-          "label": "value"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "value",
-          "type": "any",
-          "label": "value"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "number.literal",
-    "label": "Número",
-    "category": "Core",
-    "defaultData": {
-      "type_id": "number.literal",
-      "label": "Número",
-      "category": "Core",
+      "type_id": "folder.literal",
+      "label": "📁 Pasta de Entrada",
+      "category": "Arquivos",
+      "description": "Indica a pasta onde estão os arquivos a processar.",
       "inputs": [],
       "outputs": [
         {
-          "id": "number",
-          "type": "number",
-          "label": "number"
+          "id": "folder",
+          "type": "folder",
+          "label": "📁 Pasta de Origem",
+          "desc": "Caminho da pasta selecionada"
         }
       ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "document.split.files",
-    "label": "Dividir documentos",
-    "category": "Documents",
-    "defaultData": {
-      "type_id": "document.split.files",
-      "label": "Dividir documentos",
-      "category": "Documents",
-      "inputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
+      "config": {
+        "path": "C:/Users/Public/Videos"
+      },
+      "essentialFields": [
+        "path"
       ],
-      "outputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        },
-        {
-          "id": "report",
-          "type": "json",
-          "label": "report"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "file.literal",
-    "label": "Arquivo",
-    "category": "Files",
-    "defaultData": {
-      "type_id": "file.literal",
-      "label": "Arquivo",
-      "category": "Files",
-      "inputs": [],
-      "outputs": [
-        {
-          "id": "file",
-          "type": "file",
-          "label": "file"
-        }
-      ],
-      "config": {}
+      "advancedFields": []
     }
   },
   {
     "type": "ktool",
     "type_id": "files.literal",
-    "label": "Arquivos",
-    "category": "Files",
+    "label": "📄 Arquivos Específicos",
+    "description": "Seleciona um ou mais arquivos específicos para enviar para o fluxo.",
+    "category": "Arquivos",
+    "icon": "📄",
     "defaultData": {
       "type_id": "files.literal",
-      "label": "Arquivos",
-      "category": "Files",
+      "label": "📄 Arquivos Específicos",
+      "category": "Arquivos",
+      "description": "Lista de arquivos para processamento individual ou conjunto.",
       "inputs": [],
       "outputs": [
         {
           "id": "files",
-          "type": "file_set",
-          "label": "files"
+          "type": "files",
+          "label": "📚 Lista de Arquivos",
+          "desc": "Arquivos prontos para o próximo passo"
         }
       ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "folder.literal",
-    "label": "Pasta",
-    "category": "Files",
-    "defaultData": {
-      "type_id": "folder.literal",
-      "label": "Pasta",
-      "category": "Files",
-      "inputs": [],
-      "outputs": [
-        {
-          "id": "folder",
-          "type": "folder",
-          "label": "folder"
-        }
+      "config": {
+        "paths": "video1.mp4, video2.mp4"
+      },
+      "essentialFields": [
+        "paths"
       ],
-      "config": {}
+      "advancedFields": []
     }
   },
   {
     "type": "ktool",
     "type_id": "folder.scan_files",
-    "label": "Scan Folder Files",
-    "category": "Files",
+    "label": "🔍 Localizar Arquivos na Pasta",
+    "description": "Varre a pasta e subpastas para encontrar vídeos, áudios ou documentos automaticamente.",
+    "category": "Arquivos",
+    "icon": "🔍",
     "defaultData": {
       "type_id": "folder.scan_files",
-      "label": "Scan Folder Files",
-      "category": "Files",
+      "label": "🔍 Localizar Arquivos na Pasta",
+      "category": "Arquivos",
+      "description": "Encontra arquivos com as extensões desejadas (ex: mp4, mkv).",
       "inputs": [
         {
           "id": "folder",
           "type": "folder",
-          "label": "folder"
+          "label": "📁 Pasta para Varrer",
+          "desc": "Ligue aqui a pasta de origem"
         }
       ],
       "outputs": [
         {
           "id": "files",
-          "type": "file_set",
-          "label": "files"
+          "type": "files",
+          "label": "📚 Arquivos Encontrados",
+          "desc": "Lista de arquivos localizados"
         },
         {
           "id": "report",
           "type": "json",
-          "label": "report"
+          "label": "📊 Relatório da Busca",
+          "desc": "Estatísticas dos arquivos achados"
         }
       ],
-      "config": {}
+      "config": {
+        "extensions": "mp4, mkv, avi, webm",
+        "recursive": true
+      },
+      "essentialFields": [
+        "extensions"
+      ],
+      "advancedFields": [
+        "recursive"
+      ]
     }
   },
   {
     "type": "ktool",
     "type_id": "filesystem.drive_stream_scan",
-    "label": "Drive Streaming Scanner",
-    "category": "Filesystem",
+    "label": "☁️ Varrer Google Drive / OneDrive",
+    "description": "Verifica pastas na nuvem sem baixar tudo para o PC (modo não-hidratante).",
+    "category": "Arquivos",
+    "icon": "☁️",
     "defaultData": {
       "type_id": "filesystem.drive_stream_scan",
-      "label": "Drive Streaming Scanner",
-      "category": "Filesystem",
+      "label": "☁️ Varrer Google Drive / OneDrive",
+      "category": "Arquivos",
+      "description": "Varre diretórios sincronizados do Drive/OneDrive sem travar o sistema.",
       "inputs": [
         {
           "id": "folder",
           "type": "folder",
-          "label": "folder"
+          "label": "📁 Pasta na Nuvem",
+          "desc": "Pasta do Google Drive ou OneDrive"
         }
       ],
       "outputs": [
         {
-          "id": "database",
-          "type": "file",
-          "label": "database"
-        },
-        {
-          "id": "csv",
-          "type": "file",
-          "label": "csv"
-        },
-        {
           "id": "report",
           "type": "json",
-          "label": "report"
+          "label": "📊 Relatório de Itens",
+          "desc": "Resumo dos arquivos na nuvem"
         }
       ],
-      "config": {}
+      "config": {
+        "fast_metadata": true
+      },
+      "essentialFields": [],
+      "advancedFields": [
+        "fast_metadata"
+      ]
     }
   },
   {
     "type": "ktool",
     "type_id": "filesystem.structure_report",
-    "label": "Export Structure Report",
-    "category": "Filesystem",
+    "label": "📊 Gerar Relatório de Estrutura de Pastas",
+    "description": "Cria um mapa visual em árvore ASCII e planilha CSV de todas as subpastas e arquivos.",
+    "category": "Arquivos",
+    "icon": "📊",
     "defaultData": {
       "type_id": "filesystem.structure_report",
-      "label": "Export Structure Report",
-      "category": "Filesystem",
+      "label": "📊 Gerar Relatório de Estrutura",
+      "category": "Arquivos",
+      "description": "Auditoria de armazenamento e relatório completo de pastas.",
       "inputs": [
         {
           "id": "folder",
           "type": "folder",
-          "label": "folder"
+          "label": "📁 Pasta para Auditar",
+          "desc": "Pasta a ser mapeada"
         }
       ],
       "outputs": [
         {
-          "id": "csv",
+          "id": "report_csv",
           "type": "file",
-          "label": "csv"
+          "label": "📑 Planilha CSV",
+          "desc": "Arquivo CSV com tamanhos e datas"
         },
         {
-          "id": "txt",
+          "id": "tree_txt",
           "type": "file",
-          "label": "txt"
-        },
-        {
-          "id": "json",
-          "type": "json",
-          "label": "json"
+          "label": "🌳 Árvore ASCII",
+          "desc": "Arquivo de texto com desenho das pastas"
         }
       ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "image.files_to_pdf",
-    "label": "Imagens para PDF",
-    "category": "Images",
-    "defaultData": {
-      "type_id": "image.files_to_pdf",
-      "label": "Imagens para PDF",
-      "category": "Images",
-      "inputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
+      "config": {
+        "output_dir": "C:/Relatorios_KTools"
+      },
+      "essentialFields": [
+        "output_dir"
       ],
-      "outputs": [
-        {
-          "id": "pdf",
-          "type": "pdf",
-          "label": "pdf"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "image.webp_to_png",
-    "label": "WebP para PNG",
-    "category": "Images",
-    "defaultData": {
-      "type_id": "image.webp_to_png",
-      "label": "WebP para PNG",
-      "category": "Images",
-      "inputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "json.split",
-    "label": "Dividir JSON",
-    "category": "JSON",
-    "defaultData": {
-      "type_id": "json.split",
-      "label": "Dividir JSON",
-      "category": "JSON",
-      "inputs": [
-        {
-          "id": "json_data",
-          "type": "json",
-          "label": "json_data"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "parts",
-          "type": "json",
-          "label": "parts"
-        },
-        {
-          "id": "summary",
-          "type": "json",
-          "label": "summary"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "json.literal",
-    "label": "JSON literal",
-    "category": "JSON",
-    "defaultData": {
-      "type_id": "json.literal",
-      "label": "JSON literal",
-      "category": "JSON",
-      "inputs": [],
-      "outputs": [
-        {
-          "id": "json",
-          "type": "json",
-          "label": "json"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "json.split.plan",
-    "label": "Planejar divisão JSON",
-    "category": "JSON",
-    "defaultData": {
-      "type_id": "json.split.plan",
-      "label": "Planejar divisão JSON",
-      "category": "JSON",
-      "inputs": [
-        {
-          "id": "json_data",
-          "type": "json",
-          "label": "json_data"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "plan",
-          "type": "json",
-          "label": "plan"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.compress_video",
-    "label": "Compress Video",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.compress_video",
-      "label": "Compress Video",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "video",
-          "type": "file",
-          "label": "video"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "video",
-          "type": "video",
-          "label": "video"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.convert_audio",
-    "label": "Convert Audio",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.convert_audio",
-      "label": "Convert Audio",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "audio",
-          "type": "file",
-          "label": "audio"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "audio",
-          "type": "audio",
-          "label": "audio"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.convert_lossless_alac",
-    "label": "Convert to Lossless ALAC",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.convert_lossless_alac",
-      "label": "Convert to Lossless ALAC",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "audio",
-          "type": "file",
-          "label": "audio"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "audio",
-          "type": "audio",
-          "label": "audio"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.deess_audio",
-    "label": "De-ess Audio",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.deess_audio",
-      "label": "De-ess Audio",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "audio",
-          "type": "file",
-          "label": "audio"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "audio",
-          "type": "audio",
-          "label": "audio"
-        }
-      ],
-      "config": {}
+      "advancedFields": []
     }
   },
   {
     "type": "ktool",
     "type_id": "media.extract_audio",
-    "label": "Extract Audio",
-    "category": "Media",
+    "label": "🎵 Extrair Áudio de Vídeo",
+    "description": "Extrai o áudio original de um ou vários vídeos em alta qualidade (WAV ou MP3).",
+    "category": "Mídia",
+    "icon": "🎵",
     "defaultData": {
       "type_id": "media.extract_audio",
-      "label": "Extract Audio",
-      "category": "Media",
+      "label": "🎵 Extrair Áudio de Vídeo",
+      "category": "Mídia",
+      "description": "Converte a trilha de som dos vídeos em arquivos de áudio dedicados.",
       "inputs": [
         {
-          "id": "video",
+          "id": "file",
           "type": "file",
-          "label": "video"
+          "label": "🎬 Vídeo de Entrada",
+          "desc": "Arquivo de vídeo ou lista de vídeos"
         }
       ],
       "outputs": [
         {
           "id": "audio",
           "type": "audio",
-          "label": "audio"
+          "label": "🎵 Áudio Extraído",
+          "desc": "Arquivo de áudio gerado pronto"
         }
       ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.extract_and_join_by_subfolder",
-    "label": "Extract and Join Audio by Subfolder",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.extract_and_join_by_subfolder",
-      "label": "Extract and Join Audio by Subfolder",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "folder",
-          "type": "folder",
-          "label": "folder"
-        }
+      "config": {
+        "format": "wav",
+        "sample_rate": 44100
+      },
+      "essentialFields": [
+        "format"
       ],
-      "outputs": [
-        {
-          "id": "audios",
-          "type": "file_set",
-          "label": "audios"
-        },
-        {
-          "id": "report",
-          "type": "json",
-          "label": "report"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.join_audios",
-    "label": "Join Audios",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.join_audios",
-      "label": "Join Audios",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "audios",
-          "type": "file_set",
-          "label": "audios"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "audio",
-          "type": "audio",
-          "label": "audio"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.join_videos",
-    "label": "Join Videos",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.join_videos",
-      "label": "Join Videos",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "videos",
-          "type": "file_set",
-          "label": "videos"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "video",
-          "type": "video",
-          "label": "video"
-        }
-      ],
-      "config": {}
+      "advancedFields": [
+        "sample_rate"
+      ]
     }
   },
   {
     "type": "ktool",
     "type_id": "media.merge_audio_studio",
-    "label": "Merge Audio Studio",
-    "category": "Media",
+    "label": "🎙️ Juntar Áudios em Arquivo Único",
+    "description": "Combina múltiplos áudios ou vídeos em um só arquivo ordenado (1, 2, 3...) com volume uniforme.",
+    "category": "Mídia",
+    "icon": "🎙️",
     "defaultData": {
       "type_id": "media.merge_audio_studio",
-      "label": "Merge Audio Studio",
-      "category": "Media",
+      "label": "🎙️ Juntar Áudios em Arquivo Único",
+      "category": "Mídia",
+      "description": "Une várias partes em um áudio consolidado com normalização profissional.",
       "inputs": [
         {
-          "id": "sources",
-          "type": "file_set",
-          "label": "sources"
+          "id": "files",
+          "type": "files",
+          "label": "📚 Áudios para Unir",
+          "desc": "Lista de áudios a serem combinados"
         }
       ],
       "outputs": [
         {
-          "id": "audio",
-          "type": "audio",
-          "label": "audio"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "media.split_audio",
-    "label": "Split Audio",
-    "category": "Media",
-    "defaultData": {
-      "type_id": "media.split_audio",
-      "label": "Split Audio",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "audio",
+          "id": "output_file",
           "type": "file",
-          "label": "audio"
+          "label": "✨ Áudio Final Consolidado",
+          "desc": "Arquivo único unificado"
         }
       ],
-      "outputs": [
-        {
-          "id": "pieces",
-          "type": "file_set",
-          "label": "pieces"
-        }
+      "config": {
+        "output_name": "Audio_Consolidado_Final.wav",
+        "normalize": true,
+        "sample_rate": 44100
+      },
+      "essentialFields": [
+        "output_name"
       ],
-      "config": {}
+      "advancedFields": [
+        "normalize",
+        "sample_rate"
+      ]
     }
   },
   {
     "type": "ktool",
-    "type_id": "media.webp_to_png",
-    "label": "WebP to PNG",
-    "category": "Media",
+    "type_id": "media.deess_audio",
+    "label": "🎚️ Limpar Voz e Sibilância (De-Esser)",
+    "description": "Atenua o 's' cortante e reduz chiados de fundo em gravações de voz.",
+    "category": "Mídia",
+    "icon": "🎚️",
     "defaultData": {
-      "type_id": "media.webp_to_png",
-      "label": "WebP to PNG",
-      "category": "Media",
-      "inputs": [
-        {
-          "id": "image",
-          "type": "file",
-          "label": "image"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "image",
-          "type": "image",
-          "label": "image"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "pdf.split.parts",
-    "label": "Dividir PDF",
-    "category": "PDF",
-    "defaultData": {
-      "type_id": "pdf.split.parts",
-      "label": "Dividir PDF",
-      "category": "PDF",
+      "type_id": "media.deess_audio",
+      "label": "🎚️ Limpar Voz (De-Esser)",
+      "category": "Mídia",
+      "description": "Filtro dinâmico que deixa a voz mais suave e limpa sem perder brilho.",
       "inputs": [
         {
           "id": "file",
           "type": "file",
-          "label": "file"
+          "label": "🎵 Áudio Bruto",
+          "desc": "Arquivo de áudio que precisa de tratamento"
         }
       ],
       "outputs": [
         {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "pdf.merge.files",
-    "label": "Juntar PDFs",
-    "category": "PDF",
-    "defaultData": {
-      "type_id": "pdf.merge.files",
-      "label": "Juntar PDFs",
-      "category": "PDF",
-      "inputs": [
-        {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "pdf",
-          "type": "pdf",
-          "label": "pdf"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "pdf.merge",
-    "label": "Merge PDFs",
-    "category": "PDF",
-    "defaultData": {
-      "type_id": "pdf.merge",
-      "label": "Merge PDFs",
-      "category": "PDF",
-      "inputs": [
-        {
-          "id": "pdfs",
-          "type": "file_set",
-          "label": "pdfs"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "pdf",
+          "id": "output_file",
           "type": "file",
-          "label": "pdf"
+          "label": "✨ Áudio Tratado",
+          "desc": "Áudio suave sem sibilância"
         }
       ],
-      "config": {}
+      "config": {
+        "intensity": 0.5,
+        "denoise": true
+      },
+      "essentialFields": [
+        "intensity"
+      ],
+      "advancedFields": [
+        "denoise"
+      ]
     }
   },
   {
     "type": "ktool",
-    "type_id": "pdf.split",
-    "label": "Split PDF",
-    "category": "PDF",
+    "type_id": "media.convert_lossless_alac",
+    "label": "💎 Converter para Áudio Sem Perdas (ALAC)",
+    "description": "Converte WAV para M4A (Apple Lossless) economizando espaço com fidelidade matemática 100%.",
+    "category": "Mídia",
+    "icon": "💎",
     "defaultData": {
-      "type_id": "pdf.split",
-      "label": "Split PDF",
-      "category": "PDF",
-      "inputs": [
-        {
-          "id": "pdf",
-          "type": "file",
-          "label": "pdf"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "parts",
-          "type": "file_set",
-          "label": "parts"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "text.concat",
-    "label": "Concatenar texto",
-    "category": "Text",
-    "defaultData": {
-      "type_id": "text.concat",
-      "label": "Concatenar texto",
-      "category": "Text",
-      "inputs": [
-        {
-          "id": "left",
-          "type": "text",
-          "label": "left"
-        },
-        {
-          "id": "right",
-          "type": "text",
-          "label": "right"
-        }
-      ],
-      "outputs": [
-        {
-          "id": "text",
-          "type": "text",
-          "label": "text"
-        }
-      ],
-      "config": {}
-    }
-  },
-  {
-    "type": "ktool",
-    "type_id": "text.split.parts",
-    "label": "Dividir Markdown/TXT",
-    "category": "Text",
-    "defaultData": {
-      "type_id": "text.split.parts",
-      "label": "Dividir Markdown/TXT",
-      "category": "Text",
+      "type_id": "media.convert_lossless_alac",
+      "label": "💎 Converter para Lossless (ALAC)",
+      "category": "Mídia",
+      "description": "Comprime áudio WAV para M4A sem nenhuma perda acústica com prova SHA-256.",
       "inputs": [
         {
           "id": "file",
           "type": "file",
-          "label": "file"
+          "label": "🎵 Áudio WAV",
+          "desc": "Áudio de alta qualidade"
         }
       ],
       "outputs": [
         {
-          "id": "files",
-          "type": "file_set",
-          "label": "files"
+          "id": "output_file",
+          "type": "file",
+          "label": "✨ Arquivo M4A Lossless",
+          "desc": "Arquivo M4A comprimido sem perdas"
         }
       ],
-      "config": {}
+      "config": {
+        "keep_source": true
+      },
+      "essentialFields": [],
+      "advancedFields": [
+        "keep_source"
+      ]
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.join_videos",
+    "label": "🎬 Juntar Vídeos em Um Só",
+    "description": "Concatena múltiplos vídeos sem perda de qualidade e em alta velocidade.",
+    "category": "Mídia",
+    "icon": "🎬",
+    "defaultData": {
+      "type_id": "media.join_videos",
+      "label": "🎬 Juntar Vídeos em Um Só",
+      "category": "Mídia",
+      "description": "Une vídeos na ordem correta usando cópia rápida de fluxo.",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "📚 Lista de Vídeos",
+          "desc": "Vídeos a serem unidos"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "output_file",
+          "type": "file",
+          "label": "✨ Vídeo Final Unificado",
+          "desc": "Vídeo único resultante"
+        }
+      ],
+      "config": {
+        "output_name": "Video_Completo.mp4"
+      },
+      "essentialFields": [
+        "output_name"
+      ],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "media.compress_video",
+    "label": "🗜️ Reduzir Tamanho do Vídeo (Comprimir)",
+    "description": "Reduz o peso do arquivo de vídeo mantendo ótima qualidade visual para envio ou nuvem.",
+    "category": "Mídia",
+    "icon": "🗜️",
+    "defaultData": {
+      "type_id": "media.compress_video",
+      "label": "🗜️ Reduzir Tamanho do Vídeo",
+      "category": "Mídia",
+      "description": "Comprime vídeos MP4/MKV para diminuir tamanho de armazenamento.",
+      "inputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "🎬 Vídeo Pesado",
+          "desc": "Vídeo original"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "output_file",
+          "type": "file",
+          "label": "✨ Vídeo Otimizado",
+          "desc": "Vídeo leve pronto"
+        }
+      ],
+      "config": {
+        "crf": 23,
+        "preset": "medium"
+      },
+      "essentialFields": [
+        "crf"
+      ],
+      "advancedFields": [
+        "preset"
+      ]
     }
   },
   {
     "type": "ktool",
     "type_id": "text.tldv_extract",
-    "label": "Extrair Transcrição tl;dv",
-    "category": "Text",
+    "label": "📝 Extrair Transcrição de Reunião (tl;dv)",
+    "description": "Converte arquivo HTML salvo do tl;dv em resumo Markdown e legenda SRT.",
+    "category": "Texto",
+    "icon": "📝",
     "defaultData": {
       "type_id": "text.tldv_extract",
-      "label": "Extrair Transcrição tl;dv",
-      "category": "Text",
+      "label": "📝 Extrair Transcrição (tl;dv)",
+      "category": "Texto",
+      "description": "Exporta atas de reuniões, timestamps e transcrições completas.",
       "inputs": [
         {
-          "id": "html",
+          "id": "file",
           "type": "file",
-          "label": "html"
+          "label": "📄 Arquivo HTML tl;dv",
+          "desc": "Página da reunião salva"
         }
       ],
       "outputs": [
         {
           "id": "markdown",
           "type": "file",
-          "label": "markdown"
+          "label": "📑 Documento Markdown",
+          "desc": "Texto limpo com falantes e horários"
         },
         {
           "id": "srt",
           "type": "file",
-          "label": "srt"
-        },
-        {
-          "id": "json",
-          "type": "json",
-          "label": "json"
+          "label": "💬 Legendas SRT",
+          "desc": "Arquivo de legenda para sincronização"
         }
       ],
-      "config": {}
+      "config": {},
+      "essentialFields": [],
+      "advancedFields": []
     }
   },
   {
     "type": "ktool",
     "type_id": "text.merge.files",
-    "label": "Juntar Markdown/TXT",
-    "category": "Text",
+    "label": "📑 Juntar Documentos de Texto (Markdown/TXT)",
+    "description": "Une vários arquivos de texto em um só com separadores organizados.",
+    "category": "Texto",
+    "icon": "📑",
     "defaultData": {
       "type_id": "text.merge.files",
-      "label": "Juntar Markdown/TXT",
-      "category": "Text",
+      "label": "📑 Juntar Textos em Um",
+      "category": "Texto",
+      "description": "Combina relatórios ou anotações em um único documento.",
       "inputs": [
         {
           "id": "files",
-          "type": "file_set",
-          "label": "files"
+          "type": "files",
+          "label": "📚 Textos para Unir",
+          "desc": "Arquivos .txt ou .md"
         }
       ],
       "outputs": [
         {
-          "id": "file",
+          "id": "output_file",
           "type": "file",
-          "label": "file"
+          "label": "✨ Texto Final Unificado",
+          "desc": "Documento completo"
         }
       ],
-      "config": {}
+      "config": {
+        "separator": "\n\n---\n\n"
+      },
+      "essentialFields": [],
+      "advancedFields": [
+        "separator"
+      ]
     }
   },
   {
     "type": "ktool",
-    "type_id": "text.literal",
-    "label": "Texto",
-    "category": "Text",
+    "type_id": "pdf.merge.files",
+    "label": "📕 Juntar Arquivos PDF",
+    "description": "Combina vários PDFs em um só documento na ordem desejada.",
+    "category": "PDF",
+    "icon": "📕",
     "defaultData": {
-      "type_id": "text.literal",
-      "label": "Texto",
-      "category": "Text",
-      "inputs": [],
+      "type_id": "pdf.merge.files",
+      "label": "📕 Juntar Arquivos PDF",
+      "category": "PDF",
+      "description": "Reúne relatórios e páginas avulsas em um PDF encadernado.",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "📚 PDFs para Juntar",
+          "desc": "Lista de PDFs"
+        }
+      ],
       "outputs": [
+        {
+          "id": "pdf",
+          "type": "file",
+          "label": "✨ PDF Final Unificado",
+          "desc": "PDF consolidado"
+        }
+      ],
+      "config": {
+        "output_name": "Documento_Completo.pdf"
+      },
+      "essentialFields": [
+        "output_name"
+      ],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "pdf.split.parts",
+    "label": "✂️ Dividir PDF em Partes",
+    "description": "Separa um PDF longo em blocos menores com quantidade de páginas equilibrada.",
+    "category": "PDF",
+    "icon": "✂️",
+    "defaultData": {
+      "type_id": "pdf.split.parts",
+      "label": "✂️ Dividir PDF em Partes",
+      "category": "PDF",
+      "description": "Divide contratos, apostilas ou livros em volumes menores.",
+      "inputs": [
+        {
+          "id": "file",
+          "type": "file",
+          "label": "📕 PDF Original",
+          "desc": "PDF a ser repartido"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "parts",
+          "type": "files",
+          "label": "📚 Partes Divididas",
+          "desc": "Coleção de PDFs menores"
+        }
+      ],
+      "config": {
+        "parts_count": 2
+      },
+      "essentialFields": [
+        "parts_count"
+      ],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "image.webp_to_png",
+    "label": "🖼️ Converter WebP para PNG",
+    "description": "Converte imagens WebP da internet para PNG mantendo transparência e máxima nitidez.",
+    "category": "Imagens",
+    "icon": "🖼️",
+    "defaultData": {
+      "type_id": "image.webp_to_png",
+      "label": "🖼️ Converter WebP para PNG",
+      "category": "Imagens",
+      "description": "Transforma imagens web em formato universal compatível.",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "📚 Imagens WebP",
+          "desc": "Arquivos .webp"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "✨ Imagens PNG Prontas",
+          "desc": "Arquivos .png convertidos"
+        }
+      ],
+      "config": {},
+      "essentialFields": [],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "image.files_to_pdf",
+    "label": "📸 Criar PDF a partir de Imagens",
+    "description": "Transforma um álbum de fotos ou digitalizações em um arquivo PDF de páginas.",
+    "category": "Imagens",
+    "icon": "📸",
+    "defaultData": {
+      "type_id": "image.files_to_pdf",
+      "label": "📸 Criar PDF de Imagens",
+      "category": "Imagens",
+      "description": "Reúne fotos JPG, PNG ou WebP em um documento PDF organizado.",
+      "inputs": [
+        {
+          "id": "files",
+          "type": "files",
+          "label": "📚 Fotos / Imagens",
+          "desc": "Imagens em ordem"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pdf",
+          "type": "file",
+          "label": "✨ Livro PDF Gerado",
+          "desc": "PDF pronto para leitura/impressão"
+        }
+      ],
+      "config": {
+        "output_name": "Album_Documentos.pdf"
+      },
+      "essentialFields": [
+        "output_name"
+      ],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "system.notify",
+    "label": "🔔 Avisar no Windows ao Terminar",
+    "description": "Emite uma notificação na barra de tarefas do Windows avisando que o processamento terminou.",
+    "category": "Sistema",
+    "icon": "🔔",
+    "defaultData": {
+      "type_id": "system.notify",
+      "label": "🔔 Avisar no Windows",
+      "category": "Sistema",
+      "description": "Dispara alerta no Windows quando todo o fluxo for concluído.",
+      "inputs": [
+        {
+          "id": "trigger",
+          "type": "any",
+          "label": "⚡ Sinal de Conclusão",
+          "desc": "Ligue aqui a saída do último nó"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "delivered",
+          "type": "boolean",
+          "label": "✓ Notificação Enviada",
+          "desc": "Confirmação de envio"
+        }
+      ],
+      "config": {
+        "title": "K-Tools Neo",
+        "message": "Seu processamento foi concluído com sucesso!",
+        "level": "info"
+      },
+      "essentialFields": [
+        "message"
+      ],
+      "advancedFields": [
+        "title",
+        "level"
+      ]
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "system.clipboard_write",
+    "label": "📋 Copiar Resultado para a Área de Transferência",
+    "description": "Copia automaticamente o texto ou caminho do arquivo gerado para o seu Ctrl+V.",
+    "category": "Sistema",
+    "icon": "📋",
+    "defaultData": {
+      "type_id": "system.clipboard_write",
+      "label": "📋 Copiar para Área de Transf.",
+      "category": "Sistema",
+      "description": "Coloca o resultado na área de transferência para colar em qualquer lugar.",
+      "inputs": [
         {
           "id": "text",
           "type": "text",
-          "label": "text"
+          "label": "📄 Texto ou Caminho",
+          "desc": "Conteúdo para copiar"
         }
       ],
-      "config": {}
+      "outputs": [
+        {
+          "id": "success",
+          "type": "boolean",
+          "label": "✓ Copiado com Sucesso",
+          "desc": "Status de gravação"
+        }
+      ],
+      "config": {},
+      "essentialFields": [],
+      "advancedFields": []
+    }
+  },
+  {
+    "type": "ktool",
+    "type_id": "system.host_health",
+    "label": "💻 Diagnóstico do Computador",
+    "description": "Informa uso de disco, memória livre e versão do sistema operacional.",
+    "category": "Sistema",
+    "icon": "💻",
+    "defaultData": {
+      "type_id": "system.host_health",
+      "label": "💻 Diagnóstico do PC",
+      "category": "Sistema",
+      "description": "Métricas de CPU, memória e espaço em disco.",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "health",
+          "type": "json",
+          "label": "📊 Dados de Saúde do PC",
+          "desc": "Relatório de recursos da máquina"
+        }
+      ],
+      "config": {},
+      "essentialFields": [],
+      "advancedFields": []
     }
   }
 ]

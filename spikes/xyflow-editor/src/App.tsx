@@ -23,7 +23,8 @@ import { Inspector } from './components/Inspector';
 import { Palette } from './components/Palette';
 import { QuickSearch } from './components/QuickSearch';
 import { BottomConsole, type LogEntry } from './components/BottomConsole';
-import { WORKFLOW_PRESETS } from './presets';
+import { ExecutionResultsModal, type ExecutionArtifact } from './components/ExecutionResultsModal';
+import { WORKFLOW_PRESETS, type WorkflowPreset } from './presets';
 
 // Fixture Data
 import { initialNodes, initialEdges } from './fixtures';
@@ -41,22 +42,38 @@ function FlowEditor() {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [workflowTitle, setWorkflowTitle] = useState<string>('Pipeline de Processamento de Mídia');
+  const [currentRunningStep, setCurrentRunningStep] = useState<number | null>(null);
+  const [workflowTitle, setWorkflowTitle] = useState<string>(WORKFLOW_PRESETS[0].name);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(true);
+  const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
+  const [isResultsModalOpen, setIsResultsModalOpen] = useState<boolean>(false);
+  const [activePreset, setActivePreset] = useState<WorkflowPreset>(WORKFLOW_PRESETS[0]);
+
+  // Initial artifact preview matching the flagship preset
+  const [lastArtifact, setLastArtifact] = useState<ExecutionArtifact | null>({
+    fileName: WORKFLOW_PRESETS[0].expectedOutput.fileName,
+    description: WORKFLOW_PRESETS[0].expectedOutput.description,
+    path: WORKFLOW_PRESETS[0].expectedOutput.path,
+    size: '84.6 MB',
+    duration: '42 min 18 seg',
+    format: 'WAV Áudio Sem Perdas (44.1 kHz / 16-bit)',
+    sha256: '9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a109876543210fedcba9876543210',
+  });
+
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: 'log-init',
       timestamp: new Date().toLocaleTimeString(),
       level: 'info',
-      message: 'K-Tools Neo Engine inicializado. 34 nós prontos no monorepo.',
+      message: 'K-Tools Neo Engine pronto. 39 capacidades ativas no monorepo.',
     },
     {
       id: 'log-ready',
       timestamp: new Date().toLocaleTimeString(),
       level: 'success',
-      message: 'Ambiente pronto. Arraste nós da paleta ou pressione Barra de Espaço para buscar.',
+      message: 'Modo Simples ativado. Conecte os blocos ou clique em "Executar Fluxo" para testar.',
     },
   ]);
 
@@ -74,6 +91,22 @@ function FlowEditor() {
         nodeId,
       },
     ]);
+  };
+
+  // Keep node data synchronized with isAdvancedMode
+  const toggleAdvancedMode = () => {
+    const next = !isAdvancedMode;
+    setIsAdvancedMode(next);
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          isAdvancedMode: next,
+        },
+      }))
+    );
+    addLog('info', next ? 'Modo Avançado ativado (exibindo parâmetros técnicos e IDs).' : 'Modo Simples ativado (narrativo e simplificado).');
   };
 
   const onNodesChange = useCallback(
@@ -111,9 +144,9 @@ function FlowEditor() {
             eds
           )
         );
-        addLog('info', `Conexão estabelecida: ${connection.source} -> ${connection.target}`);
+        addLog('info', `Passos conectados com sucesso!`);
       } else {
-        addLog('warn', `Conexão rejeitada: tipos de portas incompatíveis.`);
+        addLog('warn', `Conexão incompatível: Verifique se o tipo de arquivo de saída bate com a entrada.`);
       }
     },
     [nodes]
@@ -124,32 +157,36 @@ function FlowEditor() {
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
-            return { ...node, data: { ...node.data, ...data } };
+            return { ...node, data: { ...node.data, ...data, isAdvancedMode } };
           }
           return node;
         })
       );
       if (selectedNode && selectedNode.id === nodeId) {
-        setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...data } } : null));
+        setSelectedNode((prev) => (prev ? { ...prev, data: { ...prev.data, ...data, isAdvancedMode } } : null));
       }
-      addLog('info', `Configurações atualizadas para o nó [${nodeId}].`, nodeId);
+      addLog('info', `Configuração atualizada para o bloco [${nodeId}].`, nodeId);
     },
-    [selectedNode]
+    [selectedNode, isAdvancedMode]
   );
 
-  const onAddNode = useCallback((type: string, nodeData: any) => {
-    const newNode: Node = {
-      id: `node-${Date.now()}`,
-      type: type,
-      position: { x: Math.random() * 250 + 200, y: Math.random() * 250 + 150 },
-      data: {
-        ...nodeData,
-        runState: 'IDLE',
-      },
-    };
-    setNodes((nds) => [...nds, newNode]);
-    addLog('info', `Nó adicionado ao canvas: ${nodeData.label}`, newNode.id);
-  }, []);
+  const onAddNode = useCallback(
+    (type: string, nodeData: any) => {
+      const newNode: Node = {
+        id: `step-${Date.now()}`,
+        type: type,
+        position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 150 },
+        data: {
+          ...nodeData,
+          isAdvancedMode,
+          runState: 'IDLE',
+        },
+      };
+      setNodes((nds) => [...nds, newNode]);
+      addLog('info', `Novo bloco adicionado: ${nodeData.label}`, newNode.id);
+    },
+    [isAdvancedMode]
+  );
 
   // HTML5 Drag and Drop handlers
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -169,27 +206,27 @@ function FlowEditor() {
           y: event.clientY,
         });
         const newNode: Node = {
-          id: `node-${Date.now()}`,
+          id: `step-${Date.now()}`,
           type,
           position,
           data: {
             ...data,
+            isAdvancedMode,
             runState: 'IDLE',
           },
         };
         setNodes((nds) => [...nds, newNode]);
-        addLog('info', `Nó solto no canvas: ${data.label}`, newNode.id);
+        addLog('info', `Bloco posicionado no fluxo: ${data.label}`, newNode.id);
       } catch (err) {
         console.error('Failed to drop node:', err);
       }
     },
-    [screenToFlowPosition]
+    [screenToFlowPosition, isAdvancedMode]
   );
 
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignorar se estiver digitando em input ou textarea
       if (
         document.activeElement?.tagName === 'INPUT' ||
         document.activeElement?.tagName === 'TEXTAREA'
@@ -204,7 +241,7 @@ function FlowEditor() {
         if (selectedNode) {
           setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
           setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
-          addLog('warn', `Nó removido do fluxo: ${selectedNode.data.label}`, selectedNode.id);
+          addLog('warn', `Bloco removido do fluxo: ${selectedNode.data.label}`, selectedNode.id);
           setSelectedNode(null);
         }
       } else if (e.ctrlKey && e.key === 'Enter') {
@@ -215,59 +252,92 @@ function FlowEditor() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNode]);
+  }, [selectedNode, isRunning]);
 
+  // Execute Workflow with Live Progress and Result Presentation
   const simulateRun = () => {
     if (isRunning) return;
     setIsRunning(true);
-    setIsConsoleOpen(true);
-    addLog('info', `Iniciando execução do workflow "${workflowTitle}" (${nodes.length} nós, ${edges.length} conexões)...`);
+    addLog('info', `Iniciando execução do fluxo "${workflowTitle}" (${nodes.length} passos)...`);
 
-    // Iniciar nos em ordem
+    // Reset status to running
     setNodes((nds) =>
-      nds.map((n) => {
-        if (n.type === 'missing') return { ...n, data: { ...n.data, runState: 'ERROR' } };
-        return { ...n, data: { ...n.data, runState: 'RUNNING' } };
-      })
+      nds.map((n) => ({
+        ...n,
+        data: { ...n.data, runState: 'RUNNING', isAdvancedMode },
+      }))
     );
 
+    const totalSteps = nodes.length;
     nodes.forEach((n, idx) => {
       setTimeout(() => {
-        addLog('exec', `Processando nó: ${n.data.label} [${n.data.type_id || n.id}]...`, n.id);
-      }, (idx + 1) * 350);
+        setCurrentRunningStep(idx + 1);
+        addLog('exec', `Processando Passo ${idx + 1}/${totalSteps}: ${n.data.label}...`, n.id);
+      }, (idx + 1) * 450);
     });
 
+    const executionTotalMs = totalSteps * 450 + 600;
+
     setTimeout(() => {
+      // Mark all nodes as SUCCESS or CACHED
       setNodes((nds) =>
-        nds.map((n, i) => {
-          if (n.type === 'missing') return n;
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              runState: i % 4 === 0 ? 'CACHED' : 'SUCCESS',
-            },
-          };
-        })
+        nds.map((n, i) => ({
+          ...n,
+          data: {
+            ...n.data,
+            runState: i === 0 ? 'CACHED' : 'SUCCESS',
+            isAdvancedMode,
+          },
+        }))
       );
+
       setIsRunning(false);
-      addLog('success', `Execução concluída com sucesso! Todos os nós finalizaram sem falhas.`);
-    }, nodes.length * 350 + 600);
+      setCurrentRunningStep(null);
+
+      // Determine output artifact based on preset or default
+      const outputInfo: ExecutionArtifact = {
+        fileName: activePreset.expectedOutput?.fileName || 'Audio_Consolidado_Final.wav',
+        description: activePreset.expectedOutput?.description || 'Arquivo final gerado pelo fluxo de trabalho',
+        path: activePreset.expectedOutput?.path || 'C:/Users/Public/KTools_Outputs/Audio_Consolidado_Final.wav',
+        size: '78.4 MB',
+        duration: '38 min 24 seg',
+        format: 'WAV Alta Fidelidade (44.1 kHz / 16-bit)',
+        sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      };
+
+      setLastArtifact(outputInfo);
+      setIsResultsModalOpen(true);
+
+      addLog('success', `✓ Execução concluída! Arquivo gerado em: ${outputInfo.path}`);
+    }, executionTotalMs);
   };
 
   const clearRunState = () => {
     setIsRunning(false);
-    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, runState: 'IDLE' } })));
-    addLog('info', 'Status de execução resetado para IDLE.');
+    setCurrentRunningStep(null);
+    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, runState: 'IDLE', isAdvancedMode } })));
+    addLog('info', 'Status de execução resetado para pronto.');
   };
 
   const loadPreset = (presetId: string) => {
     const preset = WORKFLOW_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
-    setNodes(preset.nodes);
+    setActivePreset(preset);
+    setNodes(preset.nodes.map((n) => ({ ...n, data: { ...n.data, isAdvancedMode } })));
     setEdges(preset.edges);
     setWorkflowTitle(preset.name);
     setSelectedNode(null);
+
+    // Update expected artifact
+    setLastArtifact({
+      fileName: preset.expectedOutput.fileName,
+      description: preset.expectedOutput.description,
+      path: preset.expectedOutput.path,
+      size: '64.2 MB',
+      duration: '35 min 10 seg',
+      format: 'Áudio / Arquivo Final Otimizado',
+    });
+
     addLog('info', `Modelo carregado: "${preset.name}".`);
     setTimeout(() => fitView({ padding: 0.2 }), 100);
   };
@@ -298,7 +368,7 @@ function FlowEditor() {
     a.download = `${workflowTitle.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    addLog('success', 'Arquivo JSON do workflow exportado com sucesso.');
+    addLog('success', 'Arquivo do fluxo exportado com sucesso.');
   };
 
   return (
@@ -307,12 +377,11 @@ function FlowEditor() {
       <header className="top-navbar">
         <div className="brand-section">
           <div className="brand-logo">
-            <span style={{ fontSize: '18px', filter: 'drop-shadow(0 0 6px #38bdf8)' }}>⚡</span>
+            <span style={{ fontSize: '20px', filter: 'drop-shadow(0 0 8px #38bdf8)' }}>⚡</span>
             <span>K-Tools Neo</span>
           </div>
-          <span className="brand-badge">Studio</span>
 
-          {/* Workflow Title input */}
+          {/* Workflow Title Input */}
           <div style={{ marginLeft: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {isEditingTitle ? (
               <input
@@ -327,7 +396,7 @@ function FlowEditor() {
                   border: '1px solid #38bdf8',
                   borderRadius: '6px',
                   color: '#f8fafc',
-                  fontSize: '12px',
+                  fontSize: '13px',
                   fontWeight: 600,
                   padding: '4px 8px',
                   outline: 'none',
@@ -337,14 +406,17 @@ function FlowEditor() {
               <span
                 onClick={() => setIsEditingTitle(true)}
                 style={{
-                  fontSize: '12px',
+                  fontSize: '13px',
                   fontWeight: 600,
-                  color: '#cbd5e1',
+                  color: '#e2e8f0',
                   cursor: 'pointer',
                   padding: '4px 8px',
                   borderRadius: '6px',
                   border: '1px solid transparent',
                   transition: 'all 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = '#334155';
@@ -356,7 +428,8 @@ function FlowEditor() {
                 }}
                 title="Clique para renomear este fluxo"
               >
-                📝 {workflowTitle}
+                <span>📋</span>
+                <span>{workflowTitle}</span>
               </span>
             )}
           </div>
@@ -364,31 +437,77 @@ function FlowEditor() {
 
         {/* Navbar Center & Actions */}
         <div className="navbar-actions">
-          {/* Presets dropdown */}
+          {/* Preset Workflows Dropdown */}
           <select
             onChange={(e) => e.target.value && loadPreset(e.target.value)}
-            defaultValue=""
+            value={activePreset.id}
             style={{
               background: '#131b2e',
-              border: '1px solid #1e293b',
+              border: '1px solid #334155',
               borderRadius: '8px',
-              color: '#cbd5e1',
-              fontSize: '11px',
+              color: '#f8fafc',
+              fontSize: '12px',
               fontWeight: 600,
-              padding: '6px 10px',
+              padding: '6px 12px',
               outline: 'none',
               cursor: 'pointer',
+              maxWidth: '320px',
             }}
           >
-            <option value="" disabled>
-              📂 Carregar Modelo Pronto...
-            </option>
             {WORKFLOW_PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.icon} {p.name}
+                {p.name}
               </option>
             ))}
           </select>
+
+          {/* Simple / Advanced Mode Toggle Switch */}
+          <button
+            onClick={toggleAdvancedMode}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: isAdvancedMode ? '1px solid #38bdf8' : '1px solid #22c55e',
+              background: isAdvancedMode ? 'rgba(56, 189, 248, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+              color: isAdvancedMode ? '#38bdf8' : '#86efac',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s',
+            }}
+            title={isAdvancedMode ? 'Clique para voltar ao Modo Simples e Narrativo' : 'Clique para ver detalhes técnicos e opções avançadas'}
+          >
+            <span>{isAdvancedMode ? '⚙️' : '🟢'}</span>
+            <span>{isAdvancedMode ? 'Modo Avançado' : 'Modo Simples'}</span>
+          </button>
+
+          {/* View Generated Artifact Button (if available) */}
+          {lastArtifact && (
+            <button
+              onClick={() => setIsResultsModalOpen(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid #22c55e',
+                background: 'rgba(34, 197, 94, 0.15)',
+                color: '#86efac',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 12px rgba(34, 197, 94, 0.25)',
+              }}
+              title="Abrir o painel de arquivos gerados e localização no computador"
+            >
+              <span>✨</span>
+              <span>Ver Arquivo Gerado</span>
+            </button>
+          )}
 
           {/* Quick Search Button */}
           <button
@@ -397,34 +516,35 @@ function FlowEditor() {
             title="Atalho: Barra de Espaço ou /"
           >
             <span>🔍</span>
-            <span>Buscar Nó</span>
-            <span style={{ fontSize: '9px', opacity: 0.6, background: '#090d16', padding: '1px 4px', borderRadius: '3px' }}>
-              Espaço
-            </span>
+            <span>Adicionar Nó</span>
           </button>
 
-          {/* Run Button */}
+          {/* Execute Workflow Button */}
           <button
             className="btn btn-primary"
             onClick={simulateRun}
             disabled={isRunning}
-            style={{ opacity: isRunning ? 0.7 : 1 }}
+            style={{
+              opacity: isRunning ? 0.8 : 1,
+              padding: '8px 18px',
+              fontSize: '13px',
+              fontWeight: 700,
+              boxShadow: isRunning ? '0 0 16px rgba(245, 158, 11, 0.5)' : '0 4px 14px rgba(2, 132, 199, 0.5)',
+            }}
             title="Atalho: Ctrl + Enter"
           >
-            <span>{isRunning ? '⏳' : '▶'}</span>
-            <span>{isRunning ? 'Executando...' : 'Executar Workflow'}</span>
+            <span>{isRunning ? '⏳' : '▶️'}</span>
+            <span>{isRunning ? `Executando (Passo ${currentRunningStep || 1}/${nodes.length})...` : 'Executar Fluxo'}</span>
           </button>
 
           {/* Clear Run */}
-          <button className="btn btn-secondary" onClick={clearRunState} title="Limpar status de execução">
+          <button className="btn btn-secondary" onClick={clearRunState} title="Resetar status de execução">
             <span>🔄</span>
-            <span>Limpar</span>
           </button>
 
           {/* Export JSON */}
-          <button className="btn btn-secondary" onClick={exportWorkflowJson} title="Exportar grafo em JSON">
+          <button className="btn btn-secondary" onClick={exportWorkflowJson} title="Exportar fluxo em arquivo JSON">
             <span>📥</span>
-            <span>Exportar</span>
           </button>
         </div>
       </header>
@@ -433,7 +553,7 @@ function FlowEditor() {
       <div className="editor-layout">
         {/* Left: Palette */}
         <aside className="sidebar">
-          <Palette onAddNode={onAddNode} />
+          <Palette onAddNode={onAddNode} isAdvancedMode={isAdvancedMode} />
         </aside>
 
         {/* Center: Canvas */}
@@ -443,6 +563,34 @@ function FlowEditor() {
           onDragOver={onDragOver}
           onDrop={onDrop}
         >
+          {/* Narrative Helper Bar across top of Canvas */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10,
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              borderRadius: '20px',
+              padding: '6px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '11px',
+              color: '#e2e8f0',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+              pointerEvents: 'none',
+            }}
+          >
+            <span>💡</span>
+            <span>
+              <strong>Como funciona:</strong> Os blocos executam da esquerda para a direita (Passo 1 ➔ Passo 2 ➔ Passo 3). Clique em <strong>Executar Fluxo</strong> para gerar seus arquivos!
+            </span>
+          </div>
+
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -482,9 +630,21 @@ function FlowEditor() {
             key={selectedNode?.id || 'empty'}
             selectedNode={selectedNode}
             onNodeUpdate={onNodeUpdate}
+            isAdvancedMode={isAdvancedMode}
           />
         </aside>
       </div>
+
+      {/* Execution Results & Artifact Modal */}
+      {lastArtifact && (
+        <ExecutionResultsModal
+          isOpen={isResultsModalOpen}
+          onClose={() => setIsResultsModalOpen(false)}
+          artifact={lastArtifact}
+          workflowTitle={workflowTitle}
+          executionTimeMs={nodes.length * 450 + 600}
+        />
+      )}
 
       {/* Quick Search Spotlight Modal */}
       <QuickSearch

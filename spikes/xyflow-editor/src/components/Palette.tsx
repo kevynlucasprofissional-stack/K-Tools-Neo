@@ -2,36 +2,65 @@ import { useState, useMemo } from 'react';
 import { nodeCatalog } from '../fixtures';
 
 const CATEGORY_COLORS: Record<string, { border: string; bg: string; text: string }> = {
-  Media: { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6' },
-  Text: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399' },
+  Mídia: { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6' },
+  Arquivos: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa' },
+  Texto: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399' },
   PDF: { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171' },
-  JSON: { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24' },
-  Filesystem: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa' },
-  Images: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa' },
-  Documents: { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)', text: '#22d3ee' },
+  Imagens: { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa' },
+  Sistema: { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8' },
   Core: { border: '#64748b', bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8' },
-  Files: { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8' },
 };
 
-export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) => void }) {
+export function Palette({
+  onAddNode,
+  isAdvancedMode,
+}: {
+  onAddNode: (type: string, data: any) => void;
+  isAdvancedMode: boolean;
+}) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
 
   const categories = useMemo(() => {
-    const cats = new Set(nodeCatalog.map((n) => n.category));
-    return ['All', ...Array.from(cats).sort()];
+    const cats = new Set(nodeCatalog.map((n) => n.category || 'Geral'));
+    return ['Todos', ...Array.from(cats).sort()];
   }, []);
 
   const filteredNodes = useMemo(() => {
     return nodeCatalog.filter((item) => {
+      const label = item.label || '';
+      const desc = item.description || '';
+      const category = item.category || '';
+      const typeId = item.type_id || '';
+
+      const term = searchTerm.toLowerCase();
       const matchesSearch =
-        item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.type_id && item.type_id.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+        label.toLowerCase().includes(term) ||
+        desc.toLowerCase().includes(term) ||
+        category.toLowerCase().includes(term) ||
+        typeId.toLowerCase().includes(term);
+
+      const matchesCategory = selectedCategory === 'Todos' || category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [searchTerm, selectedCategory]);
+
+  const onDragStart = (event: React.DragEvent, nodeItem: any) => {
+    event.dataTransfer.setData(
+      'application/reactflow',
+      JSON.stringify({
+        type: nodeItem.type,
+        data: {
+          ...nodeItem.defaultData,
+          label: nodeItem.label,
+          category: nodeItem.category,
+          description: nodeItem.description,
+          icon: nodeItem.icon,
+        },
+      })
+    );
+    event.dataTransfer.effectAllowed = 'move';
+  };
 
   return (
     <div
@@ -46,9 +75,14 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
     >
       <div style={{ paddingBottom: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
-            Biblioteca de Nós
-          </h3>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>
+              Biblioteca de Ações
+            </h3>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>
+              Arraste para o fluxo para usar
+            </span>
+          </div>
           <span
             style={{
               fontSize: '10px',
@@ -59,7 +93,7 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
               fontWeight: 700,
             }}
           >
-            {filteredNodes.length} nós
+            {filteredNodes.length} blocos
           </span>
         </div>
 
@@ -67,7 +101,7 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
         <div style={{ position: 'relative', marginTop: '6px' }}>
           <input
             type="text"
-            placeholder="Buscar nó por nome ou tipo..."
+            placeholder="O que você deseja fazer? (ex: extrair som, juntar vídeos)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -94,8 +128,6 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
             flexWrap: 'wrap',
             gap: '4px',
             marginTop: '8px',
-            maxHeight: '65px',
-            overflowY: 'auto',
           }}
         >
           {categories.map((cat) => {
@@ -133,7 +165,7 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
           paddingRight: '4px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px',
+          gap: '8px',
         }}
       >
         {filteredNodes.map((item) => {
@@ -141,46 +173,48 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
           return (
             <div
               key={item.type_id || item.label}
-              className="palette-item"
+              className="palette-card"
               draggable
-              onDragStart={(event) => {
-                event.dataTransfer.setData(
-                  'application/reactflow',
-                  JSON.stringify({ type: item.type, data: item.defaultData })
-                );
-                event.dataTransfer.effectAllowed = 'move';
-              }}
+              onDragStart={(e) => onDragStart(e, item)}
+              onClick={() =>
+                onAddNode(item.type, {
+                  ...item.defaultData,
+                  label: item.label,
+                  category: item.category,
+                  description: item.description,
+                })
+              }
               style={{
                 padding: '10px 12px',
-                background: '#131b2e',
+                background: '#0e1526',
                 border: '1px solid #1e293b',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 cursor: 'grab',
-                transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '3px',
+                gap: '4px',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#38bdf8';
-                e.currentTarget.style.background = '#18223a';
+                e.currentTarget.style.borderColor = theme.border;
+                e.currentTarget.style.background = '#131e36';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = '#1e293b';
-                e.currentTarget.style.background = '#131b2e';
+                e.currentTarget.style.background = '#0e1526';
                 e.currentTarget.style.transform = 'none';
               }}
-              onClick={() => onAddNode(item.type, item.defaultData)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: '12px', color: '#f8fafc' }}>{item.label}</strong>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>
+                  {item.label}
+                </span>
                 <span
                   style={{
                     fontSize: '9px',
                     fontWeight: 700,
-                    textTransform: 'uppercase',
-                    padding: '2px 6px',
+                    padding: '1px 6px',
                     borderRadius: '8px',
                     background: theme.bg,
                     color: theme.text,
@@ -190,8 +224,15 @@ export function Palette({ onAddNode }: { onAddNode: (type: string, data: any) =>
                   {item.category}
                 </span>
               </div>
-              {item.type_id && (
-                <div style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+
+              {item.description && (
+                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.3' }}>
+                  {item.description}
+                </div>
+              )}
+
+              {isAdvancedMode && item.type_id && (
+                <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#64748b' }}>
                   {item.type_id}
                 </div>
               )}
