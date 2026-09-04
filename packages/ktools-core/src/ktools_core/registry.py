@@ -27,6 +27,10 @@ class NodeRegistry:
         self._definitions[definition.type_id] = definition
         self._handlers[definition.type_id] = handler
 
+    @property
+    def definitions(self) -> dict[str, NodeDefinition]:
+        return dict(self._definitions)
+
     def definition(self, type_id: str) -> NodeDefinition:
         try:
             return self._definitions[type_id]
@@ -48,3 +52,29 @@ class NodeRegistry:
 
     def type_ids(self) -> tuple[str, ...]:
         return tuple(sorted(self._definitions))
+
+
+def load_all_installed_node_packs(registry: NodeRegistry | None = None) -> NodeRegistry:
+    from .builtin import register_builtin_nodes
+
+    reg = registry or NodeRegistry()
+    register_builtin_nodes(reg)
+
+    known_packs = (
+        "ktools_json.node",
+        "ktools_text.node",
+        "ktools_pdf.node",
+        "ktools_documents.node",
+        "ktools_images.node",
+        "ktools_filesystem.node",
+        "ktools_media.node",
+    )
+    for mod_name in known_packs:
+        try:
+            mod = __import__(mod_name, fromlist=["register_nodes"])
+            if hasattr(mod, "register_nodes"):
+                mod.register_nodes(reg)
+        except ImportError:
+            pass
+
+    return reg

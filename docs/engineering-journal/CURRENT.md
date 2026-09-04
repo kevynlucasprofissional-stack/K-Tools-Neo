@@ -70,6 +70,16 @@ The ROADMAP.md M5 milestone is now complete.
 - All behavior and engine tests passing (14/14 in ktools-filesystem).
 - ADR-045 accepted.
 
+## Milestone M6: Agent Capability Interface V1
+- Implemented `CapabilityManifest` with `SideEffectClass` projections in `ktools_core.manifest`.
+- Implemented `ExecutionReceipt` schema and `ArtifactRecord` in `ktools_core.receipt`.
+- Implemented unified `CapabilityInvoker` in `ktools_core.invoker`.
+- Implemented native Model Context Protocol (MCP) server in `ktools_core.mcp_server`.
+- Extended CLI with `capabilities list`, `describe`, `invoke`, and `mcp` in `ktools_core.cli`.
+- Authored agent skill playbook in `skills/ktools-capabilities/SKILL.md`.
+- Conformance test suite (`test_capability_conformance.py`) proves parity between WorkflowEngine, Direct API, CLI, and MCP across all 34 capabilities.
+- ADR-046 accepted.
+
 # Current
-All 8 requested standalone legacy Python utilities are fully implemented as node packs across `ktools-media`, `ktools-text`, and `ktools-filesystem`!
-All tests across the entire repository are passing.
+Milestone M6 is RESOLVED / PROMOTED.
+Proceeding to Milestone M7: System Capabilities, Events + Scoped Safety.

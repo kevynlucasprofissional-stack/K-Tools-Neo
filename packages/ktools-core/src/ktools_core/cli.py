@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -10,10 +11,98 @@ from .builtin import register_builtin_nodes
 from .cache_store import NodeCache, SQLiteNodeCache
 from .diagnostics import DiagnosticsSession
 from .engine import WorkflowEngine, WorkflowExecutionError, WorkflowValidationError
+from .invoker import CapabilityInvoker
 from .journal import RunJournal
+from .manifest import generate_capability_manifest
+from .mcp_server import KToolsMCPServer
 from .models import Artifact, WorkflowDefinition
-from .registry import NodeRegistry
+from .registry import NodeRegistry, load_all_installed_node_packs
 from .sqlite_journal import SQLiteRunJournal
+
+
+def _handle_capability_cli(argv: list[str]) -> int:
+    registry = load_all_installed_node_packs()
+    invoker = CapabilityInvoker(registry)
+
+    if not argv:
+        print("Usage: ktools [capabilities | mcp | <workflow.json>]")
+        return 1
+
+    cmd = argv[0]
+
+    if cmd == "mcp":
+        server = KToolsMCPServer(registry, invoker)
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                req = json.loads(line)
+                res = server.handle_request(req)
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
+            except Exception as exc:
+                err_res = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(exc)}}
+                sys.stdout.write(json.dumps(err_res) + "\n")
+                sys.stdout.flush()
+        return 0
+
+    subcmd = argv[1] if len(argv) > 1 else "list"
+
+    if subcmd == "list":
+        manifest = generate_capability_manifest(registry)
+        if "--json" in argv:
+            print(manifest.to_json())
+        else:
+            print(f"K-Tools Neo — Available Capabilities ({len(manifest.capabilities)}):")
+            for cap_id, cap in sorted(manifest.capabilities.items()):
+                print(f"  • {cap_id:36} [{cap.category:12}] {cap.title} ({cap.side_effect_class.value})")
+        return 0
+
+    if subcmd == "describe":
+        if len(argv) < 3:
+            print("Error: specify capability ID. Example: ktools capabilities describe text.concat")
+            return 1
+        cap_id = argv[2]
+        manifest = generate_capability_manifest(registry)
+        if cap_id not in manifest.capabilities:
+            print(f"Error: Unknown capability '{cap_id}'")
+            return 1
+        cap = manifest.capabilities[cap_id]
+        print(json.dumps(cap.to_dict(), indent=2, ensure_ascii=False))
+        return 0
+
+    if subcmd == "invoke":
+        if len(argv) < 3:
+            print("Error: specify capability ID. Example: ktools capabilities invoke text.concat --input a=1 --input b=2")
+            return 1
+        cap_id = argv[2]
+        inputs = {}
+        idx = 3
+        while idx < len(argv):
+            arg = argv[idx]
+            if arg in ("--input", "-i") and idx + 1 < len(argv):
+                val = argv[idx + 1]
+                if "=" in val:
+                    k, v = val.split("=", 1)
+                    inputs[k] = v
+                idx += 2
+            elif arg == "--input-json" and idx + 1 < len(argv):
+                try:
+                    inputs.update(json.loads(argv[idx + 1]))
+                except Exception as exc:
+                    print(f"Error parsing --input-json: {exc}")
+                    return 1
+                idx += 2
+            else:
+                idx += 1
+
+        receipt = invoker.invoke(cap_id, inputs=inputs)
+        print(receipt.to_json())
+        return 0 if receipt.status.value == "SUCCESS" else 1
+
+    print(f"Error: Unknown subcommand '{subcmd}'. Available: list, describe, invoke")
+    return 1
 
 
 def _jsonable(value: Any) -> Any:
@@ -53,6 +142,10 @@ def _latest_correlation(diagnostics: DiagnosticsSession | None) -> tuple[str | N
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw_args = list(sys.argv[1:]) if argv is None else list(argv)
+    if raw_args and raw_args[0] in ("capabilities", "capability", "mcp"):
+        return _handle_capability_cli(raw_args)
+
     parser = argparse.ArgumentParser(description="Execute a K-Tools Neo workflow JSON file")
     parser.add_argument("workflow", type=Path)
     parser.add_argument("--json", action="store_true", dest="json_output")
@@ -207,3 +300,7 @@ def main(argv: list[str] | None = None) -> int:
             cache.close()
         if artifact_registry is not None:
             artifact_registry.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -266,9 +266,16 @@ This boundary prevents K-Tools from becoming a second conversational memory, Kan
 
 ## M6 — Agent Capability Interface V1
 
-Status: **PLANNED / POST-M5 STRATEGIC HORIZON**
+Status: **RESOLVED (ADR-046)**
 
-**Purpose:** make the same canonical capabilities consumable by AI agents and external automation clients without building a second implementation beside workflow nodes.
+**Delivered:**
+- `packages/ktools-core/src/ktools_core/manifest.py`: `CapabilityManifest` and `CapabilityDefinition` projection with `SideEffectClass`.
+- `packages/ktools-core/src/ktools_core/receipt.py`: Machine-consumable `ExecutionReceipt` schema.
+- `packages/ktools-core/src/ktools_core/invoker.py`: `CapabilityInvoker` unifying direct execution, RunJournal durability, and Diagnostics evidence.
+- `packages/ktools-core/src/ktools_core/mcp_server.py`: Standard Model Context Protocol (MCP) JSON-RPC server over stdio.
+- `packages/ktools-core/src/ktools_core/cli.py`: CLI commands `ktools capabilities list`, `describe`, `invoke`, and `mcp`.
+- `skills/ktools-capabilities/SKILL.md`: Playbook guiding agents on discovering and invoking capabilities.
+- Full end-to-end conformance test suite (`test_capability_conformance.py`) proving parity between WorkflowEngine, Direct API, CLI, and MCP.
 
 ### M6.1 — Versioned Capability Manifest
 
