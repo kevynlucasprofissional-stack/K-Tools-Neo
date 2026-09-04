@@ -111,9 +111,19 @@ The ROADMAP.md M5 milestone is now complete.
 - All 94 core tests and full multi-package suite passing across the entire workspace.
 - ADR-049 accepted.
 
+## Extension: Python Script Node Pack (`ktools-script`)
+- Created `packages/ktools-script` implementing safe execution runner (`runner.py`) with stdout/stderr capture, execution duration timing, and flexible return variable handling.
+- Registered canonical `script.python_run` node definition in `ktools_script.node` with `CachePolicy.NEVER`.
+- Wired `"ktools_script.node"` into `ktools_core.registry.load_all_installed_node_packs`.
+- Added unit tests for runner (`test_script_runner.py`) and node integration (`test_script_node.py`).
+- Integrated `script.python_run` into `spikes/xyflow-editor/src/catalog.json` with Simple Mode narrative title ("🐍 Script Python") and inputs/outputs.
+- Added 6th visual workflow preset in `presets.ts` ("🐍 Automação com Script Python (Filtrar e Processar)").
+- Conformance test verified in `packages/ktools-core/tests/test_capability_conformance.py`.
+- ADR-050 accepted.
+
 # Current
-All roadmap milestones (M0 through M9) are fully RESOLVED / PROMOTED.
-K-Tools Neo is complete as a unified, local-first computer capability runtime, visual workflow studio, and agent-native execution substrate.
+All roadmap milestones (M0 through M9) and extensions are fully RESOLVED / PROMOTED.
+K-Tools Neo is complete as a unified, local-first computer capability runtime, visual workflow studio, and agent-native execution substrate (41 typed capabilities, 10 Node Packs).
 
 
 

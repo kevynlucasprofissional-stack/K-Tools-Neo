@@ -32,6 +32,7 @@ class CapabilityConformanceTests(unittest.TestCase):
             "system.host_health",
             "system.process_launch",
             "system.notify",
+            "script.python_run",
         ):
             self.assertIn(cap_id, manifest.capabilities)
 

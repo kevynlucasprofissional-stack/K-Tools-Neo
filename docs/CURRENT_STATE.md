@@ -233,8 +233,14 @@ Migrated utilities:
 - Workflow-as-Capability adapter with automated `core.literal` input feeder synthesis.
 - Machine readiness check (`check_readiness`) and `ReadinessReport` (ADR-049).
 
+## Extension — Python Script Node Pack (`ktools-script`) — RESOLVED / PROMOTED
+- Canonical `script.python_run` capability enabling inline code and external `.py` file execution inside DAGs.
+- Isolated namespace execution with `inputs`, `data`, `args`, and `outputs` mappings.
+- Captures `stdout`, `stderr`, execution time, and exit codes.
+- Added narrative Portuguese editor integration and dedicated Python automation preset in Workflow Studio (ADR-050).
+
 ## Current Status: COMPLETE
-All 10 roadmap milestones (M0 through M9) are fully delivered, validated by automated conformance test suites, documented in ADRs, and integrated into `main`.
-K-Tools Neo stands as a unified local-first execution engine, modern node-based visual workflow studio, and agent-native capability runtime.
+All 10 roadmap milestones (M0 through M9) plus Python Script Node Pack extension are fully delivered, validated by automated conformance test suites, documented in ADRs, and integrated into `main`.
+K-Tools Neo stands as a unified local-first execution engine, modern node-based visual workflow studio, and agent-native capability runtime (41 typed capabilities across 10 official Node Packs).
 
 

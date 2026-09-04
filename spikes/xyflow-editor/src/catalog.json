@@ -741,5 +741,62 @@
       "essentialFields": [],
       "advancedFields": []
     }
+  },
+  {
+    "type": "ktool",
+    "type_id": "script.python_run",
+    "label": "🐍 Script Python",
+    "description": "Executa um código Python customizado ou arquivo .py integrado no fluxo.",
+    "category": "Automação",
+    "icon": "🐍",
+    "defaultData": {
+      "type_id": "script.python_run",
+      "label": "🐍 Script Python",
+      "category": "Automação",
+      "description": "Permite criar lógica customizada em Python conectada aos outros nós.",
+      "inputs": [
+        {
+          "id": "data",
+          "type": "any",
+          "label": "📥 Dados de Entrada",
+          "desc": "Dados vindos do nó anterior"
+        },
+        {
+          "id": "code",
+          "type": "text",
+          "label": "📜 Código Python",
+          "desc": "Código Python inline"
+        },
+        {
+          "id": "file_path",
+          "type": "file",
+          "label": "📄 Arquivo .py",
+          "desc": "Caminho de script externo"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "type": "any",
+          "label": "✨ Resultado do Script",
+          "desc": "Resultado do processamento"
+        },
+        {
+          "id": "stdout",
+          "type": "text",
+          "label": "💬 Saída do Print",
+          "desc": "Texto do print()"
+        }
+      ],
+      "config": {
+        "code": "# Escreva seu código Python aqui\nprint(f'Recebido: {data}')\nresult = data\noutputs['result'] = result"
+      },
+      "essentialFields": [
+        "code"
+      ],
+      "advancedFields": [
+        "file_path"
+      ]
+    }
   }
 ]
