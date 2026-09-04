@@ -23,6 +23,7 @@ class YouTubeDownloadResult:
     folder: str
     metadata: dict[str, Any]
     auth_used: bool = False
+    auth_provider: str | None = None
 
 
 def default_download_dir() -> Path:
@@ -127,9 +128,14 @@ class YouTubeDownloadService:
                 if e
             ]
 
+        provider = self._auth_manager.active_provider()
+        provider_name = provider.name if (auth_used and provider) else None
+        metadata["auth_provider"] = provider_name
+
         return YouTubeDownloadResult(
             files=files,
             folder=str(folder.resolve()),
             metadata=metadata,
             auth_used=auth_used,
+            auth_provider=provider_name,
         )

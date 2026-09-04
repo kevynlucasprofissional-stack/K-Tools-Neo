@@ -11,8 +11,13 @@ from .bridge import inspect_cookiejar_auth
 class CookieFileAuthProvider:
     """Manual fallback reading a Netscape-formatted cookies.txt file."""
 
-    def __init__(self, cookie_file_path: Path | str | None = None):
-        self._path = Path(cookie_file_path) if cookie_file_path else None
+    def __init__(
+        self,
+        cookie_file_path: Path | str | None = None,
+        file_path: Path | str | None = None,
+    ):
+        target = cookie_file_path or file_path
+        self._path = Path(target) if target else None
         self._cached_jar: http.cookiejar.CookieJar | None = None
 
     @property

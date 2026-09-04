@@ -28,3 +28,16 @@ sessions/
 Thumbs.db
 .vscode/
 .idea/
+
+# K-Tools Neo: Managed Browser Runtime (never commit binaries or session data)
+# These directories live in %LOCALAPPDATA%\K-Tools-Neo\ and are managed at runtime.
+# They must never be tracked by git.
+**/runtimes/
+**/browser-profiles/
+**/runtime-downloads/
+**/runtime-metadata/
+**/browser-cache/
+cookies.sqlite
+*.lz4
+*.sqlite-wal
+*.sqlite-shm

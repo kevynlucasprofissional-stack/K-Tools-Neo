@@ -7,12 +7,14 @@ from .bridge import (
 )
 from .edge_cdp import EdgeCdpAuthProvider
 from .firefox import FirefoxAuthProvider
+from .managed_firefox import ManagedFirefoxAuthProvider
 from .cookie_file import CookieFileAuthProvider
 from .manager import YouTubeAuthManager
 
 __all__ = [
     "AuthProvider",
     "AuthState",
+    "ManagedFirefoxAuthProvider",
     "EdgeCdpAuthProvider",
     "FirefoxAuthProvider",
     "CookieFileAuthProvider",
@@ -22,3 +24,4 @@ __all__ = [
     "cookiejar_to_netscape_text",
     "is_domain_allowed",
 ]
+

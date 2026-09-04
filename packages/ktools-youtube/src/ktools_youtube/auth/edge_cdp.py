@@ -42,12 +42,12 @@ def get_free_port() -> int:
 def default_profile_dir() -> Path:
     if os.name == "nt":
         base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
-        return Path(base) / "K-Tools-Neo" / "browser-session" / "youtube"
-    return Path.home() / ".ktools-neo" / "browser-session" / "youtube"
+        return Path(base) / "K-Tools-Neo" / "browser-profiles" / "edge-youtube"
+    return Path.home() / ".ktools-neo" / "browser-profiles" / "edge-youtube"
 
 
 class EdgeCdpAuthProvider:
-    """Primary Windows AuthProvider using Edge with a dedicated profile and CDP."""
+    """Official Fallback Windows AuthProvider using Microsoft Edge and CDP."""
 
     def __init__(
         self,
