@@ -347,7 +347,7 @@ M6 is proved when one canonical K-Tools capability can be invoked through direct
 
 ## M7 — System Capabilities, Events + Scoped Safety
 
-Status: **PLANNED / AFTER M6 CONTRACT PROOF**
+Status: **RESOLVED / PROMOTED** (ADR-047)
 
 **Purpose:** extend K-Tools from file/media transformation into a bounded computer-capability runtime suitable for agentic work while keeping security and policy responsibilities explicit.
 

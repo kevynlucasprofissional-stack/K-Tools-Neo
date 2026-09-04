@@ -80,6 +80,20 @@ The ROADMAP.md M5 milestone is now complete.
 - Conformance test suite (`test_capability_conformance.py`) proves parity between WorkflowEngine, Direct API, CLI, and MCP across all 34 capabilities.
 - ADR-046 accepted.
 
+## Milestone M7: System Capabilities, Events + Scoped Safety
+- Created `packages/ktools-system` implementing least-privilege `CapabilityScope` and `PolicyAction` classification (`models.py`).
+- Implemented core system capabilities:
+  - `system.process_launch`: safe bounded subprocess execution with timeout, output capture, and scope checks.
+  - `system.clipboard_read` and `system.clipboard_write`: cross-platform clipboard access.
+  - `system.host_health`: CPU, memory, platform, and disk metrics inspection.
+  - `system.notify`: user attention notification emission.
+- Implemented `SystemEventStream` pub/sub and history event bus (`events.py`).
+- Registered system node pack in `ktools_core.registry.load_all_installed_node_packs`.
+- Conformance and safety tests pass (8/8 in ktools-system, 85/85 in ktools-core).
+- Total capability catalog expanded from 34 to 39 nodes.
+- ADR-047 accepted.
+
 # Current
-Milestone M6 is RESOLVED / PROMOTED.
-Proceeding to Milestone M7: System Capabilities, Events + Scoped Safety.
+Milestones M6 and M7 are RESOLVED / PROMOTED.
+Proceeding to Milestone M8: Cross-Platform Host Provider Architecture.
+

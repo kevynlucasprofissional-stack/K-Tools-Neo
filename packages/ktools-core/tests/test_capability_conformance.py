@@ -29,6 +29,9 @@ class CapabilityConformanceTests(unittest.TestCase):
             "filesystem.drive_stream_scan",
             "filesystem.structure_report",
             "text.tldv_extract",
+            "system.host_health",
+            "system.process_launch",
+            "system.notify",
         ):
             self.assertIn(cap_id, manifest.capabilities)
 

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ktools-system"
+version = "0.1.0"
+description = "K-Tools Neo System Capability Node Pack"
+authors = [{ name = "K-Tools Team" }]
+dependencies = [
+    "ktools-core",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
