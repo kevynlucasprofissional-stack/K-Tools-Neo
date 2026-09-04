@@ -102,8 +102,18 @@ The ROADMAP.md M5 milestone is now complete.
 - All tests pass (89/89 in ktools-core, 8/8 in ktools-system).
 - ADR-048 accepted.
 
+## Milestone M9: Agentic Workstation Integration + Capability Ecosystem
+- Implemented `HermesCapabilityAdapter` in `ktools_core.adapters.hermes` supporting action dispatch, pre-flight scope enforcement, and policy confirmation handshakes for destructive actions.
+- Implemented `register_workflow_as_capability` in `ktools_core.adapters.workflow_capability` enabling any valid Workflow DAG to be wrapped and registered as a single executable capability node with automated input feeder synthesis.
+- Implemented `core.literal` in `ktools_core.builtin` for dynamic input feeder injection.
+- Implemented `check_readiness` and `ReadinessReport` in `ktools_core.readiness`.
+- Added end-to-end integration test suite `test_hermes_workstation_integration.py` (5/5 passing).
+- All 94 core tests and full multi-package suite passing across the entire workspace.
+- ADR-049 accepted.
+
 # Current
-Milestones M6, M7, and M8 are RESOLVED / PROMOTED.
-Proceeding to Milestone M9: Agentic Workstation Integration + Capability Ecosystem.
+All roadmap milestones (M0 through M9) are fully RESOLVED / PROMOTED.
+K-Tools Neo is complete as a unified, local-first computer capability runtime, visual workflow studio, and agent-native execution substrate.
+
 
 

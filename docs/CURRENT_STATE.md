@@ -210,9 +210,31 @@ Migrated utilities:
 - `EC.py` -> `filesystem.structure_report` (ADR-044)
 - `K_Tools_Drive_Streaming_Scanner.py` (v1.4) -> `filesystem.drive_stream_scan` (ADR-045)
 
-Full monorepo test coverage: 298 tests passing across all 8 packages.
+## M6 — Agent Capability Interface V1 — RESOLVED / PROMOTED
+- Machine-readable `CapabilityManifest` with `SideEffectClass` projections (`ktools_core.manifest`).
+- Standard `ExecutionReceipt` schema and `ArtifactRecord` (`ktools_core.receipt`).
+- Unified direct execution boundary `CapabilityInvoker` (`ktools_core.invoker`).
+- Native Model Context Protocol (MCP) JSON-RPC server (`ktools_core.mcp_server`).
+- Conformance test suite proves parity across CLI, MCP, Direct API, and WorkflowEngine (ADR-046).
 
-## Next exact action
+## M7 — System Capabilities, Events + Scoped Safety — RESOLVED / PROMOTED
+- Least-privilege `CapabilityScope` with fine-grained restrictions (`ktools-system`).
+- Five system capabilities: `system.process_launch`, `system.clipboard_read`, `system.clipboard_write`, `system.host_health`, `system.notify`.
+- Pub/Sub `SystemEventStream` and typed event logging (ADR-047).
 
-All planned capabilities, milestones (M0 through M5), and legacy utility migrations are completely implemented, tested, and pushed to `main`.
+## M8 — Cross-Platform Host Provider Architecture — RESOLVED / PROMOTED
+- Generic `HostProvider` abstraction with explicit capability negotiation (`ktools_core.host`).
+- Canonical `WindowsHostProvider` (ctypes clipboard, PowerShell toasts, disk metrics).
+- Reference `LinuxHostProvider` (Posix subprocess, procfs/statvfs metrics, freedesktop alerts).
+- Cross-host semantic conformance test suite (ADR-048).
+
+## M9 — Agentic Workstation Integration + Capability Ecosystem — RESOLVED / PROMOTED
+- `HermesCapabilityAdapter` for bidirectional Hermes Workstation action dispatch and policy handshakes.
+- Workflow-as-Capability adapter with automated `core.literal` input feeder synthesis.
+- Machine readiness check (`check_readiness`) and `ReadinessReport` (ADR-049).
+
+## Current Status: COMPLETE
+All 10 roadmap milestones (M0 through M9) are fully delivered, validated by automated conformance test suites, documented in ADRs, and integrated into `main`.
+K-Tools Neo stands as a unified local-first execution engine, modern node-based visual workflow studio, and agent-native capability runtime.
+
 

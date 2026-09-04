@@ -91,6 +91,24 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
         ),
         _identity,
     )
+    registry.register(
+        NodeDefinition(
+            type_id="core.literal",
+            title="Literal",
+            category="Core",
+            outputs={"value": PortDefinition(DataType.ANY)},
+            version="1",
+            cache_policy=CachePolicy.PURE,
+        ),
+        _core_literal,
+    )
+
+
+def _core_literal(
+    _inputs: dict[str, Any], config: dict[str, Any], _context: NodeExecutionContext
+) -> dict[str, Any]:
+    return {"value": config.get("value")}
+
 
 
 def _text_literal(

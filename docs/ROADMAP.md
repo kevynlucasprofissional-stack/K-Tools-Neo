@@ -507,7 +507,7 @@ M8 is proved when at least one meaningful capability family can run through the 
 
 ## M9 — Agentic Workstation Integration + Capability Ecosystem
 
-Status: **LONG-HORIZON / AFTER M6–M8 FOUNDATIONS**
+Status: **RESOLVED / PROMOTED** (ADR-049)
 
 **Purpose:** make K-Tools a reusable capability runtime for the broader agent ecosystem while preserving its independent product value for humans and workflows.
 
