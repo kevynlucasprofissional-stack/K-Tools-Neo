@@ -93,7 +93,17 @@ The ROADMAP.md M5 milestone is now complete.
 - Total capability catalog expanded from 34 to 39 nodes.
 - ADR-047 accepted.
 
+## Milestone M8: Cross-Platform Host Provider Architecture
+- Implemented `ktools_core.host` defining `HostProvider` protocol, `HostPlatform`, `HostCapability`, and `HostCapabilityUnsupportedError`.
+- Created `WindowsHostProvider` (canonical Windows desktop baseline with ctypes clipboard, process handling, and drive metrics).
+- Created `LinuxHostProvider` (Linux/Omarchy reference implementation with standard process execution, `/proc` and `statvfs` metrics, and freedesktop notifications).
+- Refactored `ktools_system` clipboard, process, and health modules to cleanly delegate to the active `HostProvider`.
+- Added `test_host_provider_conformance.py` verifying cross-platform semantic parity and fail-closed unsupported capability handling.
+- All tests pass (89/89 in ktools-core, 8/8 in ktools-system).
+- ADR-048 accepted.
+
 # Current
-Milestones M6 and M7 are RESOLVED / PROMOTED.
-Proceeding to Milestone M8: Cross-Platform Host Provider Architecture.
+Milestones M6, M7, and M8 are RESOLVED / PROMOTED.
+Proceeding to Milestone M9: Agentic Workstation Integration + Capability Ecosystem.
+
 

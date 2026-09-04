@@ -441,7 +441,7 @@ M7 is proved when an agent can invoke at least one non-media host capability und
 
 ## M8 — Cross-Platform Host Provider Architecture
 
-Status: **PLANNED / AFTER WINDOWS CONTRACT IS PROVED**
+Status: **RESOLVED / PROMOTED** (ADR-048)
 
 **Purpose:** preserve one semantic K-Tools capability language while allowing the native mechanism to vary by operating system.
 
